@@ -1,0 +1,31 @@
+{
+  "name": "P-Search Mobil Alkalmazás",
+  "description": "Android app KKV-knak automatizált pályázatkeresésre és dokumentáció-generálásra AI segítségével.",
+  "version": "1.0.0",
+  "repository": "https://github.com/pohi99999/p-search-mobil.git",
+  "tags": [
+    "mobile",
+    "android",
+    "react-native",
+    "ai",
+    "zero-budget"
+  ],
+  "agents": [
+    {
+      "name": "Pickle Rick",
+      "role": "Code Implementer",
+      "purpose": "A mobil app Expo/React Native kódjának megírása."
+    },
+    {
+      "name": "n8n-architect",
+      "role": "Automation Architect",
+      "purpose": "Az n8n scraper és webhook rendszerek kialakítása a pályázatok automatikus gyűjtéséhez."
+    },
+    {
+      "name": "Architect",
+      "role": "System Architect",
+      "purpose": "A Supabase adatbázis sémák és AI Edge function-ök tervezése."
+    }
+  ],
+  "status": "planned"
+}
