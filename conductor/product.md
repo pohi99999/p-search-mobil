@@ -1,0 +1,2 @@
+# Initial Concept
+A P-Search Mobil egy professzionális, React Native alapú Android és (később) iOS mobilalkalmazás, amely a KKV szektort célozza. A célja egy AI-alapú cégprofilozó (onboarding) felület biztosítása, amely automatikusan felkutatja és a cég adataihoz (pl. TEÁOR) illeszti az elérhető pályázatokat és hiteleket. A háttérrendszert n8n alapú adatgyűjtő munkafolyamatok és egy Supabase adatbázis (hitelesítéssel) szolgálják ki. A projekt "Zero-Budget" stratégiával, mégis enterprise minőségben készül, a jövőbeli monetizáció (pl. Pro funkciók) előkészítésével.
