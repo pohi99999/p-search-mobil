@@ -1,14 +1,14 @@
 # Implementation Plan
 
 ## Phase 1: Onboarding Felület és Navigáció
-- [ ] Task: Supabase tábla ellenőrzése és típusok (TypeScript) definiálása az Onboarding adatokhoz.
-    - [ ] Módosítani a `supabase-schema.sql`-t (ha szükséges) és legenerálni a TS típusokat.
-- [ ] Task: `OnboardingScreen.tsx` létrehozása.
-    - [ ] React Native Paper űrlap elemek beépítése (Cégnév, TEÁOR, Célok).
-- [ ] Task: Mentés funkció bekötése a Supabase-be.
-    - [ ] `handleSave` logika implementálása (Update user metadata or business table).
-- [ ] Task: Navigáció frissítése.
-    - [ ] Az `App.tsx` vagy a `HomeScreen.tsx` átirányítása az Onboardingra, ha a profil hiányos.
+- [x] Task: Supabase tábla ellenőrzése és típusok (TypeScript) definiálása az Onboarding adatokhoz.
+    - [x] Módosítani a `supabase-schema.sql`-t (ha szükséges) és legenerálni a TS típusokat.
+- [x] Task: `OnboardingScreen.tsx` létrehozása.
+    - [x] React Native Paper űrlap elemek beépítése (Cégnév, TEÁOR, Célok).
+- [x] Task: Mentés funkció bekötése a Supabase-be.
+    - [x] `handleSave` logika implementálása (Update user metadata or business table).
+- [x] Task: Navigáció frissítése.
+    - [x] Az `App.tsx` vagy a `HomeScreen.tsx` átirányítása az Onboardingra, ha a profil hiányos.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Háttérfolyamat (n8n) Előkészítés
