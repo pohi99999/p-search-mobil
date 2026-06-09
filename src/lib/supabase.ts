@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Kérlek cseréld ki a saját Supabase URL-edre és Anon Kulcsodra
 // Ezt a Supabase Dashboard -> Project Settings -> API alatt találod
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

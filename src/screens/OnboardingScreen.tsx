@@ -16,6 +16,9 @@ export function OnboardingScreen({ navigation }: any) {
     goals: '',
   });
 
+  // NOTE: Replace with the actual n8n production URL in production!
+  const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/p-search-onboarding';
+
   const handleSave = async () => {
     if (!form.company_name) {
       setError('A cégnév megadása kötelező!');
@@ -29,7 +32,7 @@ export function OnboardingScreen({ navigation }: any) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('Nincs bejelentkezett felhasználó!');
 
-      const { error: dbError } = await supabase
+      const { data: newProfile, error: dbError } = await supabase
         .from('business_profiles')
         .insert([
           {
@@ -41,9 +44,24 @@ export function OnboardingScreen({ navigation }: any) {
             yearly_revenue: form.yearly_revenue ? parseInt(form.yearly_revenue) : null,
             goals: form.goals,
           }
-        ]);
+        ])
+        .select()
+        .single();
 
       if (dbError) throw dbError;
+
+      // Keresés indítása n8n webhookon keresztül (Fire and forget, nem várjuk meg)
+      if (newProfile) {
+        fetch(N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            business_id: newProfile.id,
+            user_id: session.user.id,
+            action: 'new_profile_created'
+          })
+        }).catch(err => console.warn('Webhook hívás hiba:', err));
+      }
 
       // Siker esetén navigálás a Home oldalra
       navigation.replace('Home');
