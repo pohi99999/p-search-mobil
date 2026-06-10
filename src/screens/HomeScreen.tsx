@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, Button, Surface, Card, MD3Colors } from 'react-native-paper';
+import { Text, Button, Surface, Card, MD3Colors, FAB } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
-import { BusinessProfile, GrantMatch, Grant } from '../types/database';
+import { BusinessProfile, GrantMatch, Grant, UserProfile } from '../types/database';
+import { useBilling } from '../context/BillingContext';
+
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 type MatchWithGrant = GrantMatch & { grants: Grant };
+
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/p-search-onboarding';
 
 export function HomeScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [matches, setMatches] = useState<MatchWithGrant[]>([]);
+  const { isPro } = useBilling();
 
   useEffect(() => {
     fetchData();
@@ -26,6 +33,16 @@ export function HomeScreen({ navigation }: any) {
         .select('*')
         .eq('user_id', session.user.id)
         .single();
+
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+        
+      if (userData) {
+        setUserProfile(userData as UserProfile);
+      }
 
       if (profileError && profileError.code !== 'PGRST116') {
         console.error(profileError);
@@ -60,6 +77,51 @@ export function HomeScreen({ navigation }: any) {
   async function signOut() {
     await supabase.auth.signOut();
   }
+
+  const handleNewSearch = async () => {
+    if (isPro) {
+      if (profile) {
+        fetch(N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            business_id: profile.id,
+            user_id: userProfile?.id,
+            action: 'new_search_pro'
+          })
+        }).catch(err => console.warn('Webhook hívás hiba:', err));
+        alert("Új Pro AI keresés elindítva!");
+      }
+      return;
+    }
+
+    const currentCount = userProfile?.search_count || 0;
+    if (currentCount >= 1) { // 1 free search limit
+      navigation.navigate('Paywall');
+    } else {
+      // Trigger free search and increment count
+      const newCount = currentCount + 1;
+      if (userProfile) setUserProfile({ ...userProfile, search_count: newCount });
+      
+      await supabase
+        .from('profiles')
+        .update({ search_count: newCount })
+        .eq('id', userProfile?.id);
+        
+      if (profile) {
+        fetch(N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            business_id: profile.id,
+            user_id: userProfile?.id,
+            action: 'new_search_free'
+          })
+        }).catch(err => console.warn('Webhook hívás hiba:', err));
+      }
+      alert("Ingyenes AI keresés elindítva!");
+    }
+  };
 
   if (loading) {
     return (
@@ -111,7 +173,7 @@ export function HomeScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text variant="titleMedium" style={{ flex: 1 }}>
-          Üdv, {profile?.company_name || 'Partnerünk'}!
+          Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
         <Button mode="text" onPress={signOut} compact>
           Kijelentkezés
@@ -127,11 +189,31 @@ export function HomeScreen({ navigation }: any) {
           data={matches}
           keyExtractor={(item) => item.id}
           renderItem={renderMatch}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
           refreshing={loading}
           onRefresh={fetchData}
+          ListFooterComponent={
+            !isPro ? (
+              <View style={styles.adBannerMock}>
+                <BannerAd
+                  unitId={TestIds.BANNER}
+                  size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+                  requestOptions={{
+                    requestNonPersonalizedAdsOnly: true,
+                  }}
+                />
+              </View>
+            ) : null
+          }
         />
       )}
+      
+      <FAB
+        icon="magnify"
+        style={styles.fab}
+        label="Új AI Keresés"
+        onPress={handleNewSearch}
+      />
     </View>
   );
 }
@@ -172,4 +254,20 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     backgroundColor: 'white',
   },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 20,
+    backgroundColor: '#1976D2',
+  },
+  adBannerMock: {
+    height: 50,
+    backgroundColor: '#999',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 16,
+    borderRadius: 8,
+  }
 });

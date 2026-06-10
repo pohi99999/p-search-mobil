@@ -40,3 +40,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Google Play Service Account
+google-service-account.json
+
+play-console-api-*.json
+*.aab

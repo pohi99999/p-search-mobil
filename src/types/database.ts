@@ -34,3 +34,10 @@ export interface GrantMatch {
   status: string;
   created_at: string;
 }
+
+export interface UserProfile {
+  id: string;
+  subscription_tier: string;
+  search_frequency: string;
+  search_count: number;
+}

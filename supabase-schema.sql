@@ -8,7 +8,8 @@ CREATE TABLE public.profiles (
   full_name TEXT,
   avatar_url TEXT,
   subscription_tier TEXT DEFAULT 'free', -- 'free' vagy 'pro'
-  search_frequency TEXT DEFAULT 'weekly' -- 'weekly' vagy 'daily'
+  search_frequency TEXT DEFAULT 'weekly', -- 'weekly' vagy 'daily'
+  search_count INTEGER DEFAULT 0 -- Ingyenes keresések száma
 );
 
 -- 2. Cégprofilok tábla

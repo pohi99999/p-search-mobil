@@ -19,3 +19,8 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 - Ha elakadsz vagy új funkciót kell építeni, először használd a `brainstorming` skillt.
 
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
+
+## 4. Aktuális Haladás
+- **2026. 06. 10. (Monetizáció & Google Play):**
+  - **EAS Build:** Beállítottuk az Expo EAS szolgáltatást, elkészült az első belső tesztelésre szánt Android `.aab` fájl.
+  - **Google Play Console:** Létrehoztuk a Google Play API hozzáférést (Service Account), és feltöltöttük a legelső belső teszt verziót. Ezzel a jövőbeli automata CI/CD folyamatokhoz lefektettük az alapokat.
