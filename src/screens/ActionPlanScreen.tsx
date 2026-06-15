@@ -5,11 +5,14 @@ import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
 import { generateAndSharePDF } from '../utils/documentGenerator';
+import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
 export function ActionPlanScreen({ navigation }: any) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
+
+  const { showAdIfAvailable } = useInterstitialAd();
 
   // Cégprofil lekérése a bejelentkezett felhasználóhoz
   useEffect(() => {
@@ -235,34 +238,36 @@ export function ActionPlanScreen({ navigation }: any) {
                     icon="file-pdf-box"
                     loading={pdfLoading}
                     disabled={pdfLoading}
-                    onPress={async () => {
+                    onPress={() => {
                       if (!profile || !plan.match_id) {
                         alert('Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
                         return;
                       }
-                      setPdfLoading(true);
-                      try {
-                        // Supabase Edge Function meghívása a generált HTML tartalomért
-                        const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
-                          body: {
-                            business_profile_id: profile.id,
-                            match_id: plan.match_id
-                          }
-                        });
+                      showAdIfAvailable(async () => {
+                        setPdfLoading(true);
+                        try {
+                          // Supabase Edge Function meghívása a generált HTML tartalomért
+                          const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
+                            body: {
+                              business_profile_id: profile.id,
+                              match_id: plan.match_id
+                            }
+                          });
 
-                        if (generateError) throw generateError;
-                        if (data?.error) throw new Error(data.error);
+                          if (generateError) throw generateError;
+                          if (data?.error) throw new Error(data.error);
 
-                        // PDF generálása és natív megosztása a visszakapott HTML stringből
-                        await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
-                        
-                        // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
-                        refetch();
-                      } catch (err: any) {
-                        alert('PDF hiba: ' + err.message);
-                      } finally {
-                        setPdfLoading(false);
-                      }
+                          // PDF generálása és natív megosztása a visszakapott HTML stringből
+                          await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
+                          
+                          // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
+                          refetch();
+                        } catch (err: any) {
+                          alert('PDF hiba: ' + err.message);
+                        } finally {
+                          setPdfLoading(false);
+                        }
+                      });
                     }}
                     style={styles.pdfButton}
                   >
