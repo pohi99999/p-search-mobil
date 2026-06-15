@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Text, Card, Checkbox, Button, List, Surface, MD3Colors } from 'react-native-paper';
+import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
@@ -63,17 +63,17 @@ export function ActionPlanScreen({ navigation }: any) {
 
   const getStatusIcon = (status: ActionTaskStatus) => {
     switch (status) {
-      case 'done': return 'checkbox-marked-circle-outline';
-      case 'in_progress': return 'clock-outline';
-      default: return 'checkbox-blank-circle-outline';
+      case 'done': return 'check-circle';
+      case 'in_progress': return 'play-circle';
+      default: return 'circle-outline';
     }
   };
 
   const getStatusColor = (status: ActionTaskStatus) => {
     switch (status) {
-      case 'done': return MD3Colors.error40; // zöldes vagy kék, de a Paper alap színeit használhatjuk
-      case 'in_progress': return '#1976D2';
-      default: return '#757575';
+      case 'done': return '#4CAF50'; // Zöld
+      case 'in_progress': return '#1976D2'; // Kék
+      default: return '#9E9E9E'; // Szürke
     }
   };
 
@@ -102,8 +102,8 @@ export function ActionPlanScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="titleLarge" style={{ flex: 1 }}>Pályázati Felkészülés</Text>
-        <Button mode="outlined" onPress={refetch} compact>Frissítés</Button>
+        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>
+        <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>
 
       {error && (
@@ -114,13 +114,13 @@ export function ActionPlanScreen({ navigation }: any) {
 
       {plans.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8 }}>
+          <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
             Nincs aktív akcióterved
           </Text>
-          <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 16 }}>
+          <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
             Jelölj meg egy számodra érdekes pályázatot a főképernyőn, hogy elkészíthessük hozzá a felkészülési tervet!
           </Text>
-          <Button mode="contained" onPress={() => navigation.navigate('Home')}>
+          <Button mode="contained" style={styles.primaryButton} onPress={() => navigation.navigate('Home')}>
             Pályázatok keresése
           </Button>
         </View>
@@ -128,42 +128,78 @@ export function ActionPlanScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {plans.map((plan) => {
             const planTasks = tasks[plan.id] || [];
+            const totalTasks = planTasks.length;
+            const completedTasks = planTasks.filter(t => t.status === 'done').length;
+            const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
+            const percentage = Math.round(progress * 100);
+
             return (
-              <Card key={plan.id} style={styles.card}>
-                <Card.Title 
-                  title={plan.title} 
-                  subtitle="Aktív Akcióterv"
-                />
-                <Card.Content>
-                  <Text variant="bodySmall" style={{ marginBottom: 12, color: '#666' }}>
+              <Card key={plan.id} style={styles.card} mode="elevated">
+                <Card.Content style={styles.cardHeader}>
+                  <Text variant="titleMedium" style={styles.cardTitle}>{plan.title}</Text>
+                  <Text variant="bodySmall" style={styles.cardSubtitle}>
                     Létrehozva: {new Date(plan.created_at).toLocaleDateString('hu-HU')}
                   </Text>
                   
-                  <List.Section title="Teendők listája">
-                    {planTasks.map((task) => (
-                      <List.Item
-                        key={task.id}
-                        title={task.title}
-                        description={task.description || 'Nincs leírás megadva'}
-                        left={props => (
-                          <List.Icon 
-                            {...props} 
-                            icon={getStatusIcon(task.status)}
-                            color={getStatusColor(task.status)}
-                          />
-                        )}
-                        right={props => (
-                          <Button 
-                            mode="text" 
-                            onPress={() => handleStatusChange(task, task.status)}
-                          >
-                            {task.status === 'todo' ? 'Indítás' : task.status === 'in_progress' ? 'Befejezés' : 'Újra'}
-                          </Button>
-                        )}
-                      />
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressLabelRow}>
+                      <Text variant="labelMedium" style={styles.progressLabel}>Felkészültség állapota</Text>
+                      <Text variant="labelMedium" style={styles.progressValue}>{completedTasks}/{totalTasks} ({percentage}%)</Text>
+                    </View>
+                    <ProgressBar 
+                      progress={progress} 
+                      color={progress === 1 ? '#4CAF50' : '#1976D2'} 
+                      style={styles.progressBar} 
+                    />
+                  </View>
+                </Card.Content>
+                
+                <Divider />
+
+                <Card.Content style={styles.cardBody}>
+                  <List.Section style={styles.listSection}>
+                    {planTasks.map((task, index) => (
+                      <React.Fragment key={task.id}>
+                        <List.Item
+                          title={task.title}
+                          titleStyle={[
+                            styles.taskTitle,
+                            task.status === 'done' && styles.doneTaskTitle
+                          ]}
+                          description={task.description || undefined}
+                          descriptionStyle={styles.taskDescription}
+                          left={props => (
+                            <IconButton
+                              {...props}
+                              icon={getStatusIcon(task.status)}
+                              iconColor={getStatusColor(task.status)}
+                              onPress={() => handleStatusChange(task, task.status)}
+                              size={24}
+                              style={styles.taskIcon}
+                            />
+                          )}
+                          right={props => (
+                            <Button 
+                              mode={task.status === 'in_progress' ? 'contained' : 'outlined'} 
+                              onPress={() => handleStatusChange(task, task.status)}
+                              compact
+                              style={[
+                                styles.statusButton,
+                                task.status === 'in_progress' && styles.inProgressButton,
+                                task.status === 'done' && styles.doneButton
+                              ]}
+                              labelStyle={styles.statusButtonLabel}
+                            >
+                              {task.status === 'todo' ? 'Elkezd' : task.status === 'in_progress' ? 'Kész' : 'Újra'}
+                            </Button>
+                          )}
+                          style={styles.listItem}
+                        />
+                        {index < planTasks.length - 1 && <Divider style={styles.taskDivider} />}
+                      </React.Fragment>
                     ))}
                     {planTasks.length === 0 && (
-                      <Text style={{ fontStyle: 'italic', color: '#888', paddingLeft: 16 }}>
+                      <Text style={styles.noTasksText}>
                         Nincsenek feladatok ehhez az akciótervhez.
                       </Text>
                     )}
@@ -181,13 +217,14 @@ export function ActionPlanScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8F9FA',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#F8F9FA',
   },
   emptyContainer: {
     flex: 1,
@@ -198,10 +235,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: 'white',
-    elevation: 2,
-    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    elevation: 1,
   },
   errorBanner: {
     padding: 12,
@@ -212,10 +251,111 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 24,
+    paddingTop: 8,
   },
   card: {
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginVertical: 10,
     backgroundColor: 'white',
+    borderRadius: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  cardTitle: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    color: '#1A237E',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    color: '#757575',
+    marginBottom: 12,
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    color: '#5C6BC0',
+    fontWeight: '500',
+  },
+  progressValue: {
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E8EAF6',
+  },
+  cardBody: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  listSection: {
+    marginVertical: 0,
+  },
+  listItem: {
+    paddingVertical: 8,
+  },
+  taskTitle: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: '#212121',
+  },
+  doneTaskTitle: {
+    textDecorationLine: 'line-through',
+    color: '#9E9E9E',
+  },
+  taskDescription: {
+    fontSize: 13,
+    color: '#757575',
+    marginTop: 2,
+  },
+  taskIcon: {
+    margin: 0,
+  },
+  taskDivider: {
+    backgroundColor: '#F5F5F5',
+  },
+  statusButton: {
+    alignSelf: 'center',
+    marginRight: 8,
+    borderRadius: 8,
+    borderWidth: 1.2,
+  },
+  inProgressButton: {
+    backgroundColor: '#1976D2',
+    borderWidth: 0,
+  },
+  doneButton: {
+    borderColor: '#4CAF50',
+  },
+  statusButtonLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noTasksText: {
+    fontStyle: 'italic',
+    color: '#9E9E9E',
+    padding: 16,
+    textAlign: 'center',
+  },
+  primaryButton: {
+    backgroundColor: '#1A237E',
+    borderRadius: 8,
+    paddingHorizontal: 8,
   }
 });
