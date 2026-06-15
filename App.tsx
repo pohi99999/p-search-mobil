@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { Session } from '@supabase/supabase-js';
+import mobileAds from 'react-native-google-mobile-ads';
 import { supabase } from './src/lib/supabase';
 
 import { AuthScreen } from './src/screens/AuthScreen';
@@ -26,6 +27,14 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
+    // MobileAds SDK inicializálása
+    mobileAds()
+      .initialize()
+      .catch(error => {
+        // Csendben elkapjuk a hibát, hogy ne omoljon össze az app
+        console.warn('Failed to initialize Mobile Ads SDK:', error);
+      });
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });

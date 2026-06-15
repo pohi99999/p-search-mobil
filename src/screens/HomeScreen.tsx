@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { BusinessProfile, GrantMatch, Grant, UserProfile } from '../types/database';
 import { useBilling } from '../context/BillingContext';
 
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { AdBanner } from '../components/AdBanner';
 
 type MatchWithGrant = GrantMatch & { grants: Grant };
 
@@ -192,28 +192,17 @@ export function HomeScreen({ navigation }: any) {
           contentContainerStyle={{ paddingBottom: 80 }}
           refreshing={loading}
           onRefresh={fetchData}
-          ListFooterComponent={
-            !isPro ? (
-              <View style={styles.adBannerMock}>
-                <BannerAd
-                  unitId={TestIds.BANNER}
-                  size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-                  requestOptions={{
-                    requestNonPersonalizedAdsOnly: true,
-                  }}
-                />
-              </View>
-            ) : null
-          }
         />
       )}
       
       <FAB
         icon="magnify"
-        style={styles.fab}
+        style={[styles.fab, { bottom: isPro ? 20 : 80 }]}
         label="Új AI Keresés"
         onPress={handleNewSearch}
       />
+      
+      <AdBanner />
     </View>
   );
 }
@@ -258,16 +247,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     margin: 16,
     right: 0,
-    bottom: 20,
     backgroundColor: '#1976D2',
-  },
-  adBannerMock: {
-    height: 50,
-    backgroundColor: '#999',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginVertical: 16,
-    borderRadius: 8,
   }
 });
