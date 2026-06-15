@@ -1,8 +1,8 @@
 # Implementation Plan - Monetizáció és Google Play Publikálás
 
 ## Phase 1: AdMob Hirdetések Integrációja
-- [ ] Task: AdMob alapkonfiguráció és csomag beállítása.
-    - [ ] `react-native-google-mobile-ads` config plugin konfigurálása az `app.json`-ban teszt azonosítókkal.
+- [x] f259b55 Task: AdMob alapkonfiguráció és csomag beállítása.
+    - [x] `react-native-google-mobile-ads` config plugin konfigurálása az `app.json`-ban teszt azonosítókkal.
 - [ ] Task: Banner hirdetések elhelyezése a felületen.
     - [ ] Banner hirdetések integrálása a `HomeScreen.tsx` és a `OnboardingScreen.tsx` alján ingyenes felhasználók számára.
 - [ ] Task: Interstitial (átvezető) hirdetés logikájának megírása.
