@@ -12,9 +12,9 @@
 - [x] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: AI Asszisztens Chatbot
-- [ ] Task: Chat felület (UI) elkészítése.
-    - [ ] Beépíteni egy üzenetküldő felületet a mobilalkalmazásba.
-    - [ ] Támogatni a sima szöveges válaszokat és a betöltési állapotokat (typing indicators).
+- [x] Task: Chat felület (UI) elkészítése.
+    - [x] Beépíteni egy üzenetküldő felületet a mobilalkalmazásba.
+    - [x] Támogatni a sima szöveges válaszokat és a betöltési állapotokat (typing indicators).
 - [ ] Task: Gemini AI Chat integráció.
     - [ ] Supabase Edge Function vagy n8n webhook fejlesztése, ami a Gemini API-n keresztül válaszol.
     - [ ] Kontextus átadása: cégprofil adatok + aktuális pályázati információk.
