@@ -1,0 +1,1 @@
+Task: Interstitial (atvezeto) hirdetes logikajanak megirasa Summary: Implemented useInterstitialAd hook for background pre-loading with Pro-bypass, and integrated it with document generation button on ActionPlanScreen. Files: src/hooks/useInterstitialAd.ts, src/screens/ActionPlanScreen.tsx
