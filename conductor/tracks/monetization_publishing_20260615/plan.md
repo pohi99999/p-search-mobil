@@ -5,8 +5,8 @@
     - [x] `react-native-google-mobile-ads` config plugin konfigurálása az `app.json`-ban teszt azonosítókkal.
 - [ ] Task: Banner hirdetések elhelyezése a felületen.
     - [ ] Banner hirdetések integrálása a `HomeScreen.tsx` és a `OnboardingScreen.tsx` alján ingyenes felhasználók számára.
-- [ ] Task: Interstitial (átvezető) hirdetés logikájának megírása.
-    - [ ] Interstitial hirdetés betöltése és megjelenítése dokumentumgenerálás vagy új keresés indítása előtt ingyenes felhasználóknál.
+- [x] 19424ef Task: Interstitial (átvezető) hirdetés logikájának megírása.
+    - [x] Interstitial hirdetés betöltése és megjelenítése dokumentumgenerálás vagy új keresés indítása előtt ingyenes felhasználóknál.
 - [ ] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: In-App Purchase (RevenueCat) Integráció
