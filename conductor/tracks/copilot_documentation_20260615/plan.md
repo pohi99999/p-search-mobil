@@ -4,9 +4,9 @@
 - [x] Task: Supabase adatmodell tervezése és migrációja.
     - [x] Létrehozni az `action_plans` és `action_tasks` táblákat a Supabase-ben.
     - [x] RLS szabályok és kapcsolatok (FK to business_profile / matches) beállítása.
-- [ ] Task: Action Plan képernyő és UI implementálása.
-    - [ ] React Native Paper lista és kártya alapú ToDo felület elkészítése.
-    - [ ] Feladatok állapotának frissítése (Pending / In Progress / Completed) a felületen.
+- [x] Task: Action Plan képernyő és UI implementálása.
+    - [x] React Native Paper lista és kártya alapú ToDo felület elkészítése.
+    - [x] Feladatok állapotának frissítése (Pending / In Progress / Completed) a felületen.
 - [ ] Task: Pályázati követelmények automatikus feladattá bontása.
     - [ ] Olyan backend/n8n/Edge Function logika tervezése és integrációja, ami a kiválasztott pályázat specifikációi alapján feltölti a teendőket alapértelmezett feladatokkal.
 - [ ] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
