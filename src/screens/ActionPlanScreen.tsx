@@ -4,6 +4,7 @@ import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, Ico
 import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
+import { generateAndSharePDF } from '../utils/documentGenerator';
 
 export function ActionPlanScreen({ navigation }: any) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
@@ -205,6 +206,43 @@ export function ActionPlanScreen({ navigation }: any) {
                     )}
                   </List.Section>
                 </Card.Content>
+                
+                <Divider />
+                <Card.Actions style={styles.cardActions}>
+                  <Button 
+                    mode="contained-tonal"
+                    icon="file-pdf-box"
+                    onPress={async () => {
+                      try {
+                        const htmlContent = `
+                          <html>
+                            <head>
+                              <style>
+                                body { font-family: sans-serif; padding: 20px; color: #212121; }
+                                h1 { color: #1A237E; border-bottom: 2px solid #1A237E; padding-bottom: 10px; }
+                                p { font-size: 14px; line-height: 1.6; }
+                                .footer { margin-top: 50px; font-size: 12px; color: #757575; text-align: center; border-top: 1px solid #E0E0E0; padding-top: 10px; }
+                              </style>
+                            </head>
+                            <body>
+                              <h1>Sikeres Pályázati Teszt</h1>
+                              <p>Ez egy automatikusan generált felkészülési terv dokumentum a <strong>P-Search</strong> rendszeréből.</p>
+                              <p><strong>Aktív akcióterv:</strong> ${plan.title}</p>
+                              <p><strong>Dátum:</strong> ${new Date().toLocaleDateString('hu-HU')}</p>
+                              <div class="footer">Generálta a P-Search Mobil Alkalmazás</div>
+                            </body>
+                          </html>
+                        `;
+                        await generateAndSharePDF(htmlContent, 'palyazati_felkeszulesi_terv.pdf');
+                      } catch (err: any) {
+                        alert('PDF hiba: ' + err.message);
+                      }
+                    }}
+                    style={styles.pdfButton}
+                  >
+                    Teszt PDF Generálása
+                  </Button>
+                </Card.Actions>
               </Card>
             );
           })}
@@ -357,5 +395,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A237E',
     borderRadius: 8,
     paddingHorizontal: 8,
+  },
+  cardActions: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'flex-end',
+    backgroundColor: '#FAFBFD',
+  },
+  pdfButton: {
+    borderRadius: 8,
   }
 });

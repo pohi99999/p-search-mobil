@@ -31,21 +31,13 @@
       "favicon": "./assets/icon.png"
     },
     "plugins": [
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
-        }
-      ]
+      "react-native-google-mobile-ads",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {
         "projectId": "e2b5f474-ade8-49d1-addb-d96008d7aa96"
       }
-    },
-    "plugins": [
-      "react-native-google-mobile-ads"
-    ]
+    }
   }
 }

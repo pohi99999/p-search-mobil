@@ -10,6 +10,8 @@
     "@supabase/supabase-js": "^2.108.0",
     "expo": "~56.0.9",
     "expo-dev-client": "~56.0.19",
+    "expo-print": "~56.0.4",
+    "expo-sharing": "~56.0.17",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
