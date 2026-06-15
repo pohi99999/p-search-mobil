@@ -37,7 +37,16 @@
           "androidAppId": "ca-app-pub-3940256099942544~3347511713"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -6,6 +6,7 @@ import { BusinessProfile, GrantMatch, Grant, UserProfile } from '../types/databa
 import { useBilling } from '../context/BillingContext';
 
 import { AdBanner } from '../components/AdBanner';
+import { TesterProgress } from '../components/TesterProgress';
 
 type MatchWithGrant = GrantMatch & { grants: Grant };
 
@@ -179,6 +180,8 @@ export function HomeScreen({ navigation }: any) {
           Kijelentkezés
         </Button>
       </View>
+      
+      <TesterProgress />
       
       {matches.length === 0 ? (
         <View style={styles.emptyContainer}>

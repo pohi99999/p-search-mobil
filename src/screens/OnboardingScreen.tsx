@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
+import { AdBanner } from '../components/AdBanner';
 
 export function OnboardingScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
@@ -73,78 +74,81 @@ export function OnboardingScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Surface style={styles.surface} elevation={2}>
-        <Text variant="headlineMedium" style={styles.title}>Cégprofil Létrehozása</Text>
-        <Text variant="bodyMedium" style={styles.subtitle}>
-          Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!
-        </Text>
+    <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+      <ScrollView style={styles.container}>
+        <Surface style={styles.surface} elevation={2}>
+          <Text variant="headlineMedium" style={styles.title}>Cégprofil Létrehozása</Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!
+          </Text>
 
-        {error && <HelperText type="error" visible={true}>{error}</HelperText>}
+          {error && <HelperText type="error" visible={true}>{error}</HelperText>}
 
-        <TextInput
-          label="Cégnév *"
-          value={form.company_name}
-          onChangeText={(text) => setForm({ ...form, company_name: text })}
-          style={styles.input}
-          mode="outlined"
-        />
+          <TextInput
+            label="Cégnév *"
+            value={form.company_name}
+            onChangeText={(text) => setForm({ ...form, company_name: text })}
+            style={styles.input}
+            mode="outlined"
+          />
 
-        <TextInput
-          label="Adószám"
-          value={form.tax_number}
-          onChangeText={(text) => setForm({ ...form, tax_number: text })}
-          style={styles.input}
-          mode="outlined"
-        />
+          <TextInput
+            label="Adószám"
+            value={form.tax_number}
+            onChangeText={(text) => setForm({ ...form, tax_number: text })}
+            style={styles.input}
+            mode="outlined"
+          />
 
-        <TextInput
-          label="Főtevékenység (TEÁOR)"
-          value={form.industry_code}
-          onChangeText={(text) => setForm({ ...form, industry_code: text })}
-          style={styles.input}
-          mode="outlined"
-        />
+          <TextInput
+            label="Főtevékenység (TEÁOR)"
+            value={form.industry_code}
+            onChangeText={(text) => setForm({ ...form, industry_code: text })}
+            style={styles.input}
+            mode="outlined"
+          />
 
-        <TextInput
-          label="Alkalmazottak száma"
-          value={form.employee_count}
-          onChangeText={(text) => setForm({ ...form, employee_count: text })}
-          style={styles.input}
-          keyboardType="numeric"
-          mode="outlined"
-        />
+          <TextInput
+            label="Alkalmazottak száma"
+            value={form.employee_count}
+            onChangeText={(text) => setForm({ ...form, employee_count: text })}
+            style={styles.input}
+            keyboardType="numeric"
+            mode="outlined"
+          />
 
-        <TextInput
-          label="Éves árbevétel (HUF)"
-          value={form.yearly_revenue}
-          onChangeText={(text) => setForm({ ...form, yearly_revenue: text })}
-          style={styles.input}
-          keyboardType="numeric"
-          mode="outlined"
-        />
+          <TextInput
+            label="Éves árbevétel (HUF)"
+            value={form.yearly_revenue}
+            onChangeText={(text) => setForm({ ...form, yearly_revenue: text })}
+            style={styles.input}
+            keyboardType="numeric"
+            mode="outlined"
+          />
 
-        <TextInput
-          label="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
-          value={form.goals}
-          onChangeText={(text) => setForm({ ...form, goals: text })}
-          style={styles.input}
-          multiline
-          numberOfLines={3}
-          mode="outlined"
-        />
+          <TextInput
+            label="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
+            value={form.goals}
+            onChangeText={(text) => setForm({ ...form, goals: text })}
+            style={styles.input}
+            multiline
+            numberOfLines={3}
+            mode="outlined"
+          />
 
-        <Button 
-          mode="contained" 
-          onPress={handleSave} 
-          loading={loading}
-          disabled={loading}
-          style={styles.button}
-        >
-          Mentés és Keresés Indítása
-        </Button>
-      </Surface>
-    </ScrollView>
+          <Button 
+            mode="contained" 
+            onPress={handleSave} 
+            loading={loading}
+            disabled={loading}
+            style={styles.button}
+          >
+            Mentés és Keresés Indítása
+          </Button>
+        </Surface>
+      </ScrollView>
+      <AdBanner />
+    </View>
   );
 }
 
