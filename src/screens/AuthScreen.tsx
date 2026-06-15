@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { TextInput, Button, Text, Surface, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 export function AuthScreen() {
@@ -56,7 +57,7 @@ export function AuthScreen() {
         <View style={styles.form}>
           <TextInput
             label="E-mail cím"
-            left={<TextInput.Icon icon="email" />}
+            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="email" {...props} />} />}
             onChangeText={(text) => setEmail(text)}
             value={email}
             placeholder="ceged@pelda.hu"
@@ -66,7 +67,7 @@ export function AuthScreen() {
           />
           <TextInput
             label="Jelszó"
-            left={<TextInput.Icon icon="lock" />}
+            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} />}
             onChangeText={(text) => setPassword(text)}
             value={password}
             secureTextEntry={true}
