@@ -15,9 +15,9 @@
 - [x] Task: Chat felület (UI) elkészítése.
     - [x] Beépíteni egy üzenetküldő felületet a mobilalkalmazásba.
     - [x] Támogatni a sima szöveges válaszokat és a betöltési állapotokat (typing indicators).
-- [ ] Task: Gemini AI Chat integráció.
-    - [ ] Supabase Edge Function vagy n8n webhook fejlesztése, ami a Gemini API-n keresztül válaszol.
-    - [ ] Kontextus átadása: cégprofil adatok + aktuális pályázati információk.
+- [x] Task: Gemini AI Chat integráció.
+    - [x] Supabase Edge Function vagy n8n webhook fejlesztése, ami a Gemini API-n keresztül válaszol.
+    - [x] Kontextus átadása: cégprofil adatok + aktuális pályázati információk.
 - [ ] Task: Interaktív adatgyűjtő és profil-pontosító logika.
     - [ ] Logika fejlesztése, amivel a chatbot képes a beszélgetésből kinyert adatokat közvetlenül a Supabase-be vagy az Action Plan-be menteni.
 - [ ] Task: Conductor - User Verification 'Phase 2' (Protocol in workflow.md)
