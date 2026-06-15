@@ -20,7 +20,7 @@
     - [x] Kontextus átadása: cégprofil adatok + aktuális pályázati információk.
 - [x] Task: Interaktív adatgyűjtő és profil-pontosító logika.
     - [x] Logika fejlesztése, amivel a chatbot képes a beszélgetésből kinyert adatokat közvetlenül a Supabase-be vagy az Action Plan-be menteni.
-- [ ] Task: Conductor - User Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Dokumentum Generátor
 - [ ] Task: PDF export és megosztás modul integrációja.

@@ -89,9 +89,7 @@ export function CopilotChatScreen({ route, navigation }: any) {
       if (invokeError) throw invokeError;
       if (data?.error) throw new Error(data.error);
 
-      if (data.database_updated) {
-        console.log('Az AI asszisztens sikeresen frissítette az adatbázist a háttérben.');
-      }
+
 
       const aiResponse: Message = {
         id: Math.random().toString(),
