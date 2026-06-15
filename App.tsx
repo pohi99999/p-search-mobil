@@ -27,13 +27,17 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    // MobileAds SDK inicializálása
-    mobileAds()
-      .initialize()
-      .catch(error => {
-        // Csendben elkapjuk a hibát, hogy ne omoljon össze az app
-        console.warn('Failed to initialize Mobile Ads SDK:', error);
-      });
+    // MobileAds SDK inicializálása biztonságosan try-catch blokkban
+    try {
+      mobileAds()
+        .initialize()
+        .catch(error => {
+          // Csendben elkapjuk a hibát, hogy ne omoljon össze az app
+          console.warn('Failed to initialize Mobile Ads SDK:', error);
+        });
+    } catch (error) {
+      console.warn('Synchronous error during Mobile Ads SDK initialization:', error);
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
