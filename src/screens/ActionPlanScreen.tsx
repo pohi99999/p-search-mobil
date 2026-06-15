@@ -210,6 +210,26 @@ export function ActionPlanScreen({ navigation }: any) {
                 
                 <Divider />
                 <Card.Actions style={styles.cardActions}>
+                  {plan.ai_context?.generated_document_html && (
+                    <Button
+                      mode="outlined"
+                      icon="file-download"
+                      onPress={async () => {
+                        try {
+                          await generateAndSharePDF(
+                            plan.ai_context.generated_document_html, 
+                            `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
+                          );
+                        } catch (err: any) {
+                          alert('PDF megnyitási hiba: ' + err.message);
+                        }
+                      }}
+                      style={[styles.pdfButton, { marginRight: 8 }]}
+                    >
+                      Mentett PDF
+                    </Button>
+                  )}
+                  
                   <Button 
                     mode="contained-tonal"
                     icon="file-pdf-box"
@@ -235,6 +255,9 @@ export function ActionPlanScreen({ navigation }: any) {
 
                         // PDF generálása és natív megosztása a visszakapott HTML stringből
                         await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
+                        
+                        // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
+                        refetch();
                       } catch (err: any) {
                         alert('PDF hiba: ' + err.message);
                       } finally {
@@ -243,7 +266,7 @@ export function ActionPlanScreen({ navigation }: any) {
                     }}
                     style={styles.pdfButton}
                   >
-                    {pdfLoading ? 'Dokumentum generálása...' : 'Teszt PDF Generálása'}
+                    {pdfLoading ? 'Generálás...' : plan.ai_context?.generated_document_html ? 'Újragenerálás' : 'PDF Generálása'}
                   </Button>
                 </Card.Actions>
               </Card>

@@ -28,6 +28,6 @@
     - [x] Mintadokumentum (pl. HTML sablon) kigenerálása PDF formátumban és eszköz-szintű megosztása.
 - [x] Task: AI alapú sablon kitöltő motor.
     - [x] Gemini prompt összeállítása, ami a cégprofil adatok és a chatbot beszélgetés alapján legenerálja az üzleti terv / nyilatkozat tartalmát.
-- [ ] Task: Generált dokumentumok kezelése.
-    - [ ] Felület a generált PDF-ek listázására, megtekintésére és helyi mentésére.
-- [ ] Task: Conductor - User Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Generált dokumentumok kezelése.
+    - [x] Felület a generált PDF-ek listázására, megtekintésére és helyi mentésére.
+- [x] Task: Conductor - User Verification 'Phase 3' (Protocol in workflow.md)

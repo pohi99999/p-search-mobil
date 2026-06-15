@@ -29,7 +29,7 @@ serve(async (req) => {
     )
 
     // Paraméterek beolvasása a kérésből
-    const { business_profile_id, match_id, document_type } = await req.json()
+    const { business_profile_id, match_id } = await req.json()
 
     if (!business_profile_id || !match_id) {
       return new Response(JSON.stringify({ error: 'business_profile_id és match_id megadása kötelező' }), {
@@ -232,6 +232,31 @@ ${grantContext}`;
 </body>
 </html>
     `.trim();
+
+    // 6. Elmentjük a generált HTML-t az akcióterv ai_context mezőjébe a tárhelykímélő kezeléshez
+    const { data: planData } = await supabaseClient
+      .from('action_plans')
+      .select('id, ai_context')
+      .eq('business_profile_id', business_profile_id)
+      .eq('match_id', match_id)
+      .maybeSingle();
+
+    if (planData?.id) {
+      const existingContext = planData.ai_context || {};
+      const updatedContext = { ...existingContext, generated_document_html: htmlContent };
+      
+      const { error: updatePlanError } = await supabaseClient
+        .from('action_plans')
+        .update({ 
+          ai_context: updatedContext,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', planData.id);
+
+      if (updatePlanError) {
+        console.error('Hiba az akcióterv ai_context frissítésekor:', updatePlanError);
+      }
+    }
 
     return new Response(
       JSON.stringify({ html: htmlContent }),
