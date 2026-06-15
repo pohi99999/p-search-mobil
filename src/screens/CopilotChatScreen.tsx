@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, IconButton, ActivityIndicator, Surface, MD3Colors } from 'react-native-paper';
+import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-native-paper';
+import { supabase } from '../lib/supabase';
+import { BusinessProfile } from '../types/database';
 
 interface Message {
   id: string;
@@ -9,7 +11,8 @@ interface Message {
   created_at: string;
 }
 
-export function CopilotChatScreen() {
+export function CopilotChatScreen({ route, navigation }: any) {
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -22,6 +25,32 @@ export function CopilotChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef<FlatList<Message>>(null);
 
+  const matchId = route?.params?.matchId || null;
+
+  // Cégprofil lekérése a bejelentkezett felhasználóhoz
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const { data, error } = await supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (data) {
+          setProfile(data as BusinessProfile);
+        }
+      } catch (err) {
+        console.error('Hiba a profil betöltésekor a chatben:', err);
+      }
+    }
+
+    fetchProfile();
+  }, []);
+
   // Automatikus görgetés a lista aljára, ha új üzenet érkezik vagy az AI gépel
   useEffect(() => {
     if (messages.length > 0) {
@@ -31,12 +60,13 @@ export function CopilotChatScreen() {
     }
   }, [messages, isTyping]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputText.trim()) return;
 
+    const userText = inputText.trim();
     const userMessage: Message = {
       id: Math.random().toString(),
-      text: inputText.trim(),
+      text: userText,
       sender: 'user',
       created_at: new Date().toISOString()
     };
@@ -45,21 +75,46 @@ export function CopilotChatScreen() {
     setInputText('');
     setIsTyping(true);
 
-    // AI válasz szimulálása 1.5 másodperces késleltetéssel
-    setTimeout(() => {
+    try {
+      // Supabase Edge Function meghívása a valós AI válaszért
+      const { data, error: invokeError } = await supabase.functions.invoke('chat-with-gemini', {
+        body: {
+          message: userText,
+          history: messages,
+          business_profile_id: profile?.id || null,
+          match_id: matchId
+        }
+      });
+
+      if (invokeError) throw invokeError;
+      if (data?.error) throw new Error(data.error);
+
       const aiResponse: Message = {
         id: Math.random().toString(),
-        text: `Ez egy teszt AI válasz a "${userMessage.text}" kérdésedre az onboarding és a pályázati adatok alapján.`,
+        text: data.reply,
         sender: 'ai',
         created_at: new Date().toISOString()
       };
+      
       setMessages(prev => [...prev, aiResponse]);
+    } catch (err: any) {
+      console.error(err);
+      const errorMessage: Message = {
+        id: `err-${Math.random()}`,
+        text: `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${err.message || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`,
+        sender: 'ai',
+        created_at: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const renderMessageItem = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
+    const isError = item.id.startsWith('err-');
+    
     return (
       <View style={[
         styles.messageRow,
@@ -67,11 +122,13 @@ export function CopilotChatScreen() {
       ]}>
         <Surface style={[
           styles.bubble,
-          isUser ? styles.userBubble : styles.aiBubble
+          isUser ? styles.userBubble : styles.aiBubble,
+          isError && styles.errorBubble
         ]} elevation={1}>
           <Text style={[
             styles.messageText,
-            isUser ? styles.userText : styles.aiText
+            isUser ? styles.userText : styles.aiText,
+            isError && styles.errorText
           ]}>
             {item.text}
           </Text>
@@ -130,9 +187,10 @@ export function CopilotChatScreen() {
               icon="send"
               color={inputText.trim() ? '#1A237E' : '#9E9E9E'}
               onPress={handleSend}
-              disabled={!inputText.trim()}
+              disabled={!inputText.trim() || isTyping}
             />
           }
+          disabled={isTyping}
         />
       </View>
     </KeyboardAvoidingView>
@@ -189,6 +247,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderBottomLeftRadius: 4,
   },
+  errorBubble: {
+    backgroundColor: '#FFEBEE',
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
   messageText: {
     fontSize: 15,
     lineHeight: 20,
@@ -198,6 +261,9 @@ const styles = StyleSheet.create({
   },
   aiText: {
     color: '#212121',
+  },
+  errorText: {
+    color: '#D32F2F',
   },
   timestampText: {
     fontSize: 10,
