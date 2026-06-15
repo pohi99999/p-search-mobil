@@ -9,7 +9,7 @@
     - [x] Feladatok állapotának frissítése (Pending / In Progress / Completed) a felületen.
 - [x] Task: Pályázati követelmények automatikus feladattá bontása.
     - [x] Olyan backend/n8n/Edge Function logika tervezése és integrációja, ami a kiválasztott pályázat specifikációi alapján feltölti a teendőket alapértelmezett feladatokkal.
-- [ ] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: AI Asszisztens Chatbot
 - [ ] Task: Chat felület (UI) elkészítése.
