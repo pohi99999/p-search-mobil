@@ -77,27 +77,61 @@ Leírás: ${g.description || 'Nincs megadva'}`;
       }
     }
 
-    // 3. Rendszerprompt felépítése
-    const systemPrompt = `Te a P-Search AI Pályázati Copilot asszisztense vagy, egy intelligens, professzionális és segítőkész tanácsadó.
-Segítesz a KKV cégeknek megérteni a pályázatokat, felkészülni a benyújtásra és pontosítani a szükséges információkat.
+    // 3. Feladatok lekérdezése a céghez az azonosítókkal a rendszerpromptba dúsításhoz
+    let tasksContext = "";
+    if (business_profile_id) {
+      const { data: plans } = await supabaseClient
+        .from('action_plans')
+        .select('id, title')
+        .eq('business_profile_id', business_profile_id);
+      
+      if (plans && plans.length > 0) {
+        const planIds = plans.map(p => p.id);
+        const { data: tasks } = await supabaseClient
+          .from('action_tasks')
+          .select('id, title, status')
+          .in('plan_id', planIds)
+          .order('order_index', { ascending: true });
+        
+        if (tasks && tasks.length > 0) {
+          tasksContext = "Az adatbázisban szereplő aktív felkészülési feladatok és azonosítóik (UUID):\n";
+          tasks.forEach(t => {
+            tasksContext += `- Feladat: "${t.title}", Állapot: "${t.status}", Azonosító (ID): "${t.id}"\n`;
+          });
+        }
+      }
+    }
+
+    // 4. Rendszerprompt felépítése
+    const systemPrompt = `Te a P-Search AI Pályázati Copilot asszisztense vagy. Segítesz a KKV cégeknek a pályázati felkészülésben.
+Képes vagy a beszélgetés alapján frissíteni a cég adatait vagy lezárni a teendőket az adatbázisban.
 
 ${companyContext ? `Aktuális ügyfél (cég) adatai:\n${companyContext}\n` : ""}
 ${grantContext ? `Aktuálisan tárgyalt pályázat adatai:\n${grantContext}\n` : ""}
+${tasksContext ? `Aktuális teendők listája az adatbázisban:\n${tasksContext}\n` : ""}
 
-Irányelvek:
-- Mindig maradj professzionális, precíz és udvarias.
-- Adj lényegretörő, pontos válaszokat a fenti cég- és pályázati adatok alapján.
-- Válaszolj magyarul.
-- Ha a felhasználó a felkészülés lépéseiről kérdez, hivatkozz az akciótervre (Action Plan).
-- Ha nem tudod a választ vagy az adatok hiányoznak, kérdezz rá udvariasan.`;
+KÖTELEZŐ UTASÍTÁSOK:
+1. A válaszodat KIZÁRÓLAG egy érvényes JSON formátumban adhatod vissza az alábbi kulcsokkal:
+   - "reply": A felhasználónak küldött válasz szövege (magyarul, udvariasan, professzionálisan).
+   - "profile_updates": Ha a beszélgetés során a felhasználó egyértelműen új vagy pontosabb cégadatot adott meg (pl. az árbevételt vagy az alkalmazottak számát), akkor töltsd ki ezt az objektumot a megfelelő értékekkel (kulcsok: "revenue" (szám), "employee_count" (szám)). Ha nem volt új adat, hagyd el a kulcsot vagy legyen null.
+   - "task_updates": Ha a felhasználó jelezte, hogy egy feladatot elvégzett (pl. "ellenőriztem a pénzügyi adatokat" vagy "megvan a nyilatkozat"), keresd meg a fenti feladatlistából a hozzá tartozó feladatot, és a "completed_task_ids" tömbbe tedd bele annak UUID azonosítóját. Ha nem volt ilyen, a tömb legyen üres vagy a kulcs null.
 
-    // 4. Előzmények leképezése a Gemini API formátumára
+Példa a kimenetre:
+{
+  "reply": "Szuper, rögzítettem a 10 milliós árbevételt és lezártam a pénzügyi adatok ellenőrzése feladatot!",
+  "profile_updates": {
+    "revenue": 10000000
+  },
+  "task_updates": {
+    "completed_task_ids": ["feladat-uuid-1"]
+  }
+}`;
+
+    // 5. Előzmények leképezése a Gemini API formátumára
     const geminiContents = [];
     if (history && Array.isArray(history)) {
-      // Csak az utolsó 10 üzenetet küldjük a kontextus méretének kordában tartására
       const recentHistory = history.slice(-10);
       for (const msg of recentHistory) {
-        // A welcome üzenetet és a hibákat kiszűrjük a történetből a tisztaság kedvéért
         if (msg.id === 'welcome' || msg.id.startsWith('err-')) continue;
         
         const role = msg.sender === 'user' ? 'user' : 'model';
@@ -108,13 +142,12 @@ Irányelvek:
       }
     }
 
-    // Aktuális üzenet hozzáfűzése
     geminiContents.push({
       role: 'user',
       parts: [{ text: message }]
     });
 
-    // 5. Gemini API hívása (REST)
+    // 6. Gemini API hívása (REST) JSON response beállítással
     const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY környezeti változó nincs beállítva a backendben.');
@@ -133,22 +166,78 @@ Irányelvek:
           parts: [{ text: systemPrompt }]
         },
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.2, // Alacsonyabb hőmérséklet a strukturált JSON választáshoz
           maxOutputTokens: 1000,
+          responseMimeType: "application/json" // JSON kimenet kényszerítése
         }
       })
     });
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      throw new Error(`Gemini API error (${apiResponse.status}): ${errorText}`);
+      throw new Error(`Gemini API hiba (${apiResponse.status}): ${errorText}`);
     }
 
     const responseData = await apiResponse.json();
-    const replyText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || 'Sajnálom, nem sikerült választ generálnom.';
+    const replyJSONText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+
+    let reply = "Sajnálom, nem sikerült választ generálnom.";
+    let databaseUpdated = false;
+
+    // 7. A kapott JSON feldolgozása és Supabase UPDATE műveletek végrehajtása
+    try {
+      const parsedReply = JSON.parse(replyJSONText.trim());
+      reply = parsedReply.reply || reply;
+
+      // 7.1. Cégprofil frissítése, ha van profile_updates
+      if (parsedReply.profile_updates && business_profile_id) {
+        const updates: Record<string, any> = {};
+        if (typeof parsedReply.profile_updates.revenue === 'number') {
+          updates.yearly_revenue = parsedReply.profile_updates.revenue;
+        }
+        if (typeof parsedReply.profile_updates.employee_count === 'number') {
+          updates.employee_count = parsedReply.profile_updates.employee_count;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { error: profileError } = await supabaseClient
+            .from('business_profiles')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', business_profile_id);
+
+          if (!profileError) {
+            databaseUpdated = true;
+          } else {
+            console.error('Hiba a cégprofil frissítésekor az Edge Functionben:', profileError);
+          }
+        }
+      }
+
+      // 7.2. Feladatok státuszának frissítése 'done'-ra, ha van completed_task_ids
+      if (parsedReply.task_updates && Array.isArray(parsedReply.task_updates.completed_task_ids) && parsedReply.task_updates.completed_task_ids.length > 0) {
+        const { error: taskError } = await supabaseClient
+          .from('action_tasks')
+          .update({ status: 'done', updated_at: new Date().toISOString() })
+          .in('id', parsedReply.task_updates.completed_task_ids);
+
+        if (!taskError) {
+          databaseUpdated = true;
+        } else {
+          console.error('Hiba a feladatok frissítésekor az Edge Functionben:', taskError);
+        }
+      }
+
+    } catch (parseErr) {
+      console.error('Hiba a Gemini JSON válasz feldolgozásakor:', parseErr, replyJSONText);
+      // Fallback: Ha mégsem JSON jött vissza, a teljes szöveget küldjük el válaszként
+      reply = replyJSONText;
+    }
 
     return new Response(
-      JSON.stringify({ reply: replyText }),
+      JSON.stringify({ 
+        reply: reply,
+        database_updated: databaseUpdated 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
