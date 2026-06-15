@@ -41,3 +41,26 @@ export interface UserProfile {
   search_frequency: string;
   search_count: number;
 }
+
+export interface ActionPlan {
+  id: string;
+  business_profile_id: string;
+  match_id: string | null;
+  title: string;
+  ai_context: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ActionTaskStatus = 'todo' | 'in_progress' | 'done';
+
+export interface ActionTask {
+  id: string;
+  plan_id: string;
+  title: string;
+  description: string | null;
+  status: ActionTaskStatus;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}

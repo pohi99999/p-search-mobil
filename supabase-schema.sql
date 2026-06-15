@@ -78,3 +78,58 @@ CREATE POLICY "Users can view matches for their business" ON public.grant_matche
 CREATE POLICY "Users can update matches for their business" ON public.grant_matches FOR UPDATE USING (
   business_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid())
 );
+
+-- 5. Akciótervek (Action Plans) tábla
+CREATE TABLE public.action_plans (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  business_profile_id UUID REFERENCES public.business_profiles(id) ON DELETE CASCADE NOT NULL,
+  match_id UUID REFERENCES public.grant_matches(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  ai_context JSONB DEFAULT '{}'::jsonb NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 6. Akcióterv Feladatok (Action Tasks) tábla
+CREATE TABLE public.action_tasks (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  plan_id UUID REFERENCES public.action_plans(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'todo' NOT NULL CONSTRAINT action_tasks_status_check CHECK (status IN ('todo', 'in_progress', 'done')),
+  order_index INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS engedélyezése az új táblákon
+ALTER TABLE public.action_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.action_tasks ENABLE ROW LEVEL SECURITY;
+
+-- Policy-k az action_plans táblához
+CREATE POLICY "Users can view own action plans" ON public.action_plans FOR SELECT USING (
+  business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid())
+);
+CREATE POLICY "Users can insert own action plans" ON public.action_plans FOR INSERT WITH CHECK (
+  business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid())
+);
+CREATE POLICY "Users can update own action plans" ON public.action_plans FOR UPDATE USING (
+  business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid())
+);
+CREATE POLICY "Users can delete own action plans" ON public.action_plans FOR DELETE USING (
+  business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid())
+);
+
+-- Policy-k az action_tasks táblához
+CREATE POLICY "Users can view tasks for their plans" ON public.action_tasks FOR SELECT USING (
+  plan_id IN (SELECT id FROM public.action_plans WHERE business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid()))
+);
+CREATE POLICY "Users can insert tasks for their plans" ON public.action_tasks FOR INSERT WITH CHECK (
+  plan_id IN (SELECT id FROM public.action_plans WHERE business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid()))
+);
+CREATE POLICY "Users can update tasks for their plans" ON public.action_tasks FOR UPDATE USING (
+  plan_id IN (SELECT id FROM public.action_plans WHERE business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid()))
+);
+CREATE POLICY "Users can delete tasks for their plans" ON public.action_tasks FOR DELETE USING (
+  plan_id IN (SELECT id FROM public.action_plans WHERE business_profile_id IN (SELECT id FROM public.business_profiles WHERE user_id = auth.uid()))
+);
