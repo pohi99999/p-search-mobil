@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 
 // API Keys - Should be replaced with actual keys via environment variables or Constants
-const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || 'goog_placeholder_key';
+const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || 'REVENUECAT_GOOGLE_API_KEY_PLACEHOLDER';
 const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || 'appl_placeholder_key';
 
 interface BillingContextType {
