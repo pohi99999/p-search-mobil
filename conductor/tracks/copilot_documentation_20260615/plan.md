@@ -26,8 +26,8 @@
 - [x] Task: PDF export és megosztás modul integrációja.
     - [x] Beépíteni az `expo-print` és `expo-sharing` modulokat.
     - [x] Mintadokumentum (pl. HTML sablon) kigenerálása PDF formátumban és eszköz-szintű megosztása.
-- [ ] Task: AI alapú sablon kitöltő motor.
-    - [ ] Gemini prompt összeállítása, ami a cégprofil adatok és a chatbot beszélgetés alapján legenerálja az üzleti terv / nyilatkozat tartalmát.
+- [x] Task: AI alapú sablon kitöltő motor.
+    - [x] Gemini prompt összeállítása, ami a cégprofil adatok és a chatbot beszélgetés alapján legenerálja az üzleti terv / nyilatkozat tartalmát.
 - [ ] Task: Generált dokumentumok kezelése.
     - [ ] Felület a generált PDF-ek listázására, megtekintésére és helyi mentésére.
 - [ ] Task: Conductor - User Verification 'Phase 3' (Protocol in workflow.md)
