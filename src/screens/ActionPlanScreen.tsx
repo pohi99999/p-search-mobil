@@ -9,6 +9,7 @@ import { generateAndSharePDF } from '../utils/documentGenerator';
 export function ActionPlanScreen({ navigation }: any) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // Cégprofil lekérése a bejelentkezett felhasználóhoz
   useEffect(() => {
@@ -212,35 +213,37 @@ export function ActionPlanScreen({ navigation }: any) {
                   <Button 
                     mode="contained-tonal"
                     icon="file-pdf-box"
+                    loading={pdfLoading}
+                    disabled={pdfLoading}
                     onPress={async () => {
+                      if (!profile || !plan.match_id) {
+                        alert('Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
+                        return;
+                      }
+                      setPdfLoading(true);
                       try {
-                        const htmlContent = `
-                          <html>
-                            <head>
-                              <style>
-                                body { font-family: sans-serif; padding: 20px; color: #212121; }
-                                h1 { color: #1A237E; border-bottom: 2px solid #1A237E; padding-bottom: 10px; }
-                                p { font-size: 14px; line-height: 1.6; }
-                                .footer { margin-top: 50px; font-size: 12px; color: #757575; text-align: center; border-top: 1px solid #E0E0E0; padding-top: 10px; }
-                              </style>
-                            </head>
-                            <body>
-                              <h1>Sikeres Pályázati Teszt</h1>
-                              <p>Ez egy automatikusan generált felkészülési terv dokumentum a <strong>P-Search</strong> rendszeréből.</p>
-                              <p><strong>Aktív akcióterv:</strong> ${plan.title}</p>
-                              <p><strong>Dátum:</strong> ${new Date().toLocaleDateString('hu-HU')}</p>
-                              <div class="footer">Generálta a P-Search Mobil Alkalmazás</div>
-                            </body>
-                          </html>
-                        `;
-                        await generateAndSharePDF(htmlContent, 'palyazati_felkeszulesi_terv.pdf');
+                        // Supabase Edge Function meghívása a generált HTML tartalomért
+                        const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
+                          body: {
+                            business_profile_id: profile.id,
+                            match_id: plan.match_id
+                          }
+                        });
+
+                        if (generateError) throw generateError;
+                        if (data?.error) throw new Error(data.error);
+
+                        // PDF generálása és natív megosztása a visszakapott HTML stringből
+                        await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
                       } catch (err: any) {
                         alert('PDF hiba: ' + err.message);
+                      } finally {
+                        setPdfLoading(false);
                       }
                     }}
                     style={styles.pdfButton}
                   >
-                    Teszt PDF Generálása
+                    {pdfLoading ? 'Dokumentum generálása...' : 'Teszt PDF Generálása'}
                   </Button>
                 </Card.Actions>
               </Card>
