@@ -7,8 +7,8 @@
 - [x] Task: Action Plan képernyő és UI implementálása.
     - [x] React Native Paper lista és kártya alapú ToDo felület elkészítése.
     - [x] Feladatok állapotának frissítése (Pending / In Progress / Completed) a felületen.
-- [ ] Task: Pályázati követelmények automatikus feladattá bontása.
-    - [ ] Olyan backend/n8n/Edge Function logika tervezése és integrációja, ami a kiválasztott pályázat specifikációi alapján feltölti a teendőket alapértelmezett feladatokkal.
+- [x] Task: Pályázati követelmények automatikus feladattá bontása.
+    - [x] Olyan backend/n8n/Edge Function logika tervezése és integrációja, ami a kiválasztott pályázat specifikációi alapján feltölti a teendőket alapértelmezett feladatokkal.
 - [ ] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: AI Asszisztens Chatbot
