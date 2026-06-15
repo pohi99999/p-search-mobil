@@ -91,12 +91,35 @@ export const useActionPlan = (businessProfileId?: string) => {
     fetchPlansAndTasks();
   }, [fetchPlansAndTasks]);
 
+  const generatePlanForMatch = async (businessProfileId: string, matchId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('generate-action-plan', {
+        body: { business_profile_id: businessProfileId, match_id: matchId }
+      });
+
+      if (invokeError) throw invokeError;
+      if (data?.error) throw new Error(data.error);
+
+      // Frissítjük a terveket és feladatokat
+      await fetchPlansAndTasks();
+      return data;
+    } catch (err: any) {
+      setError(err.message || 'Nem sikerült legenerálni az akciótervet.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     plans,
     tasks,
     loading,
     error,
     refetch: fetchPlansAndTasks,
-    updateTaskStatus
+    updateTaskStatus,
+    generatePlanForMatch
   };
 };
