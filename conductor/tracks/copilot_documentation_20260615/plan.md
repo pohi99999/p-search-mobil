@@ -18,8 +18,8 @@
 - [x] Task: Gemini AI Chat integráció.
     - [x] Supabase Edge Function vagy n8n webhook fejlesztése, ami a Gemini API-n keresztül válaszol.
     - [x] Kontextus átadása: cégprofil adatok + aktuális pályázati információk.
-- [ ] Task: Interaktív adatgyűjtő és profil-pontosító logika.
-    - [ ] Logika fejlesztése, amivel a chatbot képes a beszélgetésből kinyert adatokat közvetlenül a Supabase-be vagy az Action Plan-be menteni.
+- [x] Task: Interaktív adatgyűjtő és profil-pontosító logika.
+    - [x] Logika fejlesztése, amivel a chatbot képes a beszélgetésből kinyert adatokat közvetlenül a Supabase-be vagy az Action Plan-be menteni.
 - [ ] Task: Conductor - User Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Dokumentum Generátor
