@@ -1,0 +1,1 @@
+Task: RevenueCat SDK konfiguracio a frontendben, PaywallScreen frissites Summary: Configured Purchases in BillingContext, updated placeholder API key, implemented purchase/restore, built premium design for PaywallScreen with Pro feature highlights. Files: src/context/BillingContext.tsx, src/screens/PaywallScreen.tsx, package.json
