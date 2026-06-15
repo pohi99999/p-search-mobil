@@ -10,13 +10,13 @@
 - [ ] Task: Conductor - User Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: In-App Purchase (RevenueCat) Integráció
-- [ ] Task: RevenueCat SDK konfiguráció a frontendben.
-    - [ ] `react-native-purchases` inicializálása a RevenueCat API kulccsal.
-- [ ] Task: PaywallScreen frissítése és vásárlási logika bekötése.
-    - [ ] Csomagok (offerings) lekérése a RevenueCat-ből és megjelenítése a `PaywallScreen.tsx` felületén.
-    - [ ] Vásárlás indítása, sikeres vásárlás után a Supabase `profiles.subscription_tier` frissítése 'pro'-ra.
-- [ ] Task: Előfizetés állapotának ellenőrzése és helyreállítása (Restore purchases).
-    - [ ] Restore gomb és logika a PaywallScreen-en, valamint aktív tagság ellenőrzése alkalmazás indításakor.
+- [x] 3465ec9 Task: RevenueCat SDK konfiguráció a frontendben.
+    - [x] `react-native-purchases` inicializálása a RevenueCat API kulccsal.
+- [x] 3465ec9 Task: PaywallScreen frissítése és vásárlási logika bekötése.
+    - [x] Csomagok (offerings) lekérése a RevenueCat-ből és megjelenítése a `PaywallScreen.tsx` felületén.
+    - [x] Vásárlás indítása, sikeres vásárlás után a Supabase `profiles.subscription_tier` frissítése 'pro'-ra.
+- [x] 3465ec9 Task: Előfizetés állapotának ellenőrzése és helyreállítása (Restore purchases).
+    - [x] Restore gomb és logika a PaywallScreen-en, valamint aktív tagság ellenőrzése alkalmazás indításakor.
 - [ ] Task: Conductor - User Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Android 15 (API 35) & Google Play Tesztelés
