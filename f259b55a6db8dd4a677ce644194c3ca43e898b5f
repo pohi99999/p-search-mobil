@@ -1,0 +1,1 @@
+Task: AdMob alapkonfiguracio es csomag beallitasa Summary: Installed react-native-google-mobile-ads, configured Android App ID in app.json, initialized SDK in App.tsx, created AdBanner component, and integrated it into HomeScreen. Files: App.tsx, app.json, src/screens/HomeScreen.tsx, src/components/AdBanner.tsx
