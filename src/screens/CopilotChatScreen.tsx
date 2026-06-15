@@ -1,0 +1,249 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput, IconButton, ActivityIndicator, Surface, MD3Colors } from 'react-native-paper';
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai';
+  created_at: string;
+}
+
+export function CopilotChatScreen() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'welcome',
+      text: 'Szia! Én vagyok a P-Search AI asszisztense. Miben segíthetek a pályázati felkészülésed során?',
+      sender: 'ai',
+      created_at: new Date().toISOString()
+    }
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const flatListRef = useRef<FlatList<Message>>(null);
+
+  // Automatikus görgetés a lista aljára, ha új üzenet érkezik vagy az AI gépel
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages, isTyping]);
+
+  const handleSend = () => {
+    if (!inputText.trim()) return;
+
+    const userMessage: Message = {
+      id: Math.random().toString(),
+      text: inputText.trim(),
+      sender: 'user',
+      created_at: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    setIsTyping(true);
+
+    // AI válasz szimulálása 1.5 másodperces késleltetéssel
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: Math.random().toString(),
+        text: `Ez egy teszt AI válasz a "${userMessage.text}" kérdésedre az onboarding és a pályázati adatok alapján.`,
+        sender: 'ai',
+        created_at: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, aiResponse]);
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  const renderMessageItem = ({ item }: { item: Message }) => {
+    const isUser = item.sender === 'user';
+    return (
+      <View style={[
+        styles.messageRow,
+        isUser ? styles.userRow : styles.aiRow
+      ]}>
+        <Surface style={[
+          styles.bubble,
+          isUser ? styles.userBubble : styles.aiBubble
+        ]} elevation={1}>
+          <Text style={[
+            styles.messageText,
+            isUser ? styles.userText : styles.aiText
+          ]}>
+            {item.text}
+          </Text>
+          <Text style={[
+            styles.timestampText,
+            isUser ? styles.userTimestamp : styles.aiTimestamp
+          ]}>
+            {new Date(item.created_at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </Surface>
+      </View>
+    );
+  };
+
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <View style={styles.header}>
+        <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
+        <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+      </View>
+
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={item => item.id}
+        renderItem={renderMessageItem}
+        contentContainerStyle={styles.listContent}
+        ListFooterComponent={
+          isTyping ? (
+            <View style={styles.typingContainer}>
+              <Surface style={styles.typingBubble} elevation={1}>
+                <ActivityIndicator size="small" color="#1976D2" style={styles.typingIndicator} />
+                <Text style={styles.typingText}>Az asszisztens gépel...</Text>
+              </Surface>
+            </View>
+          ) : null
+        }
+      />
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          mode="outlined"
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="Írd ide az üzeneted..."
+          style={styles.textInput}
+          outlineStyle={styles.textInputOutline}
+          multiline
+          maxLength={500}
+          right={
+            <TextInput.Icon
+              icon="send"
+              color={inputText.trim() ? '#1A237E' : '#9E9E9E'}
+              onPress={handleSend}
+              disabled={!inputText.trim()}
+            />
+          }
+        />
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    elevation: 1,
+  },
+  headerTitle: {
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  headerSubtitle: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    marginVertical: 6,
+    width: '100%',
+  },
+  userRow: {
+    justifyContent: 'flex-end',
+  },
+  aiRow: {
+    justifyContent: 'flex-start',
+  },
+  bubble: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    maxWidth: '80%',
+  },
+  userBubble: {
+    backgroundColor: '#1A237E',
+    borderBottomRightRadius: 4,
+  },
+  aiBubble: {
+    backgroundColor: 'white',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  userText: {
+    color: 'white',
+  },
+  aiText: {
+    color: '#212121',
+  },
+  timestampText: {
+    fontSize: 10,
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  userTimestamp: {
+    color: '#C5CAE9',
+  },
+  aiTimestamp: {
+    color: '#9E9E9E',
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginVertical: 6,
+  },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    backgroundColor: 'white',
+  },
+  typingIndicator: {
+    marginRight: 8,
+  },
+  typingText: {
+    fontSize: 14,
+    color: '#757575',
+    fontStyle: 'italic',
+  },
+  inputContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  textInput: {
+    maxHeight: 100,
+    backgroundColor: 'white',
+  },
+  textInputOutline: {
+    borderRadius: 24,
+  }
+});
