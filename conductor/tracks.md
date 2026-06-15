@@ -13,3 +13,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Monetizáció és Google Play Publikálás (Fázis 5)**
   *Link: [./tracks/monetization_publishing_20260615/](./tracks/monetization_publishing_20260615/)*
 
+- [x] **Track: Hibakeresés, ikon javítások és Supabase Auth Bypass (S25 Ultra diagnosztika)**
+  *Link: [./tracks/debugging_bypass_20260615/](./tracks/debugging_bypass_20260615/)*
+
