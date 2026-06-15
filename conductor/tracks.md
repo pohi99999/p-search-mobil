@@ -10,6 +10,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Copilot és Dokumentáció (Fázis 4)**
   *Link: [./tracks/copilot_documentation_20260615/](./tracks/copilot_documentation_20260615/)*
 
-- [ ] **Track: Monetizáció és Google Play Publikálás (Fázis 5)**
+- [x] **Track: Monetizáció és Google Play Publikálás (Fázis 5)**
   *Link: [./tracks/monetization_publishing_20260615/](./tracks/monetization_publishing_20260615/)*
 
