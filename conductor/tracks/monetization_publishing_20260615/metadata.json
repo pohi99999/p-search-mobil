@@ -1,8 +1,8 @@
 {
   "track_id": "monetization_publishing_20260615",
   "type": "feature",
-  "status": "new",
+  "status": "completed",
   "created_at": "2026-06-15T10:21:00Z",
-  "updated_at": "2026-06-15T10:21:00Z",
+  "updated_at": "2026-06-15T12:35:00Z",
   "description": "Monetizáció és Google Play Publikálás fázis (AdMob, RevenueCat IAP, Target API Level 35, Google Play Console 20 tesztelős teszt)"
 }

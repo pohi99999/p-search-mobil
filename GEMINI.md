@@ -24,3 +24,8 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 - **2026. 06. 10. (Monetizáció & Google Play):**
   - **EAS Build:** Beállítottuk az Expo EAS szolgáltatást, elkészült az első belső tesztelésre szánt Android `.aab` fájl.
   - **Google Play Console:** Létrehoztuk a Google Play API hozzáférést (Service Account), és feltöltöttük a legelső belső teszt verziót. Ezzel a jövőbeli automata CI/CD folyamatokhoz lefektettük az alapokat.
+- **2026. 06. 15. (Fázis 5 - Monetizáció és Google Play Publikálás lezárása):**
+  - **AdMob integráció:** Elkészítettük az `AdBanner` komponenst a HomeScreen és az OnboardingScreen alján, és a `useInterstitialAd` hookot a dokumentumgenerálás előtti átvezető hirdetésekhez (ingyenes felhasználóknak).
+  - **RevenueCat IAP:** Beállítottuk a BillingContext-et a Purchases konfigurációjával, és felépítettük a prémium PaywallScreen felületet előfizetéssel és korábbi tranzakciók visszaállításával.
+  - **Android 15 (API 35/36) & Gradle hibajavítások:** Beállítottuk a Compile SDK-t 36-ra, a Target SDK-t 35-re az app.json-ban, és felvettük a gyökérszintű AdMob android_app_id kulcsot a natív indítási összeomlások elhárítására.
+  - **Google Play zárt tesztelés:** Hozzáadtuk a 14 napos aktivitást AsyncStorage-ban naplózó `TesterProgress` komponenst, valamint megírtuk a `TESTING_GUIDE.md` manuális verifikációs útmutatót.
