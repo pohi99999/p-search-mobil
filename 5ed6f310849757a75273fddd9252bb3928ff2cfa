@@ -1,0 +1,1 @@
+Task: Android 15 target es beta teszteles tamogatasa Summary: Updated app.json with targetSdkVersion 35, created TesterProgress component with AsyncStorage tracking, integrated it into HomeScreen header, and added AdBanner at OnboardingScreen bottom. Files: app.json, src/screens/HomeScreen.tsx, src/screens/OnboardingScreen.tsx, src/components/TesterProgress.tsx
