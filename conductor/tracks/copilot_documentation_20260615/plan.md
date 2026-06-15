@@ -23,9 +23,9 @@
 - [x] Task: Conductor - User Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Dokumentum Generátor
-- [ ] Task: PDF export és megosztás modul integrációja.
-    - [ ] Beépíteni az `expo-print` és `expo-sharing` modulokat.
-    - [ ] Mintadokumentum (pl. HTML sablon) kigenerálása PDF formátumban és eszköz-szintű megosztása.
+- [x] Task: PDF export és megosztás modul integrációja.
+    - [x] Beépíteni az `expo-print` és `expo-sharing` modulokat.
+    - [x] Mintadokumentum (pl. HTML sablon) kigenerálása PDF formátumban és eszköz-szintű megosztása.
 - [ ] Task: AI alapú sablon kitöltő motor.
     - [ ] Gemini prompt összeállítása, ami a cégprofil adatok és a chatbot beszélgetés alapján legenerálja az üzleti terv / nyilatkozat tartalmát.
 - [ ] Task: Generált dokumentumok kezelése.
