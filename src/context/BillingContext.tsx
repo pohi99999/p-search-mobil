@@ -25,7 +25,7 @@ const BillingContext = createContext<BillingContextType>({
 export const useBilling = () => useContext(BillingContext);
 
 export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsPro] = useState(__DEV__ ? true : false);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,6 +67,10 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const checkProStatus = (customerInfo: CustomerInfo) => {
+    if (__DEV__) {
+      setIsPro(true);
+      return;
+    }
     // Check if the user has an active entitlement called 'pro'
     if (typeof customerInfo.entitlements.active['pro'] !== 'undefined') {
       setIsPro(true);

@@ -93,6 +93,7 @@ export function HomeScreen({ navigation }: any) {
         }).catch(err => console.warn('Webhook hívás hiba:', err));
         alert("Új Pro AI keresés elindítva!");
       }
+      navigation.navigate('CopilotChat');
       return;
     }
 
