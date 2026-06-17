@@ -204,7 +204,7 @@ Példa a kimenetre:
     console.log("Gemini SDK inicializálása és hívás indítása...");
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
+      model: "gemini-2.5-flash",
       systemInstruction: systemPrompt,
       generationConfig: {
         temperature: 0.2,
