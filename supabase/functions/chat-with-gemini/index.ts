@@ -1,15 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { GoogleGenerativeAI } from "npm:@google/generative-ai"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 }
 
 serve(async (req) => {
   // CORS preflight kérések kezelése
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { 
+      status: 200,
+      headers: corsHeaders 
+    })
   }
 
   try {
@@ -147,39 +152,28 @@ Példa a kimenetre:
       parts: [{ text: message }]
     });
 
-    // 6. Gemini API hívása (REST) JSON response beállítással
+    // 6. Gemini API hívása a hivatalos GoogleGenerativeAI SDK-val
     const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY környezeti változó nincs beállítva a backendben.');
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-    const apiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: geminiContents,
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        generationConfig: {
-          temperature: 0.2, // Alacsonyabb hőmérséklet a strukturált JSON választáshoz
-          maxOutputTokens: 1000,
-          responseMimeType: "application/json" // JSON kimenet kényszerítése
-        }
-      })
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 1000,
+        responseMimeType: "application/json"
+      }
     });
 
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      throw new Error(`Gemini API hiba (${apiResponse.status}): ${errorText}`);
-    }
+    const result = await model.generateContent({
+      contents: geminiContents
+    });
 
-    const responseData = await apiResponse.json();
-    const replyJSONText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const replyJSONText = result.response.text() || '{}';
 
     let reply = "Sajnálom, nem sikerült választ generálnom.";
     let databaseUpdated = false;
