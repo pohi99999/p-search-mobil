@@ -217,15 +217,16 @@ export const supabase = new Proxy(rawSupabase, {
       if (prop === 'functions') {
         return {
           invoke: async (name: string, options?: any) => {
+            if (name === 'chat-with-gemini') {
+              // Éles hívás továbbítása az eredeti rawSupabase felé
+              return rawSupabase.functions.invoke(name, options);
+            }
             console.log(`Mock invoking Edge Function: ${name}`, options);
             if (name === 'generate-document') {
               return { data: { html: '<h1>Mock Üzleti Terv</h1><p>Ez a generált PDF tartalma.</p>' }, error: null };
             }
             if (name === 'generate-action-plan') {
               return { data: { success: true }, error: null };
-            }
-            if (name === 'chat-with-gemini') {
-              return { data: { reply: 'Szia! Ez egy szimulált AI válasz a fejlesztői környezetben. A Supabase bypass aktív, így az Edge Function válasza mockolva lett a teszteléshez.' }, error: null };
             }
             return { data: {}, error: null };
           }
