@@ -165,7 +165,7 @@ export function HomeScreen({ navigation }: any) {
         )}
       </Card.Content>
       <Card.Actions>
-        <Button>Részletek</Button>
+        <Button onPress={() => navigation.navigate('ActionPlan', { matchId: item.id })}>Részletek</Button>
       </Card.Actions>
     </Card>
   );
