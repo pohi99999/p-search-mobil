@@ -224,6 +224,9 @@ export const supabase = new Proxy(rawSupabase, {
             if (name === 'generate-action-plan') {
               return { data: { success: true }, error: null };
             }
+            if (name === 'chat-with-gemini') {
+              return { data: { reply: 'Szia! Ez egy szimulált AI válasz a fejlesztői környezetben. A Supabase bypass aktív, így az Edge Function válasza mockolva lett a teszteléshez.' }, error: null };
+            }
             return { data: {}, error: null };
           }
         };

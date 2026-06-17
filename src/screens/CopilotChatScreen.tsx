@@ -89,21 +89,30 @@ export function CopilotChatScreen({ route, navigation }: any) {
       if (invokeError) throw invokeError;
       if (data?.error) throw new Error(data.error);
 
+      console.log('AI Response data:', data);
+      const replyText = data?.reply || data?.text || data?.response || '';
 
+      if (!replyText) {
+        throw new Error('Sajnálom, hiba történt az AI válasz generálása során. Kérlek, próbáld újra!');
+      }
 
       const aiResponse: Message = {
         id: Math.random().toString(),
-        text: data.reply,
+        text: replyText,
         sender: 'ai',
         created_at: new Date().toISOString()
       };
       
       setMessages(prev => [...prev, aiResponse]);
     } catch (err: any) {
-      console.error(err);
+      console.error('Chat error details:', err);
+      const errorMessageText = err.message?.includes('Sajnálom') 
+        ? err.message 
+        : `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${err.message || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`;
+
       const errorMessage: Message = {
         id: `err-${Math.random()}`,
-        text: `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${err.message || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`,
+        text: errorMessageText,
         sender: 'ai',
         created_at: new Date().toISOString()
       };
