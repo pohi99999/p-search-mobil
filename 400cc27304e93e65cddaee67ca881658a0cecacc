@@ -1,0 +1,1 @@
+Task: Include reliable RAG sources in Edge Function response payload Summary: Added logic to extract unique grant_ids from matched chunks, queried grants table for official titles, and appended sources array to the HTTP response JSON. Files: supabase/functions/chat-with-gemini/index.ts
