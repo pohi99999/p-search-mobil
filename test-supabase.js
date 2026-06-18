@@ -16,24 +16,9 @@ async function run() {
 
   const { error: e3 } = await supabase.from('grant_matches').select('id').limit(1);
   console.log('3. grant_matches:', e3 ? e3.message : 'SUCCESS');  
-  console.log('2. AUTH SIGNUP SUCCESS:', authData.user?.id);
 
-  // 3. Try to insert a profile for this user
-  if (authData?.user) {
-    const { data: insertData, error: insertError } = await supabase.from('business_profiles').insert({
-      user_id: authData.user.id,
-      company_name: 'Automated Test Corp.',
-      industry: 'IT',
-      employees: '1-10',
-      goals: 'Test backend integration'
-    });
-    
-    if (insertError) {
-      console.log('3. PROFILE INSERT ERROR:', insertError.message);
-    } else {
-      console.log('3. PROFILE INSERT SUCCESS!');
-    }
-  }
+  const { error: e4 } = await supabase.from('grant_chunks').select('id').limit(1);
+  console.log('4. grant_chunks:', e4 ? e4.message : 'SUCCESS');  
 }
 
 run();
