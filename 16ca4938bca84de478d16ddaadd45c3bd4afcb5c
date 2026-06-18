@@ -1,0 +1,1 @@
+Task: Add professional System Prompt to Gemini model Summary: Expanded Gemini 2.5 system instruction with professional Hungarian SME digital copilot prompt focusing on AI integration, software development, and hardware procurement. Files: supabase/functions/chat-with-gemini/index.ts
