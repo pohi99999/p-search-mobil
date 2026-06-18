@@ -9,6 +9,7 @@ interface Message {
   text: string;
   sender: 'user' | 'ai';
   created_at: string;
+  sources?: string[];
 }
 
 export function CopilotChatScreen({ route, navigation }: any) {
@@ -96,11 +97,14 @@ export function CopilotChatScreen({ route, navigation }: any) {
         throw new Error('Sajnálom, hiba történt az AI válasz generálása során. Kérlek, próbáld újra!');
       }
 
+      const sources = Array.isArray(data?.sources) ? data.sources : undefined;
+
       const aiResponse: Message = {
         id: Math.random().toString(),
         text: replyText,
         sender: 'ai',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        sources: sources
       };
       
       setMessages(prev => [...prev, aiResponse]);
@@ -143,6 +147,21 @@ export function CopilotChatScreen({ route, navigation }: any) {
           ]}>
             {item.text}
           </Text>
+
+          {/* RAG források megjelenítése a válasz alatt */}
+          {!isUser && item.sources && item.sources.length > 0 && (
+            <View style={styles.sourcesContainer}>
+              <Text style={styles.sourcesTitle}>Források:</Text>
+              <View style={styles.sourcesList}>
+                {item.sources.map((src, index) => (
+                  <View key={index} style={styles.sourceTag}>
+                    <Text style={styles.sourceTagText}>{src}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           <Text style={[
             styles.timestampText,
             isUser ? styles.userTimestamp : styles.aiTimestamp
@@ -322,5 +341,35 @@ const styles = StyleSheet.create({
   },
   textInputOutline: {
     borderRadius: 24,
+  },
+  sourcesContainer: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    paddingTop: 6,
+    width: '100%',
+  },
+  sourcesTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#757575',
+    marginBottom: 4,
+  },
+  sourcesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  sourceTag: {
+    backgroundColor: '#ECEFF1',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  sourceTagText: {
+    fontSize: 9,
+    color: '#455A64',
+    fontWeight: '600',
   }
 });
