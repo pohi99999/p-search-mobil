@@ -18,7 +18,7 @@ export function OnboardingScreen({ navigation }: any) {
   });
 
   // NOTE: Replace with the actual n8n production URL in production!
-  const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/p-search-onboarding';
+  const N8N_WEBHOOK_URL = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'http://10.0.2.2:5678/webhook/p-search-onboarding';
 
   const handleSave = async () => {
     if (!form.company_name) {
