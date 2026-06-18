@@ -1,0 +1,1 @@
+Task: UI support for RAG source citations in chat bubbles Summary: Extended Message interface to support sources array, parsed sources field from Edge function response, and added styling/rendering logic in CopilotChatScreen.tsx. Files: src/screens/CopilotChatScreen.tsx, package.json, package-lock.json
