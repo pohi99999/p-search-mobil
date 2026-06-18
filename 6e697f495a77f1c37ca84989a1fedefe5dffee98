@@ -1,0 +1,1 @@
+Task: Implement RAG logic and context injection in chat-with-gemini Summary: Added Gemini text-embedding-004 vectorization to query match_grant_chunks RPC function, built context enrichment pipeline, and integrated RAG results into system instruction. Files: supabase/functions/chat-with-gemini/index.ts
