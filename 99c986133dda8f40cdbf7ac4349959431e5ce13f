@@ -1,0 +1,1 @@
+Task: Add SQL migration for grants RAG and pgvector Summary: Created database migration sql script containing the tables schemas, RLS policies, HNSW index and similarity match stored procedure. Files: supabase/migrations/20260618102838_init_rag_grants.sql
