@@ -1,0 +1,1 @@
+Task: Fix Gemini key and use service_role for RAG queries. Summary: Configured Gemini API secret via Supabase secrets and updated Deno Edge Function to use service_role key to bypass RLS. Files: supabase/functions/chat-with-gemini/index.ts
