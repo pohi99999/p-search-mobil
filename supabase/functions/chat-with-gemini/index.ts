@@ -147,24 +147,79 @@ Leírás: ${g.description || 'Nincs megadva'}`;
       }
     }
 
+    console.log("API kulcs ellenőrzése a környezeti változókban...");
+    // 4. Gemini API kulcs lekérése és az SDK inicializálása
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY környezeti változó nincs beállítva a Deno környezetben.');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    // 5. RAG (Retrieval-Augmented Generation) - Vektoros keresés
+    let queryEmbedding: number[] = [];
+    try {
+      console.log("Embedding generálása a felhasználói kérdésre ('text-embedding-004')...");
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      const embedResult = await embeddingModel.embedContent({
+        content: { parts: [{ text: message }] }
+      });
+      if (embedResult?.embedding?.values) {
+        queryEmbedding = embedResult.embedding.values;
+        console.log(`Embedding sikeresen generálva: ${queryEmbedding.length} dimenzió.`);
+      } else {
+        console.warn("Az embedding generálás üres választ adott vissza.");
+      }
+    } catch (embedErr) {
+      console.error("Hiba az embedding generálása során:", embedErr);
+    }
+
+    let ragContext = "";
+    if (queryEmbedding.length > 0) {
+      try {
+        console.log("Szemantikai keresés indítása a Supabase-ben (match_grant_chunks RPC)...");
+        const { data: matchedChunks, error: rpcError } = await supabaseClient
+          .rpc('match_grant_chunks', {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.6,
+            match_count: 5
+          });
+
+        if (rpcError) {
+          console.error("Hiba a match_grant_chunks RPC futtatásakor:", rpcError);
+        } else if (matchedChunks && matchedChunks.length > 0) {
+          console.log(`Talált releváns pályázati szövegrészletek száma: ${matchedChunks.length}`);
+          ragContext = "RELEVÁNS PÁLYÁZATI CIKKEK ÉS RÉSZLETEK A TUDÁSBÁZISBÓL (RAG):\n";
+          matchedChunks.forEach((chunk: any) => {
+            const similarityPercent = (chunk.similarity * 100).toFixed(1);
+            ragContext += `\n- Pályázat címe: ${chunk.grant_title}\n  Tartalom: ${chunk.content}\n  [Egyezőség: ${similarityPercent}%]\n`;
+          });
+        } else {
+          console.log("Nem találtunk releváns pályázati részt az adatbázisban a megadott küszöbérték felett.");
+        }
+      } catch (rpcErr) {
+        console.error("Hiba történt a vektoros adatbázis-lekérdezés során:", rpcErr);
+      }
+    }
+
     console.log("Rendszerprompt összeállítása...");
-    // 4. Rendszerprompt felépítése
+    // 6. Rendszerprompt felépítése dúsított kontextussal
     const systemPrompt = `Te egy Professzionális Pályázati és Digitalizációs Szakértő Copilot vagy, a P-Search AI asszisztense.
 Küldetésed, hogy támogasd a magyar kis- és középvállalkozásokat (KKV-kat) a digitális átállásban, különös tekintettel az AI integrációra, szoftverfejlesztésre és hardverbeszerzésre.
 Stílusod legyen lényegretörő, szakmai, de támogató.
 
 SZABÁLYOK A PÁLYÁZATOKKAL KAPCSOLATBAN:
-- Soha ne találj ki nem létező pályázatokat!
+- Soha ne találj ki nem létező pályázatokat! A válaszaidat alapozd a lenti hiteles forrásokra (RAG kontextus) vagy az aktuálisan tárgyalt pályázat adataira.
 - Ha a felhasználó cégéről még nem áll rendelkezésre elegendő információ a pontos pályázati szűréshez, kérdezz vissza a kulcsfontosságú részletekre: cégforma, éves árbevétel, aktuális foglalkoztatotti létszám és székhely/telephely régió.
 - Képes vagy a beszélgetés alapján frissíteni a cég adatait vagy lezárni a teendőket az adatbázisban.
 
 ${companyContext ? `Aktuális ügyfél (cég) adatai:\n${companyContext}\n` : ""}
 ${grantContext ? `Aktuálisan tárgyalt pályázat adatai:\n${grantContext}\n` : ""}
+${ragContext ? `Tudásbázisból származó releváns adatok:\n${ragContext}\n` : ""}
 ${tasksContext ? `Aktuális teendők listája az adatbázisban:\n${tasksContext}\n` : ""}
 
 KÖTELEZŐ FORMÁTUMI UTASÍTÁSOK:
 1. A válaszodat KIZÁRÓLAG egy érvényes JSON formátumban adhatod vissza az alábbi kulcsokkal:
-   - "reply": A felhasználónak küldött válasz szövege (magyarul, lényegretörő, szakmai és támogató stílusban).
+   - "reply": A felhasználónak küldött válasz szövege (magyarul, lényegretörő, szakmai és támogató stílusban, az átadott hiteles pályázati adatokra építve).
    - "profile_updates": Ha a beszélgetés során a felhasználó egyértelműen új vagy pontosabb cégadatot adott meg (pl. az árbevételt vagy az alkalmazottak számát), akkor töltsd ki ezt az objektumot a megfelelő értékekkel (kulcsok: "revenue" (szám), "employee_count" (szám)). Ha nem volt új adat, hagyd el a kulcsot vagy legyen null.
    - "task_updates": Ha a felhasználó jelezte, hogy egy feladatot elvégzett (pl. "ellenőriztem a pénzügyi adatokat" vagy "megvan a nyilatkozat"), keresd meg a fenti feladatlistából a hozzá tartozó feladatot, és a "completed_task_ids" tömbbe tedd bele annak UUID azonosítóját. Ha nem volt ilyen, a tömb legyen üres vagy a kulcs null.
 
@@ -180,7 +235,7 @@ Példa a kimenetre:
 }`;
 
     console.log("Beszélgetési előzmények leképezése a Gemini formátumára...");
-    // 5. Előzmények leképezése a Gemini API formátumára
+    // 7. Előzmények leképezése a Gemini API formátumára
     const geminiContents = [];
     if (history && Array.isArray(history)) {
       const recentHistory = history.slice(-10);
@@ -200,15 +255,8 @@ Példa a kimenetre:
       parts: [{ text: message }]
     });
 
-    console.log("API kulcs ellenőrzése a környezeti változókban...");
-    // 6. Gemini API hívása a hivatalos GoogleGenerativeAI SDK-val
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY környezeti változó nincs beállítva a Deno környezetben.');
-    }
-
-    console.log("Gemini SDK inicializálása és hívás indítása...");
-    const genAI = new GoogleGenerativeAI(apiKey);
+    console.log("Gemini SDK model és config beállítása és hívás indítása...");
+    // 8. Gemini API hívása a hivatalos GoogleGenerativeAI SDK-val
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash",
       systemInstruction: systemPrompt,
