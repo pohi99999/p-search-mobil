@@ -174,6 +174,7 @@ Leírás: ${g.description || 'Nincs megadva'}`;
     }
 
     let ragContext = "";
+    let sourceTitles: string[] = [];
     if (queryEmbedding.length > 0) {
       try {
         console.log("Szemantikai keresés indítása a Supabase-ben (match_grant_chunks RPC)...");
@@ -188,6 +189,25 @@ Leírás: ${g.description || 'Nincs megadva'}`;
           console.error("Hiba a match_grant_chunks RPC futtatásakor:", rpcError);
         } else if (matchedChunks && matchedChunks.length > 0) {
           console.log(`Talált releváns pályázati szövegrészletek száma: ${matchedChunks.length}`);
+          
+          // Egyedi grant_id-k kinyerése a források megbízható visszakövetéséhez
+          const uniqueGrantIds = Array.from(new Set(matchedChunks.map((chunk: any) => chunk.grant_id).filter(Boolean)));
+          
+          if (uniqueGrantIds.length > 0) {
+            console.log(`Egyedi pályázat ID-k száma: ${uniqueGrantIds.length}. Címek lekérdezése...`);
+            const { data: grantsList, error: grantsError } = await supabaseClient
+              .from('grants')
+              .select('title')
+              .in('id', uniqueGrantIds);
+
+            if (grantsError) {
+              console.error("Hiba a pályázati címek lekérdezésekor:", grantsError);
+            } else if (grantsList) {
+              sourceTitles = grantsList.map((g: any) => g.title);
+              console.log("Megtalált pályázati források a grants táblából:", JSON.stringify(sourceTitles));
+            }
+          }
+
           ragContext = "RELEVÁNS PÁLYÁZATI CIKKEK ÉS RÉSZLETEK A TUDÁSBÁZISBÓL (RAG):\n";
           matchedChunks.forEach((chunk: any) => {
             const similarityPercent = (chunk.similarity * 100).toFixed(1);
@@ -336,7 +356,8 @@ Példa a kimenetre:
     return new Response(
       JSON.stringify({ 
         reply: reply,
-        database_updated: databaseUpdated 
+        database_updated: databaseUpdated,
+        sources: sourceTitles
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
