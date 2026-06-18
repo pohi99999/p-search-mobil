@@ -1,0 +1,1 @@
+Task: Create RAG integration plan for grant database Summary: Drafted technical documentation outlining the RAG (Retrieval-Augmented Generation) pipeline using Supabase, pgvector, and Gemini API. Files: docs/palyazati_adatbazis_terv.md
