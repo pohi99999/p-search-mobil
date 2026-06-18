@@ -1,0 +1,1 @@
+Task: Add E2E test script to verify RAG Edge Function Summary: Created scripts/test-rag-query.js E2E test to query chat-with-gemini function, encountering 503 from Google Gemini API endpoint due to high demand. Files: scripts/test-rag-query.js
