@@ -1,0 +1,1 @@
+Task: Add seed script for populating grant database with initial RAG data Summary: Created scripts/seed-grants.js which populates grants and grant_chunks tables using Gemini text-embedding-004 model, requiring SUPABASE_SERVICE_ROLE_KEY to bypass RLS policies. Files: scripts/seed-grants.js
