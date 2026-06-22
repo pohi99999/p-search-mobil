@@ -1,0 +1,140 @@
+{
+  "name": "Grant Ingestion to Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 2
+            }
+          ]
+        }
+      },
+      "id": "e5cc0d6f-7711-40b4-9da2-db78e1245c61",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://example-grant-portal.com/api/grants",
+        "options": {}
+      },
+      "id": "7dc1a9e3-2e4d-488f-a6ad-093a2164c09d",
+      "name": "Fetch Grants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_SUPABASE_PROJECT.supabase.co/functions/v1/ingest-n8n-grants",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.description }}"
+            },
+            {
+              "name": "amount_min",
+              "value": "={{ $json.min_funding }}"
+            },
+            {
+              "name": "amount_max",
+              "value": "={{ $json.max_funding }}"
+            },
+            {
+              "name": "provider",
+              "value": "={{ $json.agency }}"
+            },
+            {
+              "name": "grant_type",
+              "value": "pályázat"
+            },
+            {
+              "name": "deadline",
+              "value": "={{ $json.close_date }}"
+            },
+            {
+              "name": "source_url",
+              "value": "={{ $json.url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "18f9cf0b-e555-46aa-bd1a-e7c6530a21cf",
+      "name": "Send to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Grants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Grants": {
+      "main": [
+        [
+          {
+            "node": "Send to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f7d7fb37-5eb0-42ba-bd8e-3652c7c59800",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cbefed786e6de3bb4db09eeec1c19b6af3a94ebfb8e4b868e80bc8da431afb86"
+  },
+  "id": "eJkQ7Y4oM3IuB6hC",
+  "tags": []
+}
