@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton } from 'react-native-paper';
+import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
 import { generateAndSharePDF } from '../utils/documentGenerator';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
-export function ActionPlanScreen({ navigation }: any) {
+export function ActionPlanScreen({ route, navigation }: any) {
+  const matchId = route?.params?.matchId;
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const { showAdIfAvailable } = useInterstitialAd();
 
@@ -46,7 +50,7 @@ export function ActionPlanScreen({ navigation }: any) {
   }, []);
 
   // Egyedi hook meghívása a cégprofil azonosítóval
-  const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus } = useActionPlan(profile?.id);
+  const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus, generatePlanForMatch } = useActionPlan(profile?.id);
 
   const handleStatusChange = async (task: ActionTask, currentStatus: ActionTaskStatus) => {
     // Váltogatás: todo -> in_progress -> done -> todo
@@ -117,17 +121,63 @@ export function ActionPlanScreen({ navigation }: any) {
         </Surface>
       )}
 
+
       {plans.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
-            Nincs aktív akcióterved
-          </Text>
-          <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
-            Jelölj meg egy számodra érdekes pályázatot a főképernyőn, hogy elkészíthessük hozzá a felkészülési tervet!
-          </Text>
-          <Button mode="contained" style={styles.primaryButton} onPress={() => navigation.navigate('Home')}>
-            Pályázatok keresése
-          </Button>
+          {matchId ? (
+            generating ? (
+              <>
+                <ActivityIndicator size="large" color="#1A237E" style={{ marginBottom: 16 }} />
+                <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
+                  Akcióterv generálása folyamatban...
+                </Text>
+                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666' }}>
+                  A Gemini AI elemzi a pályázatot és a cégprofilodat. Ez eltarthat egy kis ideig.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
+                  Ehhez a pályázathoz még nincs akcióterv
+                </Text>
+                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
+                  Kattints az alábbi gombra, hogy a Gemini AI elkészítse számodra a személyre szabott felkészülési tervet!
+                </Text>
+                <Button
+                  mode="contained"
+                  style={styles.primaryButton}
+                  onPress={async () => {
+                    if (!profile || !matchId) return;
+                    setGenerating(true);
+                    try {
+                      await generatePlanForMatch(profile.id, matchId);
+                      setSnackbarMessage('Akcióterv sikeresen legenerálva!');
+                      setSnackbarVisible(true);
+                    } catch (err: any) {
+                      setSnackbarMessage(err.message || 'Hiba történt a generálás során.');
+                      setSnackbarVisible(true);
+                    } finally {
+                      setGenerating(false);
+                    }
+                  }}
+                >
+                  Akcióterv Generálása
+                </Button>
+              </>
+            )
+          ) : (
+            <>
+              <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
+                Nincs aktív akcióterved
+              </Text>
+              <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
+                Jelölj meg egy számodra érdekes pályázatot a főképernyőn, hogy elkészíthessük hozzá a felkészülési tervet!
+              </Text>
+              <Button mode="contained" style={styles.primaryButton} onPress={() => navigation.navigate('Home')}>
+                Pályázatok keresése
+              </Button>
+            </>
+          )}
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -174,14 +224,14 @@ export function ActionPlanScreen({ navigation }: any) {
                           description={task.description || undefined}
                           descriptionStyle={styles.taskDescription}
                           left={props => (
-                            <IconButton
-                              {...props}
-                              icon={getStatusIcon(task.status)}
-                              iconColor={getStatusColor(task.status)}
-                              onPress={() => handleStatusChange(task, task.status)}
-                              size={24}
-                              style={styles.taskIcon}
-                            />
+                            <View {...props} style={styles.checkboxContainer}>
+                              <Checkbox.Android
+                                status={task.status === 'done' ? 'checked' : task.status === 'in_progress' ? 'indeterminate' : 'unchecked'}
+                                onPress={() => handleStatusChange(task, task.status)}
+                                color="#4CAF50"
+                                uncheckedColor="#9E9E9E"
+                              />
+                            </View>
                           )}
                           right={props => (
                             <Button 
@@ -279,6 +329,13 @@ export function ActionPlanScreen({ navigation }: any) {
           })}
         </ScrollView>
       )}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </View>
   );
 }
@@ -395,6 +452,11 @@ const styles = StyleSheet.create({
   },
   taskIcon: {
     margin: 0,
+  },
+  checkboxContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   taskDivider: {
     backgroundColor: '#F5F5F5',
