@@ -54,3 +54,10 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 - **Frontend**: Az \`ActionPlanScreen.tsx\` frissítve lett a \`generate-action-plan\` Edge Function hívásával, betöltési animációval (ActivityIndicator), hibaüzenetekkel (Snackbar) és Checkbox-alapú feladatkezeléssel.
 - **Biztonság (RLS)**: Elkészült a \`20260618102839_action_tasks_rls.sql\` migrációs fájl, amely korlátozza az \`action_tasks\` tábla hozzáférését, így minden felhasználó csak a saját cégéhez tartozó feladatokat láthatja és módosíthatja.
 - **n8n Sablon**: Elkészült a \`docs/n8n-workflow-template.json\`, amely sablonként szolgál a pályázatok begyűjtésére és a Supabase webhook meghívására.
+
+- **2026. 06. 22. (Jules aszinkron backend modulok integrációja, RAG embedding javítás és teljes Git szinkronizáció):**
+  - **Jules backend moduljainak integrálása:** Bemásoltuk és integráltuk Jules aszinkron munkáit: az új `ingest-n8n-grants` Edge Function-t (amely fogadja az n8n-ből a pályázatokat, bekezdésekre bontja és embeddinget generál), a továbbfejlesztett `generate-action-plan` Edge Function-t (ami most már valós Gemini-2.5-flash AI akciótervet és feladatokat generál), valamint a `test-action-plan.js` és `test-n8n-ingest.js` tesztszkripteket.
+  - **RAG embedding 404-es hiba elhárítása:** Kiderítettük, hogy az `embedding-001` nem támogatott a v1beta API végponton, a helyes modellnév a **`gemini-embedding-001`**. A sémához való illeszkedés érdekében beállítottuk a kérésekben az explicit **`outputDimensionality: 768`** paramétert.
+  - **Adatbázis migrációk a felhőben:** Létrehoztuk a távoli felhős adatbázison a hiányzó `grant_chunks`, `action_plans` és `action_tasks` táblákat a CLI `supabase db query --linked` Management API-ján keresztül, majd sikeresen lefutott a seedelő és a tesztelő szkript.
+  - **Edge Function Deploy:** Élesítettük mindhárom Edge Function-t (`chat-with-gemini`, `ingest-n8n-grants`, `generate-action-plan`) a Supabase felhőben.
+  - **Git szinkronizáció:** Megtörtént a rebase alapú összefűzés, a kód takarítása, a Conductor notes pusholása, valamint egy sikeres `npx tsc --noEmit` típusellenőrzés a teljes kódon.
