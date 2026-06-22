@@ -46,3 +46,6 @@ google-service-account.json
 
 play-console-api-*.json
 *.aab
+
+# Supabase CLI temp
+supabase/.temp/

@@ -50,7 +50,7 @@ async function testActionPlan() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${anonKey}`
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || anonKey}`
       },
       body: JSON.stringify(requestBody)
     });
