@@ -1,0 +1,1 @@
+Task: Integrate ingest-n8n-grants, generate-action-plan, fix RAG 404 embedding model with gemini-embedding-001 Summary: Successfully resolved 404 embedding model issues by replacing with gemini-embedding-001 (explicitly set to 768 dimensions), migrated tables to remote DB via linked query, integrated Jules session code and committed them. Files: supabase/functions/*, scripts/*
