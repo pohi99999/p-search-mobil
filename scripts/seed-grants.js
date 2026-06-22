@@ -80,6 +80,11 @@ async function seed() {
   console.log("--- Pályázati RAG Adatbázis Feltöltés Indítása ---");
   
   try {
+    // 0. Régi adatok takarítása
+    console.log("Régi tesztadatok takarítása...");
+    await supabase.from('grant_chunks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('grants').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
     // 1. Pályázat törzsadat beszúrása
     console.log("Pályázat beszúrása a 'grants' táblába...");
     const { data: insertedGrant, error: grantError } = await supabase
@@ -96,14 +101,15 @@ async function seed() {
     console.log(`Pályázat sikeresen rögzítve, ID: ${grantId}`);
 
     // 2. Chunks embedding generálása és beszúrása
-    const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
     
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       console.log(`Embedding generálása a(z) ${i + 1}/${chunks.length} bekezdéshez...`);
       
       const embedResult = await embeddingModel.embedContent({
-        content: { parts: [{ text: chunk.content }] }
+        content: { parts: [{ text: chunk.content }] },
+        outputDimensionality: 768
       });
       
       if (!embedResult?.embedding?.values) {

@@ -21,23 +21,29 @@ try {
 }
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const functionSecret = process.env.N8N_WEBHOOK_SECRET || 'test-secret-key'; // Mock fallback
 
-if (!supabaseUrl || !anonKey) {
-  console.error("Hiba: Supabase URL vagy Anon kulcs hiányzik a környezeti változókból.");
+if (!supabaseUrl) {
+  console.error("Hiba: Supabase URL hiányzik a környezeti változókból.");
   process.exit(1);
 }
 
-const functionUrl = `${supabaseUrl}/functions/v1/chat-with-gemini`;
+const functionUrl = `${supabaseUrl}/functions/v1/ingest-n8n-grants`;
 const requestBody = {
-  prompt: "Milyen KKV támogatás érhető el jelenleg gépbeszerzésre, és mik a jogosultsági feltételek?",
-  history: []
+  title: "Teszt Pályázat N8N-ből",
+  description: "Ez egy teszt pályázat, amit az n8n webhookon keresztül küldünk be.\n\nEz a második bekezdés, amiből egy újabb chunk és embedding kell, hogy generálódjon.",
+  provider: "Teszt Minisztérium",
+  grant_type: "vissza nem térítendő",
+  amount_min: 5000000,
+  amount_max: 20000000,
+  deadline: "2028-12-31T23:59:59Z",
+  eligibility_criteria: "Teszt KKV-k",
+  source_url: "https://example.com/teszt-palyazat"
 };
 
-async function testQuery() {
-  console.log("--- Pályázati RAG Edge Function Integrációs Teszt ---");
+async function testIngest() {
+  console.log("--- N8N Ingest Edge Function Teszt ---");
   console.log(`Cél végpont: ${functionUrl}`);
-  console.log(`Kérdés: "${requestBody.prompt}"`);
   console.log("Kérés küldése...");
 
   try {
@@ -45,7 +51,7 @@ async function testQuery() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${anonKey}`
+        'Authorization': `Bearer ${functionSecret}`
       },
       body: JSON.stringify(requestBody)
     });
@@ -56,13 +62,7 @@ async function testQuery() {
     if (response.ok) {
       const parsed = JSON.parse(rawText);
       console.log("\n--- SIKERES VÁLASZ ---");
-      console.log("Generált válasz (reply):");
-      console.log(parsed.reply);
-      console.log("\nAdatbázis frissítés történt-e (database_updated):", parsed.database_updated);
-      if (parsed.debug) {
-        console.log("\n--- DEBUG METADATA ---");
-        console.log(JSON.stringify(parsed.debug, null, 2));
-      }
+      console.log(JSON.stringify(parsed, null, 2));
     } else {
       console.error("Hiba történt az Edge Function hívása közben. Nyers válasz:", rawText);
     }
@@ -71,4 +71,4 @@ async function testQuery() {
   }
 }
 
-testQuery();
+testIngest();

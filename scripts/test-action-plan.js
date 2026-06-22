@@ -28,16 +28,21 @@ if (!supabaseUrl || !anonKey) {
   process.exit(1);
 }
 
-const functionUrl = `${supabaseUrl}/functions/v1/chat-with-gemini`;
+const functionUrl = `${supabaseUrl}/functions/v1/generate-action-plan`;
 const requestBody = {
-  prompt: "Milyen KKV támogatás érhető el jelenleg gépbeszerzésre, és mik a jogosultsági feltételek?",
-  history: []
+  // Megjegyzés: Ez egy fiktív vagy valós UUID kell legyen a Supabase db-ből,
+  // ha a teszt elbukik foreign key hiba miatt, cseréld ki egy létező profil ID-re.
+  business_profile_id: "00000000-0000-0000-0000-000000000000", 
+  chat_history: [
+    { role: 'user', content: 'Szeretném digitalizálni a raktáramat, targoncákat és raktárkezelő szoftvert vennék.' },
+    { role: 'model', content: 'Erre a célra a DIMOP Plusz pályázat lehet alkalmas. Mekkora a cég árbevétele?' },
+    { role: 'user', content: 'Tavaly 150 millió Ft volt.' }
+  ]
 };
 
-async function testQuery() {
-  console.log("--- Pályázati RAG Edge Function Integrációs Teszt ---");
+async function testActionPlan() {
+  console.log("--- Action Plan Generator Edge Function Teszt ---");
   console.log(`Cél végpont: ${functionUrl}`);
-  console.log(`Kérdés: "${requestBody.prompt}"`);
   console.log("Kérés küldése...");
 
   try {
@@ -56,13 +61,7 @@ async function testQuery() {
     if (response.ok) {
       const parsed = JSON.parse(rawText);
       console.log("\n--- SIKERES VÁLASZ ---");
-      console.log("Generált válasz (reply):");
-      console.log(parsed.reply);
-      console.log("\nAdatbázis frissítés történt-e (database_updated):", parsed.database_updated);
-      if (parsed.debug) {
-        console.log("\n--- DEBUG METADATA ---");
-        console.log(JSON.stringify(parsed.debug, null, 2));
-      }
+      console.log(JSON.stringify(parsed, null, 2));
     } else {
       console.error("Hiba történt az Edge Function hívása közben. Nyers válasz:", rawText);
     }
@@ -71,4 +70,4 @@ async function testQuery() {
   }
 }
 
-testQuery();
+testActionPlan();

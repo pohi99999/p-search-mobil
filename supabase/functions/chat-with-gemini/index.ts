@@ -156,21 +156,33 @@ Leírás: ${g.description || 'Nincs megadva'}`;
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // 5. RAG (Retrieval-Augmented Generation) - Vektoros keresés
+    const debugInfo: Record<string, any> = {
+      embedding_length: 0,
+      matched_chunks_count: 0,
+      rpc_error: null,
+      embed_error: null,
+      rpc_exception: null
+    };
+
     let queryEmbedding: number[] = [];
     try {
-      console.log("Embedding generálása a felhasználói kérdésre ('text-embedding-004')...");
-      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      console.log("Embedding generálása a felhasználói kérdésre ('gemini-embedding-001')...");
+      const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
       const embedResult = await embeddingModel.embedContent({
-        content: { parts: [{ text: message }] }
+        content: { parts: [{ text: message }] },
+        outputDimensionality: 768
       });
       if (embedResult?.embedding?.values) {
         queryEmbedding = embedResult.embedding.values;
+        debugInfo.embedding_length = queryEmbedding.length;
         console.log(`Embedding sikeresen generálva: ${queryEmbedding.length} dimenzió.`);
       } else {
         console.warn("Az embedding generálás üres választ adott vissza.");
+        debugInfo.embed_error = "Az embedding generálás üres választ adott vissza.";
       }
-    } catch (embedErr) {
+    } catch (embedErr: any) {
       console.error("Hiba az embedding generálása során:", embedErr);
+      debugInfo.embed_error = embedErr.message || String(embedErr);
     }
 
     let ragContext = "";
@@ -181,13 +193,18 @@ Leírás: ${g.description || 'Nincs megadva'}`;
         const { data: matchedChunks, error: rpcError } = await supabaseClient
           .rpc('match_grant_chunks', {
             query_embedding: queryEmbedding,
-            match_threshold: 0.6,
+            match_threshold: 0.3,
             match_count: 5
           });
 
         if (rpcError) {
           console.error("Hiba a match_grant_chunks RPC futtatásakor:", rpcError);
-        } else if (matchedChunks && matchedChunks.length > 0) {
+          debugInfo.rpc_error = rpcError.message || JSON.stringify(rpcError);
+        } else if (matchedChunks) {
+          debugInfo.matched_chunks_count = matchedChunks.length;
+        }
+
+        if (!rpcError && matchedChunks && matchedChunks.length > 0) {
           console.log(`Talált releváns pályázati szövegrészletek száma: ${matchedChunks.length}`);
           
           // Egyedi grant_id-k kinyerése a források megbízható visszakövetéséhez
@@ -216,8 +233,9 @@ Leírás: ${g.description || 'Nincs megadva'}`;
         } else {
           console.log("Nem találtunk releváns pályázati részt az adatbázisban a megadott küszöbérték felett.");
         }
-      } catch (rpcErr) {
+      } catch (rpcErr: any) {
         console.error("Hiba történt a vektoros adatbázis-lekérdezés során:", rpcErr);
+        debugInfo.rpc_exception = rpcErr.message || String(rpcErr);
       }
     }
 
@@ -357,7 +375,8 @@ Példa a kimenetre:
       JSON.stringify({ 
         reply: reply,
         database_updated: databaseUpdated,
-        sources: sourceTitles
+        sources: sourceTitles,
+        debug: debugInfo
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
