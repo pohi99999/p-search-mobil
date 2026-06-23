@@ -52,12 +52,26 @@ serve(async (req) => {
     let grantTitle = 'Pályázati Felkészülési Terv';
     let grantData = null;
     if (match_id) {
-      const { data: matchData } = await supabaseClient
+      const { data: matchData, error: matchError } = await supabaseClient
         .from('grant_matches')
         .select('*, grants(*)')
         .eq('id', match_id)
         .single();
       
+      if (matchError || !matchData) {
+        return new Response(JSON.stringify({ error: 'A megadott pályázati egyezés nem található' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (matchData.business_profile_id !== business_profile_id) {
+        return new Response(JSON.stringify({ error: 'Hozzáférés megtagadva (403): A megadott match_id nem tartozik ehhez a cégprofilhoz' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       if (matchData?.grants) {
         grantTitle = `${matchData.grants.title} - Felkészülési Terv`;
         grantData = matchData.grants;

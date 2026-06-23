@@ -61,3 +61,13 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
   - **Adatbázis migrációk a felhőben:** Létrehoztuk a távoli felhős adatbázison a hiányzó `grant_chunks`, `action_plans` és `action_tasks` táblákat a CLI `supabase db query --linked` Management API-ján keresztül, majd sikeresen lefutott a seedelő és a tesztelő szkript.
   - **Edge Function Deploy:** Élesítettük mindhárom Edge Function-t (`chat-with-gemini`, `ingest-n8n-grants`, `generate-action-plan`) a Supabase felhőben.
   - **Git szinkronizáció:** Megtörtént a rebase alapú összefűzés, a kód takarítása, a Conductor notes pusholása, valamint egy sikeres `npx tsc --noEmit` típusellenőrzés a teljes kódon.
+- **2026. 06. 23. (Qodo Code Review hibajavítások, UI, RLS, Edge Function & konfigurációs optimalizálások):**
+  - **Függőségek tisztítása:** Eltávolítottuk a redundáns `@types/react-native` csomagot, megelőzve az Expo SDK-val való verzióütközést.
+  - **RLS Policy és Index optimalizálás:** Az `action_tasks` RLS-ben az `auth.uid()` hívásokat `(select auth.uid())` subquery-re cseréltük, hozzáadtuk a `WITH CHECK` klauzulát az `UPDATE` policy-hez, és biztonságos `DO $$ BEGIN ... END $$` blokkba szerveztük a DROP és ALTER utasításokat. Továbbá indexeket hoztunk létre az `action_tasks.plan_id`, `action_plans.business_profile_id` és `business_profiles.user_id` oszlopokra. A migrációt sikeresen futtattuk a távoli felhős adatbázison.
+  - **Biztonsági ellenőrzés az Edge Functionben:** A `generate-action-plan` függvényben szigorú ellenőrzést vezettünk be, amely ellenőrzi, hogy a beküldött `match_id` a megadott `business_profile_id`-hoz tartozik-e, és eltérés esetén 403 Forbidden hibát dob. Élesítettük az Edge Function-t a felhőben.
+  - **Frontend UI és Logika optimalizálás:**
+    - Bevezettük a `visiblePlans` szűrést az `ActionPlanScreen`-en, hogy a generáló gomb megjelenjen, ha a kiválasztott pályázathoz még nincs tervünk (más tervek meglététől függetlenül).
+    - Szétválasztottuk a `loading` és `generating` állapotokat, megelőzve a teljes képernyős spinner megjelenését az AI generálás alatt.
+    - Az `ActivityIndicator`-t stílusos `react-native-paper` verzióra cseréltük, a checkbox stílusokat letisztítottuk (List.Item left props javítás, Platform-független `<Checkbox>`).
+  - **Típusellenőrzés & Git Note:** Sikeres `npx tsc --noEmit` és állapotjelentés feltöltés Google Drive-ra (ID: `15I0DKp3C5rnEfnJvYrIR6kZ2emlMkmA-`).
+

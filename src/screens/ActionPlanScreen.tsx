@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox, ActivityIndicator } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
@@ -51,6 +51,8 @@ export function ActionPlanScreen({ route, navigation }: any) {
 
   // Egyedi hook meghívása a cégprofil azonosítóval
   const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus, generatePlanForMatch } = useActionPlan(profile?.id);
+
+  const visiblePlans = matchId ? plans.filter(p => p.match_id === matchId) : plans;
 
   const handleStatusChange = async (task: ActionTask, currentStatus: ActionTaskStatus) => {
     // Váltogatás: todo -> in_progress -> done -> todo
@@ -122,7 +124,7 @@ export function ActionPlanScreen({ route, navigation }: any) {
       )}
 
 
-      {plans.length === 0 ? (
+      {visiblePlans.length === 0 ? (
         <View style={styles.emptyContainer}>
           {matchId ? (
             generating ? (
@@ -181,7 +183,7 @@ export function ActionPlanScreen({ route, navigation }: any) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {plans.map((plan) => {
+          {visiblePlans.map((plan) => {
             const planTasks = tasks[plan.id] || [];
             const totalTasks = planTasks.length;
             const completedTasks = planTasks.filter(t => t.status === 'done').length;
@@ -224,8 +226,8 @@ export function ActionPlanScreen({ route, navigation }: any) {
                           description={task.description || undefined}
                           descriptionStyle={styles.taskDescription}
                           left={props => (
-                            <View {...props} style={styles.checkboxContainer}>
-                              <Checkbox.Android
+                            <View style={[props.style, styles.checkboxContainer]}>
+                              <Checkbox
                                 status={task.status === 'done' ? 'checked' : task.status === 'in_progress' ? 'indeterminate' : 'unchecked'}
                                 onPress={() => handleStatusChange(task, task.status)}
                                 color="#4CAF50"

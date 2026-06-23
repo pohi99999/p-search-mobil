@@ -92,7 +92,6 @@ export const useActionPlan = (businessProfileId?: string) => {
   }, [fetchPlansAndTasks]);
 
   const generatePlanForMatch = async (businessProfileId: string, matchId: string) => {
-    setLoading(true);
     setError(null);
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('generate-action-plan', {
@@ -108,8 +107,6 @@ export const useActionPlan = (businessProfileId?: string) => {
     } catch (err: any) {
       setError(err.message || 'Nem sikerült legenerálni az akciótervet.');
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
