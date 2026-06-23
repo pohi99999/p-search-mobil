@@ -70,4 +70,5 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
     - Szétválasztottuk a `loading` és `generating` állapotokat, megelőzve a teljes képernyős spinner megjelenését az AI generálás alatt.
     - Az `ActivityIndicator`-t stílusos `react-native-paper` verzióra cseréltük, a checkbox stílusokat letisztítottuk (List.Item left props javítás, Platform-független `<Checkbox>`).
   - **Típusellenőrzés & Git Note:** Sikeres `npx tsc --noEmit` és állapotjelentés feltöltés Google Drive-ra (ID: `15I0DKp3C5rnEfnJvYrIR6kZ2emlMkmA-`).
+  - **Automated n8n Workflow Telepítés:** Elkészítettük a [scripts/deploy-n8n-workflow.js](file:///Z:/001_Workspace/p-search%20mobil/scripts/deploy-n8n-workflow.js) telepítő szkriptet. Ez a szkript beolvassa az n8n és Supabase környezeti változókat a `.env`-ből, dinamikusan behelyettesíti azokat a `docs/n8n-workflow-template.json` sablonba, majd a REST API-n keresztül (`POST /api/v1/workflows`) automatikusan létrehozza a munkafolyamatot az n8n szerveren. A telepítési állapotjelentést (`status.log`) feltöltöttük a Google Drive-ra (ID: `1e11d-zR38fIQnaPWxOiBedBls7g9mVjs`).
 
