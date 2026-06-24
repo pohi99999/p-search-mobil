@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox, ActivityIndicator } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
@@ -7,7 +7,7 @@ import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database
 import { generateAndSharePDF } from '../utils/documentGenerator';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
-export function ActionPlanScreen({ route, navigation }: any) {
+export function ActionPlanScreen({ route, navigation }: { route: any, navigation: any }) {
   const matchId = route?.params?.matchId;
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -54,7 +54,7 @@ export function ActionPlanScreen({ route, navigation }: any) {
 
   const visiblePlans = matchId ? plans.filter(p => p.match_id === matchId) : plans;
 
-  const handleStatusChange = async (task: ActionTask, currentStatus: ActionTaskStatus) => {
+  const handleStatusChange = useCallback(async (task: ActionTask, currentStatus: ActionTaskStatus) => {
     // Váltogatás: todo -> in_progress -> done -> todo
     let newStatus: ActionTaskStatus = 'todo';
     if (currentStatus === 'todo') {
@@ -70,7 +70,7 @@ export function ActionPlanScreen({ route, navigation }: any) {
     } catch (err) {
       alert('Nem sikerült frissíteni a feladat állapotát.');
     }
-  };
+  }, [updateTaskStatus]);
 
   const getStatusIcon = (status: ActionTaskStatus) => {
     switch (status) {
@@ -155,8 +155,8 @@ export function ActionPlanScreen({ route, navigation }: any) {
                       await generatePlanForMatch(profile.id, matchId);
                       setSnackbarMessage('Akcióterv sikeresen legenerálva!');
                       setSnackbarVisible(true);
-                    } catch (err: any) {
-                      setSnackbarMessage(err.message || 'Hiba történt a generálás során.');
+                    } catch (err: unknown) {
+                      setSnackbarMessage((err instanceof Error ? err.message : String(err)) || 'Hiba történt a generálás során.');
                       setSnackbarVisible(true);
                     } finally {
                       setGenerating(false);
@@ -217,41 +217,7 @@ export function ActionPlanScreen({ route, navigation }: any) {
                   <List.Section style={styles.listSection}>
                     {planTasks.map((task, index) => (
                       <React.Fragment key={task.id}>
-                        <List.Item
-                          title={task.title}
-                          titleStyle={[
-                            styles.taskTitle,
-                            task.status === 'done' && styles.doneTaskTitle
-                          ]}
-                          description={task.description || undefined}
-                          descriptionStyle={styles.taskDescription}
-                          left={props => (
-                            <View style={[props.style, styles.checkboxContainer]}>
-                              <Checkbox
-                                status={task.status === 'done' ? 'checked' : task.status === 'in_progress' ? 'indeterminate' : 'unchecked'}
-                                onPress={() => handleStatusChange(task, task.status)}
-                                color="#4CAF50"
-                                uncheckedColor="#9E9E9E"
-                              />
-                            </View>
-                          )}
-                          right={props => (
-                            <Button 
-                              mode={task.status === 'in_progress' ? 'contained' : 'outlined'} 
-                              onPress={() => handleStatusChange(task, task.status)}
-                              compact
-                              style={[
-                                styles.statusButton,
-                                task.status === 'in_progress' && styles.inProgressButton,
-                                task.status === 'done' && styles.doneButton
-                              ]}
-                              labelStyle={styles.statusButtonLabel}
-                            >
-                              {task.status === 'todo' ? 'Elkezd' : task.status === 'in_progress' ? 'Kész' : 'Újra'}
-                            </Button>
-                          )}
-                          style={styles.listItem}
-                        />
+                        <TaskItem task={task} onStatusChange={handleStatusChange} />
                         {index < planTasks.length - 1 && <Divider style={styles.taskDivider} />}
                       </React.Fragment>
                     ))}
@@ -275,8 +241,8 @@ export function ActionPlanScreen({ route, navigation }: any) {
                             plan.ai_context.generated_document_html, 
                             `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
                           );
-                        } catch (err: any) {
-                          alert('PDF megnyitási hiba: ' + err.message);
+                        } catch (err: unknown) {
+                          alert('PDF megnyitási hiba: ' + (err instanceof Error ? err.message : String(err)));
                         }
                       }}
                       style={[styles.pdfButton, { marginRight: 8 }]}
@@ -314,8 +280,8 @@ export function ActionPlanScreen({ route, navigation }: any) {
                           
                           // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
                           refetch();
-                        } catch (err: any) {
-                          alert('PDF hiba: ' + err.message);
+                        } catch (err: unknown) {
+                          alert('PDF hiba: ' + (err instanceof Error ? err.message : String(err)));
                         } finally {
                           setPdfLoading(false);
                         }
@@ -341,6 +307,47 @@ export function ActionPlanScreen({ route, navigation }: any) {
     </View>
   );
 }
+
+
+const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void }) => {
+  return (
+    <List.Item
+      title={task.title}
+      titleStyle={[
+        styles.taskTitle,
+        task.status === 'done' && styles.doneTaskTitle
+      ]}
+      description={task.description || undefined}
+      descriptionStyle={styles.taskDescription}
+      left={props => (
+        <View style={[props.style, styles.checkboxContainer]}>
+          <Checkbox
+            status={task.status === 'done' ? 'checked' : task.status === 'in_progress' ? 'indeterminate' : 'unchecked'}
+            onPress={() => onStatusChange(task, task.status)}
+            color="#4CAF50"
+            uncheckedColor="#9E9E9E"
+          />
+        </View>
+      )}
+      right={props => (
+        <Button 
+          mode={task.status === 'in_progress' ? 'contained' : 'outlined'} 
+          onPress={() => onStatusChange(task, task.status)}
+          compact
+          style={[
+            styles.statusButton,
+            task.status === 'in_progress' && styles.inProgressButton,
+            task.status === 'done' && styles.doneButton
+          ]}
+          labelStyle={styles.statusButtonLabel}
+        >
+          {task.status === 'todo' ? 'Elkezd' : task.status === 'in_progress' ? 'Kész' : 'Újra'}
+        </Button>
+      )}
+      style={styles.listItem}
+    />
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

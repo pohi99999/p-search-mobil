@@ -63,7 +63,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setPackages(offerings.current.availablePackages);
         }
       } catch (e) {
-        console.warn('Error setting up RevenueCat (prevented crash):', e);
+        console.warn('Error setting up RevenueCat (prevented crash):', e instanceof Error ? e.message : String(e));
       } finally {
         setIsLoading(false);
       }
@@ -111,7 +111,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       checkProStatus(customerInfo);
     } catch (e: any) {
       if (!e.userCancelled) {
-        console.error('Error purchasing package:', e);
+        console.error('Error purchasing package:', e instanceof Error ? e.message : String(e));
         // Here you might want to show an alert to the user
       }
     } finally {
@@ -129,7 +129,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const customerInfo = await Purchases.restorePurchases();
       checkProStatus(customerInfo);
     } catch (e) {
-      console.error('Error restoring purchases:', e);
+      console.error('Error restoring purchases:', e instanceof Error ? e.message : String(e));
     } finally {
       setIsLoading(false);
     }

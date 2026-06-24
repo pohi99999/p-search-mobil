@@ -1,4 +1,5 @@
 import React from 'react';
+import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, Button, Card, useTheme, ActivityIndicator, IconButton, List } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
@@ -7,13 +8,13 @@ import { useNavigation } from '@react-navigation/native';
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
   const theme = useTheme();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<any>(); // TODO: remove any if possible
 
-  const handlePurchase = async (pkg: any) => {
+  const handlePurchase = async (pkg: PurchasesPackage) => {
     try {
       await purchasePackage(pkg);
-    } catch (err: any) {
-      alert('Vásárlási hiba: ' + err.message);
+    } catch (err: unknown) {
+      alert('Vásárlási hiba: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -21,8 +22,8 @@ export const PaywallScreen = () => {
     try {
       await restorePurchases();
       alert('Vásárlások sikeresen ellenőrizve!');
-    } catch (err: any) {
-      alert('Visszaállítási hiba: ' + err.message);
+    } catch (err: unknown) {
+      alert('Visszaállítási hiba: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 

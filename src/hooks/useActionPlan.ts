@@ -53,8 +53,8 @@ export const useActionPlan = (businessProfileId?: string) => {
         setPlans([]);
         setTasks({});
       }
-    } catch (err: any) {
-      setError(err.message || 'Hiba történt az akciótervek betöltése során.');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Hiba történt az akciótervek betöltése során.');
     } finally {
       setLoading(false);
     }
@@ -81,8 +81,8 @@ export const useActionPlan = (businessProfileId?: string) => {
           [planId]: updatedTasks
         };
       });
-    } catch (err: any) {
-      setError(err.message || 'Nem sikerült frissíteni a feladat állapotát.');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Nem sikerült frissíteni a feladat állapotát.');
       throw err;
     }
   };
@@ -104,8 +104,8 @@ export const useActionPlan = (businessProfileId?: string) => {
       // Frissítjük a terveket és feladatokat
       await fetchPlansAndTasks();
       return data;
-    } catch (err: any) {
-      setError(err.message || 'Nem sikerült legenerálni az akciótervet.');
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || 'Nem sikerült legenerálni az akciótervet.');
       throw err;
     }
   };

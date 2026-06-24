@@ -4,7 +4,7 @@ import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper
 import { supabase } from '../lib/supabase';
 import { AdBanner } from '../components/AdBanner';
 
-export function OnboardingScreen({ navigation }: any) {
+export function OnboardingScreen({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,8 +66,8 @@ export function OnboardingScreen({ navigation }: any) {
 
       // Siker esetén navigálás a Home oldalra
       navigation.replace('Home');
-    } catch (e: any) {
-      setError(e.message || 'Hiba történt a mentés során.');
+    } catch (e: unknown) {
+      setError((e instanceof Error ? e.message : String(e)) || 'Hiba történt a mentés során.');
     } finally {
       setLoading(false);
     }

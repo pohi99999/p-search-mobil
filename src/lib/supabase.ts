@@ -150,24 +150,24 @@ const mockActionTasks = [
 ];
 
 // Mock láncoló helper
-const createMockChain = (mockData: any, mockError: any = null) => {
-  const chain: any = {
+const createMockChain = (mockData: unknown, mockError: unknown = null) => {
+  const chain: Record<string, unknown> = {
     select: () => chain,
     eq: () => chain,
     order: () => chain,
     limit: () => chain,
     single: async () => ({ data: mockData, error: mockError }),
     in: () => chain,
-    insert: (data: any) => {
+    insert: (data: unknown) => {
       return createMockChain(Array.isArray(data) ? data[0] : data);
     },
-    update: (data: any) => {
+    update: (data: unknown) => {
       return createMockChain(data);
     },
     delete: () => chain,
   };
   
-  chain.then = (onfulfilled: any) => {
+  chain.then = (onfulfilled: (value: unknown) => void) => {
     return Promise.resolve({ data: mockData, error: mockError }).then(onfulfilled);
   };
   
@@ -182,7 +182,7 @@ export const supabase = new Proxy(rawSupabase, {
         return {
           getSession: async () => ({ data: { session: fakeSession }, error: null }),
           getUser: async () => ({ data: { user: fakeUser }, error: null }),
-          onAuthStateChange: (callback: any) => {
+          onAuthStateChange: (callback: Function) => {
             callback('SIGNED_IN', fakeSession);
             return { data: { subscription: { unsubscribe: () => {} } } };
           },
@@ -216,7 +216,7 @@ export const supabase = new Proxy(rawSupabase, {
 
       if (prop === 'functions') {
         return {
-          invoke: async (name: string, options?: any) => {
+          invoke: async (name: string, options?: Record<string, unknown>) => {
             if (name === 'chat-with-gemini') {
               // Éles hívás továbbítása az eredeti rawSupabase felé
               return rawSupabase.functions.invoke(name, options);
@@ -234,6 +234,6 @@ export const supabase = new Proxy(rawSupabase, {
       }
     }
     
-    return (target as any)[prop];
+    return (target as unknown as Record<string, unknown>)[prop as unknown as string];
   }
 });

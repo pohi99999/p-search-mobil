@@ -12,7 +12,7 @@ type MatchWithGrant = GrantMatch & { grants: Grant };
 
 const N8N_WEBHOOK_URL = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'http://10.0.2.2:5678/webhook/p-search-onboarding';
 
-export function HomeScreen({ navigation }: any) {
+export function HomeScreen({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -62,7 +62,7 @@ export function HomeScreen({ navigation }: any) {
           console.error(matchesError);
         } else if (matchesData) {
           // Cast the result to our compound type
-          setMatches(matchesData as any);
+          setMatches(matchesData as unknown as MatchWithGrant[]);
         }
       } else {
         // No profile found, redirect to Onboarding

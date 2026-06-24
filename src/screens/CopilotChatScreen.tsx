@@ -12,7 +12,7 @@ interface Message {
   sources?: string[];
 }
 
-export function CopilotChatScreen({ route, navigation }: any) {
+export function CopilotChatScreen({ route, navigation }: { route: any, navigation: any }) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -108,11 +108,11 @@ export function CopilotChatScreen({ route, navigation }: any) {
       };
       
       setMessages(prev => [...prev, aiResponse]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Chat error details:', err);
-      const errorMessageText = err.message?.includes('Sajnálom') 
-        ? err.message 
-        : `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${err.message || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`;
+      const errorMessageText = (err instanceof Error ? err.message : String(err))?.includes('Sajnálom') 
+        ? (err instanceof Error ? err.message : String(err)) 
+        : `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${(err instanceof Error ? err.message : String(err)) || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`;
 
       const errorMessage: Message = {
         id: `err-${Math.random()}`,
