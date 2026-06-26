@@ -12,7 +12,9 @@ type MatchWithGrant = GrantMatch & { grants: Grant };
 
 const N8N_WEBHOOK_URL = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'http://10.0.2.2:5678/webhook/p-search-onboarding';
 
-export function HomeScreen({ navigation }: { navigation: any }) {
+import { RootStackNavigationProp } from '../types/navigation';
+
+export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);

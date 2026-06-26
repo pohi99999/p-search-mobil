@@ -12,7 +12,9 @@ interface Message {
   sources?: string[];
 }
 
-export function CopilotChatScreen({ route, navigation }: { route: any, navigation: any }) {
+import { RootStackNavigationProp, CopilotChatScreenRouteProp } from '../types/navigation';
+
+export function CopilotChatScreen({ route, navigation }: { route: CopilotChatScreenRouteProp, navigation: RootStackNavigationProp }) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {

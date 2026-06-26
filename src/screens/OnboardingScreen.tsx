@@ -4,7 +4,9 @@ import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper
 import { supabase } from '../lib/supabase';
 import { AdBanner } from '../components/AdBanner';
 
-export function OnboardingScreen({ navigation }: { navigation: any }) {
+import { RootStackNavigationProp } from '../types/navigation';
+
+export function OnboardingScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
