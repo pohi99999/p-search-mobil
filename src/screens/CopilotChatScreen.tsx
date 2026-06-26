@@ -90,7 +90,6 @@ export function CopilotChatScreen({ route, navigation }: { route: any, navigatio
       if (invokeError) throw invokeError;
       if (data?.error) throw new Error(data.error);
 
-      console.log('AI Response data:', data);
       const replyText = data?.reply || data?.text || data?.response || '';
 
       if (!replyText) {
