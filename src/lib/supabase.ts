@@ -221,7 +221,6 @@ export const supabase = new Proxy(rawSupabase, {
               // Éles hívás továbbítása az eredeti rawSupabase felé
               return rawSupabase.functions.invoke(name, options);
             }
-            console.log(`Mock invoking Edge Function: ${name}`, options);
             if (name === 'generate-document') {
               return { data: { html: '<h1>Mock Üzleti Terv</h1><p>Ez a generált PDF tartalma.</p>' }, error: null };
             }
