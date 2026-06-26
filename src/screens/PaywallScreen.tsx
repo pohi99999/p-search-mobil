@@ -1,3 +1,5 @@
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../types/navigation";
 import React from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
@@ -8,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
   const theme = useTheme();
-  const navigation = useNavigation<any>(); // TODO: remove any if possible
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handlePurchase = async (pkg: PurchasesPackage) => {
     try {
