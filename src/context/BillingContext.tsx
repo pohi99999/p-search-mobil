@@ -3,8 +3,8 @@ import { Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 
 // API Keys - Should be replaced with actual keys via environment variables or Constants
-const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || 'REVENUECAT_GOOGLE_API_KEY_PLACEHOLDER';
-const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || 'appl_placeholder_key';
+const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
+const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
 
 interface BillingContextType {
   isPro: boolean;
@@ -33,8 +33,8 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const setup = async () => {
       try {
-        const isPlaceholderAndroid = API_KEY_ANDROID.includes('PLACEHOLDER') || API_KEY_ANDROID === '';
-        const isPlaceholderIOS = API_KEY_IOS.includes('placeholder') || API_KEY_IOS === '';
+        const isPlaceholderAndroid = !API_KEY_ANDROID || API_KEY_ANDROID.includes('PLACEHOLDER');
+        const isPlaceholderIOS = !API_KEY_IOS || API_KEY_IOS.includes('placeholder');
 
         if (Platform.OS === 'android' && isPlaceholderAndroid) {
           console.warn('RevenueCat Android API key is missing or placeholder. Skipping RevenueCat initialization.');
