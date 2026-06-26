@@ -187,7 +187,6 @@ export const supabase = new Proxy(rawSupabase, {
             return { data: { subscription: { unsubscribe: () => {} } } };
           },
           signOut: async () => {
-            console.log('Mock Sign Out');
             return { error: null };
           },
           signInWithPassword: async () => ({ data: { session: fakeSession, user: fakeUser }, error: null }),
