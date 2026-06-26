@@ -13,8 +13,9 @@ import { PaywallScreen } from './src/screens/PaywallScreen';
 import { ActionPlanScreen } from './src/screens/ActionPlanScreen';
 import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
 import { BillingProvider } from './src/context/BillingContext';
+import type { RootStackParamList } from './src/types/navigation';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const theme = {
   ...MD3LightTheme,
