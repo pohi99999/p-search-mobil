@@ -49,3 +49,4 @@ play-console-api-*.json
 
 # Supabase CLI temp
 supabase/.temp/
+coverage/
