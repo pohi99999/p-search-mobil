@@ -4,6 +4,10 @@ import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-n
 import { supabase } from '../lib/supabase';
 import { BusinessProfile } from '../types/database';
 
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+
 interface Message {
   id: string;
   text: string;
@@ -12,7 +16,9 @@ interface Message {
   sources?: string[];
 }
 
-export function CopilotChatScreen({ route, navigation }: { route: any, navigation: any }) {
+type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
+
+export function CopilotChatScreen({ route, navigation }: Props) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
