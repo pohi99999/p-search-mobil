@@ -77,6 +77,8 @@ serve(async (req) => {
           const genAI = new GoogleGenerativeAI(geminiApiKey);
           const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
 
+          const chunksToInsert = [];
+
           for (const chunkText of paragraphs) {
             try {
               const embedResult = await model.embedContent({
@@ -85,19 +87,11 @@ serve(async (req) => {
               });
               const embedding = embedResult.embedding.values;
 
-              const { error: chunkError } = await supabaseClient
-                .from('grant_chunks')
-                .insert({
-                  grant_id: grantId,
-                  content: chunkText,
-                  embedding: embedding
-                });
-
-              if (chunkError) {
-                console.error(`Hiba a chunk rögzítésekor: ${chunkError.message}`);
-              } else {
-                chunksInserted++;
-              }
+              chunksToInsert.push({
+                grant_id: grantId,
+                content: chunkText,
+                embedding: embedding
+              });
             } catch (embedError: any) {
               // Handle specific Google API errors
               console.error("Hiba az embedding generálásakor:", embedError.message);
@@ -109,6 +103,18 @@ serve(async (req) => {
                 console.error("Érvénytelen kérés a Google Generative AI API felé (400).");
               }
               // Folytatjuk a többi chunk-kal, nem szakítjuk meg teljesen
+            }
+          }
+
+          if (chunksToInsert.length > 0) {
+            const { error: chunkError } = await supabaseClient
+              .from('grant_chunks')
+              .insert(chunksToInsert);
+
+            if (chunkError) {
+              console.error(`Hiba a chunkok rögzítésekor: ${chunkError.message}`);
+            } else {
+              chunksInserted = chunksToInsert.length;
             }
           }
         }
