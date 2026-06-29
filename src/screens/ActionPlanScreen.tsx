@@ -7,7 +7,9 @@ import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database
 import { generateAndSharePDF } from '../utils/documentGenerator';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
-export function ActionPlanScreen({ route, navigation }: { route: any, navigation: any }) {
+import { RootStackNavigationProp, ActionPlanScreenRouteProp } from '../types/navigation';
+
+export function ActionPlanScreen({ route, navigation }: { route: ActionPlanScreenRouteProp, navigation: RootStackNavigationProp }) {
   const matchId = route?.params?.matchId;
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);

@@ -14,7 +14,9 @@ import { ActionPlanScreen } from './src/screens/ActionPlanScreen';
 import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
 import { BillingProvider } from './src/context/BillingContext';
 
-const Stack = createNativeStackNavigator();
+import { RootStackParamList } from './src/types/navigation';
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const theme = {
   ...MD3LightTheme,
