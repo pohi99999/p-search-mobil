@@ -5,6 +5,9 @@
   },
   "exclude": [
     "node_modules",
-    "supabase"
+    "supabase",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/*"
   ]
 }
