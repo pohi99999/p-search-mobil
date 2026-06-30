@@ -1,0 +1,26 @@
+[CONDUCTOR NOTE]
+Task: Phase 5 / Step 3 — Master Document Base: Gemini OCR & DB Schema
+Date: 2026-06-30
+Status: CODE COMPLETE — Deployment pending (project INACTIVE)
+
+Summary:
+- Migration 20260630120000_add_financial_metrics_to_profile.sql:
+  * business_profiles: +net_revenue, +ebitda, +equity (NUMERIC), +raw_ocr_json (JSONB)
+  * RLS policies patched to use (select auth.uid()) subquery pattern
+  * New financial_documents table: tracking lifecycle + RLS + performance indexes
+- Edge Function process-master-document/index.ts:
+  * POST: base64 file + business_profile_id
+  * JWT auth + ownership 403 guard
+  * Gemini 2.5-flash Vision OCR (temperature 0.1, JSON output)
+  * Extracts: net_revenue, ebitda, equity, employee_count, document_year
+  * Upserts business_profiles via service role (RLS bypass)
+  * financial_documents lifecycle: pending -> processing -> completed/failed
+- Test script: scripts/test-process-master-document.js
+- npx tsc --noEmit: PASSED (0 errors)
+
+Deployment Blocked:
+  Supabase project INACTIVE (free tier auto-pause after 1 week)
+  Action needed: Visit https://supabase.com/dashboard/project/icextvgecinmhrhjtfcm
+  Then: npx supabase db push --linked && npx supabase functions deploy process-master-document
+
+Next: Phase 5, Step 4 — Frontend DocumentUploadScreen
