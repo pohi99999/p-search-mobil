@@ -1,0 +1,25 @@
+[CONDUCTOR NOTE]
+Task: Phase 5 / Step 4 — n8n Live Scraping & RAG Ingestion Workflow
+Date: 2026-06-30
+Status: COMPLETED — Phase 5 FULLY CLOSED
+
+Summary:
+- n8n-workflow-template.json v2: 3-node pipeline
+  Node 1: Daily Schedule (cron 0 2 * * *)
+  Node 2: HTTP GET Fetch Hungarian Grants (Palyazatfigyelo, type=sme, limit=50)
+  Node 3: HTTP POST ingest-n8n-grants (specifyBody:json, dynamic field mapping,
+          N8N_WEBHOOK_SECRET auth)
+- deploy-n8n-workflow.js v3: triple auth strategy
+  A: X-N8N-API-KEY (failed - stale key)
+  B: email/password session cookie -> PATCH /rest/workflows/:id (SUCCESS HTTP 200)
+  C: POST create fallback
+- Deployed: Workflow DNE7Xod35VnFeR6t updated successfully
+- npx tsc --noEmit: PASSED (0 errors)
+- Temp files cleaned
+
+PHASE 5 COMPLETION SUMMARY:
+  Step 1: EAS Build + platforms + copilot-instructions.md
+  Step 2: Premium Paywall UI + AdMob banner injection
+  Step 3: Gemini OCR Edge Function + DB schema + E2E test green
+  Step 4: n8n 3-node scraping pipeline deployed HTTP 200
+All steps DONE.
