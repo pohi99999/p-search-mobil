@@ -1,32 +1,39 @@
 =============================================================
 P-Search Mobil — Status Log
-Task: Phase 5, Step 1 — EAS Build & Multi-Platform Config
-Date: 2026-06-30T10:28:27+02:00
+Task: Phase 5, Step 2 — Monetization: Paywall UI & AdMob
+Date: 2026-06-30T10:33:44+02:00
 =============================================================
 
-[✅] .github/copilot-instructions.md — CREATED
-     Tartalom: Teljes projekt szabálykönyv (vízió, tech stack, architektúra,
-     Conductor Framework, EAS profilok, UI/UX irányelvek, tiltott műveletek)
-
-[✅] app.json — UPDATED
+[✅] src/screens/PaywallScreen.tsx — UPDATED
      Változtatások:
-     - Hozzáadva: "platforms": ["ios", "android", "web"]
-     - Frissítve: "web": { "bundler": "metro", "output": "static" }
+     - Hozzáadva: purchasing state (useState<boolean>)
+     - Hozzáadva: full-screen checkout overlay (absoluteFill + semi-transparent bg)
+     - Frissítve: Premium Benefits lista 4 elemre:
+         * ✍️ Korlátlan AI Pályázatíró & Hitelügyintéző
+         * 📂 Automatikus Master Dokumentum Bázis OCR
+         * 📄 Teljes PDF & DOCX Export
+         * 🚫 Hirdetésmentesség
+     - Hozzáadva: "LEGNÉPSZERŰBB" badge, "7 napos ingyenes próba" note
+     - Frissítve: Purchase gomb disabled=purchasing state alatt
+     - Frissítve: handleRestore is setPurchasing-et használ
 
-[✅] eas.json — UPDATED
+[✅] src/screens/HomeScreen.tsx — UPDATED
      Változtatások:
-     - development profil: Android APK + iOS (env: development)
-     - development-client profil: Android APK + iOS (env: development)
-     - preview profil: Android APK + iOS (env: preview)
-     - production profil: Android AAB + iOS autoIncrement (env: production)
-     - submit.production: iOS mezők hozzáadva (appleId/ascAppId/appleTeamId)
+     - Import: BannerAd, BannerAdSize, TestIds from react-native-google-mobile-ads
+     - Import: useMemo hozzáadva React-ból
+     - Hozzáadva: AdItem type, FlatListItem union type, isAdItem type guard
+     - Hozzáadva: listData useMemo — !isPro esetén AdItem-et szúr be index 1-re
+     - Hozzáadva: renderItem() — isAdItem esetén BannerAd-et renderel (TestIds.BANNER)
+     - Frissítve: FlatList<FlatListItem> data=listData, renderItem=renderItem
+     - Hozzáadva: inlineBannerContainer stílus
+     - Megőrizve: bottom <AdBanner /> másodlagos hirdetési pozíciónak
 
 [✅] npx tsc --noEmit — PASSED (exit code 0, no errors)
 
 =============================================================
 Next Steps (Phase 5 continuation):
-- Step 2: Master Document Base (OCR upload flow)
-- Step 3: Hybrid grant filter (mathematical scoring)
-- Step 4: Automated document generation (PDF/docx)
-- Step 5: GitHub Actions CI/CD pipeline
+- Step 3: Master Document Base (OCR upload flow, Gemini Vision)
+- Step 4: Hybrid grant filter (mathematical scoring criteria)
+- Step 5: Automated document generation (PDF/docx templates)
+- Step 6: GitHub Actions CI/CD pipeline
 =============================================================

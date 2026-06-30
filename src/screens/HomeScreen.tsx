@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
 import { Text, Button, Surface, Card, MD3Colors, FAB } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
@@ -6,9 +6,14 @@ import { BusinessProfile, GrantMatch, Grant, UserProfile } from '../types/databa
 import { useBilling } from '../context/BillingContext';
 
 import { AdBanner } from '../components/AdBanner';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { TesterProgress } from '../components/TesterProgress';
 
 type MatchWithGrant = GrantMatch & { grants: Grant };
+type AdItem = { type: 'ad'; id: string };
+type FlatListItem = MatchWithGrant | AdItem;
+const isAdItem = (item: FlatListItem): item is AdItem =>
+  'type' in item && (item as AdItem).type === 'ad';
 
 const N8N_WEBHOOK_URL = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'http://10.0.2.2:5678/webhook/p-search-onboarding';
 
@@ -136,6 +141,17 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     );
   }
 
+  const listData = useMemo<FlatListItem[]>(() => {
+    if (!isPro && matches.length > 1) {
+      return [
+        matches[0],
+        { type: 'ad' as const, id: 'inline-banner' },
+        ...matches.slice(1),
+      ];
+    }
+    return matches;
+  }, [matches, isPro]);
+
   const renderEmptyState = () => (
     <Surface style={styles.surface} elevation={2}>
       <ActivityIndicator size="large" color={MD3Colors.primary50} style={{ marginBottom: 16 }} />
@@ -173,6 +189,22 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     </Card>
   );
 
+  const renderItem = ({ item }: { item: FlatListItem }) => {
+    if (isAdItem(item)) {
+      return (
+        <View style={styles.inlineBannerContainer}>
+          <BannerAd
+            unitId={TestIds.BANNER}
+            size={BannerAdSize.BANNER}
+            requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+            onAdFailedToLoad={(error) => console.warn('Inline banner failed to load:', error)}
+          />
+        </View>
+      );
+    }
+    return renderMatch({ item });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -191,10 +223,10 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           {renderEmptyState()}
         </View>
       ) : (
-        <FlatList
-          data={matches}
+        <FlatList<FlatListItem>
+          data={listData}
           keyExtractor={(item) => item.id}
-          renderItem={renderMatch}
+          renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 80 }}
           refreshing={loading}
           onRefresh={fetchData}
@@ -254,5 +286,16 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 0,
     backgroundColor: '#1976D2',
-  }
-});
+  },
+  inlineBannerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 1,
+    minHeight: 50,
+  },
+})
