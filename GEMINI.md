@@ -71,6 +71,25 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
     - Az `ActivityIndicator`-t stílusos `react-native-paper` verzióra cseréltük, a checkbox stílusokat letisztítottuk (List.Item left props javítás, Platform-független `<Checkbox>`).
   - **Típusellenőrzés & Git Note:** Sikeres `npx tsc --noEmit` és állapotjelentés feltöltés Google Drive-ra (ID: `15I0DKp3C5rnEfnJvYrIR6kZ2emlMkmA-`).
   - **Automated n8n Workflow Telepítés:** Elkészítettük a [scripts/deploy-n8n-workflow.js](file:///Z:/001_Workspace/p-search%20mobil/scripts/deploy-n8n-workflow.js) telepítő szkriptet. Ez a szkript beolvassa az n8n és Supabase környezeti változókat a `.env`-ből, dinamikusan behelyettesíti azokat a `docs/n8n-workflow-template.json` sablonba, majd a REST API-n keresztül (`POST /api/v1/workflows`) automatikusan létrehozza a munkafolyamatot az n8n szerveren. A telepítési állapotjelentést (`status.log`) feltöltöttük a Google Drive-ra (ID: `1e11d-zR38fIQnaPWxOiBedBls7g9mVjs`).
+- **2026. 06. 30. (Fázis 5, 3. Lépés — Master Dokumentum Bázis: Gemini OCR & DB séma):**
+  - **SQL Migráció elkészítve (`20260630120000_add_financial_metrics_to_profile.sql`):**
+    - `business_profiles` táblához hozzáadva: `net_revenue NUMERIC`, `ebitda NUMERIC`, `equity NUMERIC`, `raw_ocr_json JSONB` (az `employee_count` már létezett)
+    - Javítva az összes `business_profiles` RLS policy `(select auth.uid())` subquery formátumra (teljesítmény optimalizálás)
+    - Létrehozva az új `financial_documents` tábla dokumentum feltöltések nyomon követésére: státuszkezelés (`pending/processing/completed/failed`), OCR eredmény JSON tárolás, RLS és indexek
+    - **Deployment státusz:** A Supabase projekt jelenleg INACTIVE (free tier szünetelteti 1 hét inaktivitás után). A migrációt a projekt reaktiválása után kell futtatni.
+  - **`process-master-document` Edge Function létrehozva:**
+    - Deno TypeScript Edge Function `supabase/functions/process-master-document/index.ts`
+    - Base64 kódolt dokumentum (PDF/JPEG/PNG/WebP) fogadása POST kérésként
+    - User ownership ellenőrzés (JWT validálás + profil.user_id == user.id összehasonlítás)
+    - Gemini 2.5-flash Vision API hívás strukturált JSON prompttal (alacsony hőmérséklet: 0.1)
+    - Kinyert adatok: `net_revenue`, `ebitda`, `equity`, `employee_count`, `document_year`, `extraction_confidence`, `notes`
+    - Upsert a `business_profiles` táblára Service Role Key-jel (RLS bypass)
+    - `financial_documents` rekord életciklus kezelés (pending → processing → completed/failed)
+    - **Deployment státusz:** INACTIVE projekt miatt nem sikerült deploy-olni. A `npx supabase functions deploy process-master-document` parancs a projekt reaktiválása után futtatandó.
+  - **E2E teszt szkript:** `scripts/test-process-master-document.js` elkészítve
+  - **Típusellenőrzés:** `npx tsc --noEmit` sikeresen lefutott, 0 hiba
+  - **Reaktivációs teendők:** https://supabase.com/dashboard → projekt reaktiválás → migráció futtatás → function deploy
+
 - **2026. 06. 30. (Fázis 5, 2. Lépés — Monetizáció: Paywall UI & Google AdMob integráció):**
   - **PaywallScreen refaktorálás:** Hozzáadtuk a `purchasing` state-et és egy teljes képernyős checkout overlay-t (félig átlátszó háttér + fehér kártya ActivityIndicator-ral), amely a vásárlás/visszaállítás alatt blokkolja az interakciót. A vásárló gomb `disabled` lesz a folyamat alatt. Frissítettük a Premium Előnyök listáját a termék vízióhoz illeszkedő 4 elemre: Korlátlan AI Pályázatíró & Hitelügyintéző, Automatikus Master Dokumentum Bázis OCR, Teljes PDF & DOCX Export, Hirdetésmentesség. Hozzáadtuk a "LEGNÉPSZERŰBB" badge-et és a "7 napos ingyenes próba" feliratot a csomag kártyákra.
   - **Google AdMob Inline Banner (HomeScreen):** Importáltuk a `BannerAd`, `BannerAdSize`, `TestIds` elemeket közvetlenül a `react-native-google-mobile-ads` csomagból. Bevezettük a `FlatListItem` union típust és az `isAdItem` type guardot. A `listData` useMemo-val !isPro felhasználóknak egy `AdItem` placeholder-t szúr be az 1. és 2. grant kártya közé, amelyet a `renderItem` BannerAd-ként renderel (`TestIds.BANNER`, `BannerAdSize.BANNER`). A meglévő bottom `<AdBanner />` megmarad másodlagos anchor hirdetésként.
