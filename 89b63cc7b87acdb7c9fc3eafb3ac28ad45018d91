@@ -1,0 +1,17 @@
+[CONDUCTOR NOTE]
+Task: Phase 5 / Step 1 — EAS Build Configuration & Multi-Platform Setup
+Date: 2026-06-30
+Status: COMPLETED
+
+Summary:
+- .github/copilot-instructions.md: Created. Full project rulebook locking in
+  Expo SDK 56, React Native Paper MD3, Supabase/Deno Edge Functions,
+  gemini-embedding-001 (768d), Conductor Framework constraints.
+- app.json: platforms=[ios,android,web], web.bundler=metro, web.output=static
+- eas.json: All profiles (development/development-client/preview/production)
+  expanded with iOS config, APP_ENV env vars, explicit Android buildTypes.
+- npx tsc --noEmit: PASSED (0 errors)
+- GEMINI.md: Updated with Phase 5 Step 1 entry
+- status.log: Generated and committed
+
+Next: Phase 5, Step 2 — Master Document Base (OCR upload flow)
