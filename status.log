@@ -1,0 +1,32 @@
+=============================================================
+P-Search Mobil — Status Log
+Task: Phase 5, Step 1 — EAS Build & Multi-Platform Config
+Date: 2026-06-30T10:28:27+02:00
+=============================================================
+
+[✅] .github/copilot-instructions.md — CREATED
+     Tartalom: Teljes projekt szabálykönyv (vízió, tech stack, architektúra,
+     Conductor Framework, EAS profilok, UI/UX irányelvek, tiltott műveletek)
+
+[✅] app.json — UPDATED
+     Változtatások:
+     - Hozzáadva: "platforms": ["ios", "android", "web"]
+     - Frissítve: "web": { "bundler": "metro", "output": "static" }
+
+[✅] eas.json — UPDATED
+     Változtatások:
+     - development profil: Android APK + iOS (env: development)
+     - development-client profil: Android APK + iOS (env: development)
+     - preview profil: Android APK + iOS (env: preview)
+     - production profil: Android AAB + iOS autoIncrement (env: production)
+     - submit.production: iOS mezők hozzáadva (appleId/ascAppId/appleTeamId)
+
+[✅] npx tsc --noEmit — PASSED (exit code 0, no errors)
+
+=============================================================
+Next Steps (Phase 5 continuation):
+- Step 2: Master Document Base (OCR upload flow)
+- Step 3: Hybrid grant filter (mathematical scoring)
+- Step 4: Automated document generation (PDF/docx)
+- Step 5: GitHub Actions CI/CD pipeline
+=============================================================
