@@ -1,0 +1,13 @@
+[CONDUCTOR NOTE]
+Task: Phase 5 / Step 3 — Hotfix: uuid + deploy + E2E test green
+Date: 2026-06-30
+Status: FULLY COMPLETED
+
+Fixes applied:
+- Migration uuid_generate_v4() -> gen_random_uuid() (no extension needed)
+- npx supabase db push --linked: SUCCESS
+- npx supabase functions deploy process-master-document: SUCCESS
+- Test script: manual .env parse, admin user create, profiles FK chain
+- E2E test: HTTP 200, financial_documents record created (document_id confirmed),
+  Gemini OCR processed 1x1 PNG and correctly returned null values + confidence:low
+  Full pipeline validated end-to-end.
