@@ -1,39 +1,55 @@
 {
-  "name": "Grant Ingestion to Supabase",
+  "name": "P-Search: Hungarian SME Grant Scraper & RAG Ingestion (v2)",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "days",
-              "triggerAtHour": 2
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
             }
           ]
         }
       },
       "id": "e5cc0d6f-7711-40b4-9da2-db78e1245c61",
-      "name": "Schedule Trigger",
+      "name": "Daily Schedule (02:00)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        280,
-        240
-      ]
+      "position": [240, 300],
+      "notes": "Naponta 02:00-kor fut le. Magyar KKV palyazatok es hitelek begyujtese."
     },
     {
       "parameters": {
-        "url": "https://example-grant-portal.com/api/grants",
-        "options": {}
+        "method": "GET",
+        "url": "https://palyazatfigyelo.gov.hu/api/v1/grants/active",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/json" },
+            { "name": "User-Agent", "value": "P-Search-Bot/2.0 (Hungarian SME Grant Aggregator)" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "type", "value": "sme" },
+            { "name": "status", "value": "open" },
+            { "name": "limit", "value": "50" },
+            { "name": "format", "value": "json" }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "fullResponse": false, "neverError": true } }
+        }
       },
       "id": "7dc1a9e3-2e4d-488f-a6ad-093a2164c09d",
-      "name": "Fetch Grants",
+      "name": "Fetch Hungarian Grants (Palyazatfigyelo API)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        480,
-        240
-      ]
+      "position": [480, 300],
+      "notes": "Lekeri az aktiv KKV palyazatokat. Tablak: title/cim/name, description/leiras, amount_min, amount_max, deadline, provider/kiiro, source_url, eligibility_criteria."
     },
     {
       "parameters": {
@@ -42,99 +58,39 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer YOUR_SUPABASE_ANON_KEY"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
+            { "name": "Authorization", "value": "N8N_WEBHOOK_SECRET_PLACEHOLDER" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "apikey", "value": "SUPABASE_ANON_KEY_PLACEHOLDER" }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "title",
-              "value": "={{ $json.title }}"
-            },
-            {
-              "name": "description",
-              "value": "={{ $json.description }}"
-            },
-            {
-              "name": "amount_min",
-              "value": "={{ $json.min_funding }}"
-            },
-            {
-              "name": "amount_max",
-              "value": "={{ $json.max_funding }}"
-            },
-            {
-              "name": "provider",
-              "value": "={{ $json.agency }}"
-            },
-            {
-              "name": "grant_type",
-              "value": "pályázat"
-            },
-            {
-              "name": "deadline",
-              "value": "={{ $json.close_date }}"
-            },
-            {
-              "name": "source_url",
-              "value": "={{ $json.url }}"
-            }
-          ]
-        },
-        "options": {}
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title || $json.cim || $json.name, description: $json.description || $json.leiras || $json.summary, provider: $json.provider || $json.kiiro || $json.agency || 'Magyar Kormany', grant_type: $json.grant_type || $json.tipus || 'palyazat', amount_min: Number($json.amount_min || $json.min_tamogatas || $json.min_funding || 0), amount_max: Number($json.amount_max || $json.max_tamogatas || $json.max_funding || 0), deadline: $json.deadline || $json.beadasi_hatar || $json.close_date || null, eligibility_criteria: $json.eligibility_criteria || $json.jogosultsagi_feltetelek || $json.criteria || null, source_url: $json.source_url || $json.url || $json.link || null }) }}",
+        "options": { "timeout": 30000 }
       },
       "id": "18f9cf0b-e555-46aa-bd1a-e7c6530a21cf",
-      "name": "Send to Supabase",
+      "name": "Ingest to Supabase RAG (ingest-n8n-grants)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        680,
-        240
-      ]
+      "position": [720, 300],
+      "notes": "POST a Supabase ingest-n8n-grants Edge Function-nek. A function Gemini embeddinget general es RAG adatbazisba menti. Auth: N8N_WEBHOOK_SECRET."
     }
   ],
   "pinData": {},
   "connections": {
-    "Schedule Trigger": {
-      "main": [
-        [
-          {
-            "node": "Fetch Grants",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Daily Schedule (02:00)": {
+      "main": [[{ "node": "Fetch Hungarian Grants (Palyazatfigyelo API)", "type": "main", "index": 0 }]]
     },
-    "Fetch Grants": {
-      "main": [
-        [
-          {
-            "node": "Send to Supabase",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Fetch Hungarian Grants (Palyazatfigyelo API)": {
+      "main": [[{ "node": "Ingest to Supabase RAG (ingest-n8n-grants)", "type": "main", "index": 0 }]]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "f7d7fb37-5eb0-42ba-bd8e-3652c7c59800",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "cbefed786e6de3bb4db09eeec1c19b6af3a94ebfb8e4b868e80bc8da431afb86"
-  },
-  "id": "eJkQ7Y4oM3IuB6hC",
-  "tags": []
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": [{ "name": "p-search" }, { "name": "automation" }, { "name": "grants" }]
 }

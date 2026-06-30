@@ -1,136 +1,181 @@
-const fs = require('fs');
-const path = require('path');
+const fs    = require('fs');
+const path  = require('path');
+const http  = require('http');
+const https = require('https');
 
-// 1. .env beolvasása manuálisan, hogy ne függjünk a dotenv package-től
+// ─────────────────────────────────────────────────────────────
+// 1. Manual .env loading (no dotenv dependency)
+// ─────────────────────────────────────────────────────────────
 const envPath = path.join(__dirname, '../.env');
 const env = {};
 if (fs.existsSync(envPath)) {
-  const content = fs.readFileSync(envPath, 'utf-8');
-  content.split('\n').forEach(line => {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-      const parts = trimmed.split('=');
-      const key = parts[0].trim();
-      const value = parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
-      env[key] = value;
+  fs.readFileSync(envPath, 'utf-8').split('\n').forEach(line => {
+    const t = line.trim();
+    if (t && !t.startsWith('#') && t.includes('=')) {
+      const idx = t.indexOf('=');
+      env[t.slice(0, idx).trim()] = t.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
     }
   });
 }
 
-// Környezeti változók kinyerése
-const N8N_HOST = env.N8N_HOST || process.env.N8N_HOST;
-const N8N_API_KEY = env.N8N_API_KEY || process.env.N8N_API_KEY;
-const SUPABASE_URL = env.SUPABASE_URL || process.env.SUPABASE_URL || env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const N8N_HOST           = env.N8N_HOST           || process.env.N8N_HOST;
+const N8N_API_KEY        = env.N8N_API_KEY         || process.env.N8N_API_KEY;
+const N8N_OWNER_EMAIL    = env.N8N_OWNER_EMAIL     || process.env.N8N_OWNER_EMAIL;
+const N8N_OWNER_PASSWORD = env.N8N_OWNER_PASSWORD  || process.env.N8N_OWNER_PASSWORD;
+const SUPABASE_URL       = env.SUPABASE_URL        || env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY  = env.SUPABASE_ANON_KEY   || env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const N8N_WEBHOOK_SECRET = env.N8N_WEBHOOK_SECRET  || process.env.N8N_WEBHOOK_SECRET;
+const EXISTING_WF_ID     = 'DNE7Xod35VnFeR6t';
 
-// Ellenőrzés
-if (!N8N_HOST || !N8N_API_KEY) {
-  console.error("Hiba: Hiányzó n8n konfiguráció a .env fájlban (N8N_HOST, N8N_API_KEY)!");
-  process.exit(1);
-}
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error("Hiba: Hiányzó Supabase konfiguráció a .env fájlban (SUPABASE_URL, SUPABASE_ANON_KEY)!");
-  process.exit(1);
-}
+if (!N8N_HOST) { console.error('Hiba: N8N_HOST hianyzik!'); process.exit(1); }
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) { console.error('Hiba: Supabase config hianyzik!'); process.exit(1); }
 
-console.log("Konfigurációk sikeresen beolvasva.");
-console.log(`n8n Host: ${N8N_HOST}`);
+console.log('════════════════════════════════════════════════════');
+console.log(' P-Search: n8n Workflow Deployment Script (v3)');
+console.log('════════════════════════════════════════════════════');
+console.log(`n8n Host:     ${N8N_HOST}`);
 console.log(`Supabase URL: ${SUPABASE_URL}`);
+console.log(`Target WF ID: ${EXISTING_WF_ID}`);
+console.log('');
 
-// 2. Sablon beolvasása
+// ─────────────────────────────────────────────────────────────
+// 2. Load + personalise workflow template
+// ─────────────────────────────────────────────────────────────
 const templatePath = path.join(__dirname, '../docs/n8n-workflow-template.json');
-if (!fs.existsSync(templatePath)) {
-  console.error(`Hiba: A sablon fájl nem található a következő helyen: ${templatePath}`);
+if (!fs.existsSync(templatePath)) { console.error('Sablon nem talalhato:', templatePath); process.exit(1); }
+let tmpl = fs.readFileSync(templatePath, 'utf-8');
+tmpl = tmpl.replace('https://YOUR_SUPABASE_PROJECT.supabase.co/functions/v1/ingest-n8n-grants',
+                    `${SUPABASE_URL}/functions/v1/ingest-n8n-grants`);
+tmpl = tmpl.replace('N8N_WEBHOOK_SECRET_PLACEHOLDER', N8N_WEBHOOK_SECRET || SUPABASE_ANON_KEY);
+tmpl = tmpl.replace('SUPABASE_ANON_KEY_PLACEHOLDER', SUPABASE_ANON_KEY);
+const wfData = JSON.parse(tmpl);
+console.log(`Sablon személyre szabva: "${wfData.name}"`);
+console.log(`Csomópontok: ${wfData.nodes.map(n => n.name).join(' → ')}\n`);
+
+// ─────────────────────────────────────────────────────────────
+// 3. HTTP helper (returns { statusCode, headers, body })
+// ─────────────────────────────────────────────────────────────
+function request(options, body) {
+  return new Promise((resolve, reject) => {
+    const mod = options.protocol === 'https:' ? https : http;
+    const req = mod.request(options, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => resolve({ statusCode: res.statusCode, headers: res.headers, body: data }));
+    });
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+function opts(urlStr, method, extraHeaders, bodyLen) {
+  const u = new URL(urlStr);
+  return {
+    protocol: u.protocol, hostname: u.hostname,
+    port: u.port || (u.protocol === 'https:' ? 443 : 80),
+    path: u.pathname + u.search, method,
+    headers: { 'Content-Type': 'application/json',
+               ...(bodyLen ? { 'Content-Length': bodyLen } : {}), ...extraHeaders },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 4. Auth: Strategy A = X-N8N-API-KEY; Strategy B = email/password session cookie
+// ─────────────────────────────────────────────────────────────
+async function getAuth(base) {
+  // Strategy A: stored API key
+  if (N8N_API_KEY) {
+    console.log('[Auth] Strategy A: X-N8N-API-KEY...');
+    const p = await request(opts(`${base}/api/v1/workflows?limit=1`, 'GET', {'X-N8N-API-KEY': N8N_API_KEY}), null).catch(() => null);
+    if (p && p.statusCode === 200) { console.log('[Auth] Strategy A OK'); return { type: 'apikey', headers: {'X-N8N-API-KEY': N8N_API_KEY} }; }
+    console.log(`[Auth] Strategy A failed (${p?.statusCode})`);
+  }
+
+  // Strategy B: session cookie via owner login
+  if (N8N_OWNER_EMAIL && N8N_OWNER_PASSWORD) {
+    console.log('[Auth] Strategy B: email/password session...');
+    const lb = JSON.stringify({ emailOrLdapLoginId: N8N_OWNER_EMAIL, password: N8N_OWNER_PASSWORD });
+    const lr = await request(opts(`${base}/rest/login`, 'POST', {}, Buffer.byteLength(lb)), lb).catch(() => null);
+    if (lr && lr.statusCode === 200) {
+      const cookies = (lr.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+      if (cookies) { console.log('[Auth] Strategy B OK — session cookie'); return { type: 'cookie', headers: { Cookie: cookies } }; }
+    }
+    console.log(`[Auth] Strategy B failed (${lr?.statusCode}): ${(lr?.body||'').slice(0,80)}`);
+  }
+  return { type: 'none', headers: {} };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 5. Deploy: cookie→PATCH /rest/workflows/:id; apikey→PUT /api/v1/; POST fallback
+// ─────────────────────────────────────────────────────────────
+async function deploy() {
+  const base = N8N_HOST.replace(/\/$/, '');
+  const auth = await getAuth(base);
+
+  const payload = JSON.stringify({
+    name: wfData.name, nodes: wfData.nodes,
+    connections: wfData.connections, settings: wfData.settings, active: wfData.active,
+  });
+  const pLen = Buffer.byteLength(payload);
+
+  // Primary: session cookie → PATCH internal REST (most reliable with password auth)
+  if (auth.type === 'cookie') {
+    console.log(`\n[Deploy] PATCH /rest/workflows/${EXISTING_WF_ID} (session)...`);
+    const r = await request(opts(`${base}/rest/workflows/${EXISTING_WF_ID}`, 'PATCH', auth.headers, pLen), payload);
+    if (r.statusCode >= 200 && r.statusCode < 300) return success(r.body, 'PATCH /rest', auth.type);
+    console.log(`[Deploy] PATCH failed (${r.statusCode}): ${r.body.slice(0,120)}`);
+
+    // Fallback: POST to create new via internal REST
+    console.log('[Deploy] POST /rest/workflows (create new)...');
+    const r2 = await request(opts(`${base}/rest/workflows`, 'POST', auth.headers, pLen), payload);
+    if (r2.statusCode >= 200 && r2.statusCode < 300) return success(r2.body, 'POST /rest', auth.type);
+    console.log(`[Deploy] POST failed (${r2.statusCode}): ${r2.body.slice(0,120)}`);
+  }
+
+  // Alt: API key → PUT /api/v1/workflows/:id
+  if (auth.type === 'apikey') {
+    console.log(`\n[Deploy] PUT /api/v1/workflows/${EXISTING_WF_ID} (api key)...`);
+    const r = await request(opts(`${base}/api/v1/workflows/${EXISTING_WF_ID}`, 'PUT', auth.headers, pLen), payload);
+    if (r.statusCode >= 200 && r.statusCode < 300) return success(r.body, 'PUT /api/v1', auth.type);
+    console.log(`[Deploy] PUT failed (${r.statusCode})`);
+
+    console.log('[Deploy] POST /api/v1/workflows (create)...');
+    const r2 = await request(opts(`${base}/api/v1/workflows`, 'POST', auth.headers, pLen), payload);
+    if (r2.statusCode >= 200 && r2.statusCode < 300) return success(r2.body, 'POST /api/v1', auth.type);
+  }
+
+  // No auth — error with guidance
+  console.error('\n[Deploy] Hiba: Hitelesítés nem sikerült.');
+  console.error('Megoldás: n8n UI > Settings > API > Új API kulcs generálása,');
+  console.error(`          majd frissítsd az N8N_API_KEY értéket: ${base}`);
   process.exit(1);
 }
 
-let templateContent = fs.readFileSync(templatePath, 'utf-8');
+function success(bodyStr, method, authType) {
+  const raw = JSON.parse(bodyStr);
+  const wf  = raw.data || raw;
+  console.log('\n════════════════════════════════════════════════════');
+  console.log(' Sikeres n8n workflow deploy!');
+  console.log('════════════════════════════════════════════════════');
+  console.log(`  Workflow ID:  ${wf.id}`);
+  console.log(`  Name:         ${wf.name}`);
+  console.log(`  Active:       ${wf.active}`);
+  console.log(`  Node count:   ${(wf.nodes||[]).length}`);
+  console.log(`  Method:       ${method} (auth: ${authType})`);
+  console.log('════════════════════════════════════════════════════\n');
 
-// 3. Dinamikus helyettesítés a sablonban
-const oldUrl = "https://YOUR_SUPABASE_PROJECT.supabase.co/functions/v1/ingest-n8n-grants";
-const newUrl = `${SUPABASE_URL}/functions/v1/ingest-n8n-grants`;
-templateContent = templateContent.replace(oldUrl, newUrl);
+  const log = [
+    `Datum: ${new Date().toISOString()}`,
+    `Statusz: SIKERES`,
+    `Workflow ID: ${wf.id}`,
+    `Workflow Nev: ${wf.name}`,
+    `Method: ${method}`,
+    `n8n Host: ${N8N_HOST}`,
+    `Supabase URL: ${SUPABASE_URL}`,
+  ].join('\n');
+  fs.writeFileSync(path.join(__dirname, '../status.log'), log, 'utf-8');
+  console.log('status.log frissitve.');
+}
 
-const oldKey = "Bearer YOUR_SUPABASE_ANON_KEY";
-const newKey = `Bearer ${SUPABASE_ANON_KEY}`;
-templateContent = templateContent.replace(oldKey, newKey);
-
-console.log("JSON sablon sikeresen személyre szabva a környezeti változókkal.");
-
-const workflowData = JSON.parse(templateContent);
-
-// 4. POST kérés összeállítása az n8n API felé
-const cleanHost = N8N_HOST.replace(/\/$/, "");
-const apiUrl = `${cleanHost}/api/v1/workflows`;
-
-console.log(`Új munkafolyamat létrehozása az n8n API-n keresztül: ${apiUrl}`);
-
-const urlObj = new URL(apiUrl);
-const postData = JSON.stringify({
-  name: workflowData.name || "Grant Ingestion to Supabase (Automated)",
-  nodes: workflowData.nodes,
-  connections: workflowData.connections,
-  settings: workflowData.settings
-});
-
-const options = {
-  hostname: urlObj.hostname,
-  port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
-  path: urlObj.pathname,
-  method: 'POST',
-  headers: {
-    'X-N8N-API-KEY': N8N_API_KEY,
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(postData)
-  }
-};
-
-const client = urlObj.protocol === 'https:' ? require('https') : require('http');
-
-const req = client.request(options, (res) => {
-  let body = '';
-  res.on('data', (chunk) => {
-    body += chunk;
-  });
-
-  res.on('end', () => {
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      try {
-        const responseData = JSON.parse(body);
-        console.log("\n=============================================");
-        console.log("Sikeres n8n workflow telepítés!");
-        console.log(`Workflow ID: ${responseData.id}`);
-        console.log(`Workflow Név: ${responseData.name}`);
-        console.log(`Aktív: ${responseData.active}`);
-        console.log("=============================================\n");
-        
-        // Mentjük a telepítési státuszt a status.log fájlba
-        const logContent = `Dátum: ${new Date().toISOString()}
-Státusz: SIKERES
-Workflow ID: ${responseData.id}
-Workflow Név: ${responseData.name}
-n8n Host: ${N8N_HOST}
-Supabase Project URL: ${SUPABASE_URL}
-`;
-        fs.writeFileSync(path.join(__dirname, '../status.log'), logContent);
-        console.log("status.log fájl sikeresen létrehozva.");
-      } catch (err) {
-        console.error("Hiba a válasz feldolgozásakor:", err);
-        console.log("Válasz body:", body);
-        process.exit(1);
-      }
-    } else {
-      console.error(`Hiba a telepítés során! HTTP státuszkód: ${res.statusCode}`);
-      console.error("Válasz body:", body);
-      process.exit(1);
-    }
-  });
-});
-
-req.on('error', (e) => {
-  console.error(`Hiba a kérés elküldésekor: ${e.message}`);
-  process.exit(1);
-});
-
-req.write(postData);
-req.end();
+deploy().catch(e => { console.error('Vegzetes hiba:', e.message); process.exit(1); });

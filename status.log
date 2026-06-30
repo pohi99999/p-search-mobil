@@ -1,52 +1,7 @@
-=============================================================
-P-Search Mobil — Status Log
-Task: Phase 5, Step 3 — Master Document Base (Gemini OCR)
-Date: 2026-06-30T10:43:26+02:00
-=============================================================
-
-[✅] supabase/migrations/20260630120000_add_financial_metrics_to_profile.sql — CREATED
-     Változtatások:
-     - business_profiles: +net_revenue NUMERIC, +ebitda NUMERIC, +equity NUMERIC, +raw_ocr_json JSONB
-     - business_profiles RLS: összes policy frissítve (select auth.uid()) subquery-re
-     - Új tábla: financial_documents (tracking: pending/processing/completed/failed)
-     - financial_documents RLS: SELECT/INSERT/UPDATE policy-k (select auth.uid())
-     - Indexek: financial_documents_business_profile_id_idx, status_idx, net_revenue_idx
-
-[⏳] DB Migration — PENDING (Supabase projekt INACTIVE)
-     Teendő: https://supabase.com/dashboard → Projekt reaktiválás
-     Parancs: Get-Content supabase\migrations\20260630120000_add_financial_metrics_to_profile.sql | npx supabase db query --linked
-     VAGY: npx supabase db push --linked
-
-[✅] supabase/functions/process-master-document/index.ts — CREATED
-     Architektúra:
-     - POST /process-master-document: base64 fájl + business_profile_id fogadása
-     - JWT auth + ownership ellenőrzés (403 ha nem a user profilja)
-     - Elfogadott MIME típusok: image/jpeg, image/png, image/webp, application/pdf
-     - Gemini 2.5-flash Vision OCR: temperature=0.1, responseMimeType=json
-     - Kinyert mezők: net_revenue, ebitda, equity, employee_count, document_year,
-       extraction_confidence, notes
-     - business_profiles upsert: Service Role Key (RLS bypass)
-     - financial_documents életciklus: pending → processing → completed/failed
-
-[⏳] Edge Function Deploy — PENDING (Supabase projekt INACTIVE)
-     Teendő: Projekt reaktiválás után
-     Parancs: npx supabase functions deploy process-master-document
-
-[✅] scripts/test-process-master-document.js — CREATED
-     Használat: node scripts/test-process-master-document.js (projekt reaktiválása után)
-
-[✅] npx tsc --noEmit — PASSED (exit code 0, no errors)
-
-=============================================================
-FONTOS — Supabase Projekt Reaktivációs Lépések:
-1. Látogass el: https://supabase.com/dashboard/project/icextvgecinmhrhjtfcm
-2. Kattints a "Restore project" gombra (free tier szüneteltetés)
-3. Futtasd a migrációt: npx supabase db push --linked
-4. Deploy-old a function-t: npx supabase functions deploy process-master-document
-5. Teszteld: node scripts/test-process-master-document.js
-=============================================================
-Next Steps (Phase 5 continuation):
-- Step 4: Frontend DocumentUploadScreen (OCR feltöltési UI)
-- Step 5: Hybrid grant filter (mathematical scoring criteria)
-- Step 6: Automated document generation (PDF/docx templates)
-=============================================================
+Datum: 2026-06-30T09:20:07.685Z
+Statusz: SIKERES
+Workflow ID: DNE7Xod35VnFeR6t
+Workflow Nev: P-Search: Hungarian SME Grant Scraper & RAG Ingestion (v2)
+Method: PATCH /rest
+n8n Host: http://localhost:5678
+Supabase URL: https://icextvgecinmhrhjtfcm.supabase.co
