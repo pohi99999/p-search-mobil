@@ -1,0 +1,18 @@
+[CONDUCTOR NOTE]
+Task: Phase 5 / Step 2 — Monetization: Premium Paywall UI & Google Mobile Ads
+Date: 2026-06-30
+Status: COMPLETED
+
+Summary:
+- PaywallScreen.tsx: Added purchasing state + full-screen checkout overlay.
+  Updated 4 Premium Benefits (AI Grant Writer, OCR, PDF Export, Ad-free).
+  'LEGNEPSZERUBB' badge + '7 napos proba' note on package cards.
+  Buttons disabled while processing.
+- HomeScreen.tsx: Direct BannerAd/TestIds/BannerAdSize import from
+  react-native-google-mobile-ads. FlatListItem union type + isAdItem guard.
+  listData useMemo injects AdItem between card[0] and card[1] for !isPro users.
+  renderItem handles both MatchWithGrant and AdItem (BannerAd TestIds.BANNER).
+- npx tsc --noEmit: PASSED (0 errors)
+- status.log regenerated, GEMINI.md updated
+
+Next: Phase 5, Step 3 — Master Document Base (OCR upload flow)
