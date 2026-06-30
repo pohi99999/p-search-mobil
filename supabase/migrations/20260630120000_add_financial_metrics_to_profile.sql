@@ -68,7 +68,7 @@ CREATE POLICY "Users can update own business profile"
 
 -- 3. Create financial_documents table (document upload tracking + OCR audit log)
 CREATE TABLE IF NOT EXISTS public.financial_documents (
-  id                  UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   business_profile_id UUID REFERENCES public.business_profiles(id) ON DELETE CASCADE NOT NULL,
   file_name           TEXT NOT NULL,
   document_type       TEXT DEFAULT 'balance_sheet' NOT NULL
