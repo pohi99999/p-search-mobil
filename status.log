@@ -1,3 +1,18 @@
+Datum: 2026-07-01T08:26:45.000Z
+Statusz: SIKERES
+Feladat: Fazis 5 / 5. Lepes - Database Performance Hardening & Production Indexing
+Migracio: 20260701100000_perf_rls_indexing.sql
+Indexek:
+  - idx_action_tasks_plan_id_fk (action_tasks.plan_id)
+  - idx_action_plans_business_profile_id_match_id_fk (action_plans.business_profile_id, match_id)
+  - idx_financial_documents_business_profile_id_status_fk (financial_documents.business_profile_id, processing_status)
+  - idx_business_profiles_user_id_fk (business_profiles.user_id)
+Deployment: npx supabase db push --linked -> SIKERES
+Tipusellenorzes: npx tsc --noEmit -> 0 hiba
+Supabase URL: https://icextvgecinmhrhjtfcm.supabase.co
+
+---
+
 Datum: 2026-06-30T09:20:07.685Z
 Statusz: SIKERES
 Workflow ID: DNE7Xod35VnFeR6t

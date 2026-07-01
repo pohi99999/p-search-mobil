@@ -24,6 +24,12 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 - **2026. 06. 10. (Monetizáció & Google Play):**
   - **EAS Build:** Beállítottuk az Expo EAS szolgáltatást, elkészült az első belső tesztelésre szánt Android `.aab` fájl.
   - **Google Play Console:** Létrehoztuk a Google Play API hozzáférést (Service Account), és feltöltöttük a legelső belső teszt verziót. Ezzel a jövőbeli automata CI/CD folyamatokhoz lefektettük az alapokat.
+- **2026. 07. 01. (Fázis 5, 5. Lépés — Database Performance Hardening & Production Indexing):**
+  - **Qodo Code Review megállapítás:** A `action_tasks`, `action_plans` és `financial_documents` táblákon futó egymásba ágyazott RLS policy-ellenőrzések (`(select auth.uid())` gyökérkiértékeléssel) nem rendelkeztek teljeskörű indexeléssel a szűrt/join oszlopokon, ami éles környezetben full-table scan-eket okozhatott volna.
+  - **Új migráció (`20260701100000_perf_rls_indexing.sql`):** Létrehoztunk négy, nem blokkoló (`CREATE INDEX IF NOT EXISTS`) indexet: `idx_action_tasks_plan_id_fk` (`action_tasks.plan_id`), `idx_action_plans_business_profile_id_match_id_fk` (`action_plans(business_profile_id, match_id)` composite), `idx_financial_documents_business_profile_id_status_fk` (`financial_documents(business_profile_id, processing_status)` composite), valamint `idx_business_profiles_user_id_fk` (`business_profiles.user_id`) — ez utóbbi az összes tenant-szintű RLS lánc gyökér-ellenőrzését gyorsítja fel.
+  - **Deployment:** `npx supabase db push --linked` sikeresen lefutott az élő, linkelt Supabase felhő adatbázison.
+  - **Típusellenőrzés:** `npx tsc --noEmit` — 0 hiba, a kliensoldali típusokat és konfigurációt nem érintette az indexelés.
+  - **Git Note & Commit:** Conductor-kompatibilis commit és git note hozzáadva, `status.log` regenerálva.
 - **2026. 06. 15. (Fázis 5 - Monetizáció és Google Play Publikálás lezárása):**
   - **AdMob integráció:** Elkészítettük az `AdBanner` komponenst a HomeScreen és az OnboardingScreen alján, és a `useInterstitialAd` hookot a dokumentumgenerálás előtti átvezető hirdetésekhez (ingyenes felhasználóknak).
   - **RevenueCat IAP:** Beállítottuk a BillingContext-et a Purchases konfigurációjával, és felépítettük a prémium PaywallScreen felületet előfizetéssel és korábbi tranzakciók visszaállításával.
