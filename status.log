@@ -1,3 +1,23 @@
+Datum: 2026-07-01T08:53:00.000Z
+Statusz: RESZBEN SIKERES (web export kesz, Vercel deploy manualis hitelesitest igenyel)
+Feladat: Fazis 5 / 2. Lepes - Expo Web Export and Vercel Deployment Configuration
+Javitasok:
+  - .env: veletlenul bekerult rendszer PATH valtozo eltavolitva (blokkolta az exportot)
+  - app.json: web.output "static" -> "single" (nincs expo-router fuggoseg)
+  - metro.config.js: react-native-google-mobile-ads -> src/lib/mobileAdsWebStub.ts web platformon
+Export eredmeny: npx expo export -p web -> SIKERES, dist/ (index.html, _expo/static/js/web, assets)
+Vercel config: vercel.json letrehozva (SPA rewrites minden route -> /index.html, cache headerek, buildCommand/outputDirectory)
+Vercel CLI: telepitve (vercel@54.18.6), NINCS helyi bejelentkezes -> vercel --prod NEM lett futtatva
+  Manualis Vercel projekt parameterek:
+    Framework Preset: Other
+    Build Command: npx expo export -p web
+    Output Directory: dist
+    Install Command: npm install
+Tipusellenorzes: npx tsc --noEmit -> 0 hiba
+Commit: 1330b2ed38cb4ecde65c5b7437db696e3ba8aec1
+
+---
+
 Datum: 2026-07-01T08:46:34.000Z
 Statusz: SIKERES (build sorban all - EAS felhoben fut)
 Feladat: Fazis 5 / 1. Lepes - EAS Android Preview Build kivaltasa

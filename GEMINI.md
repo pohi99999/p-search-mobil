@@ -21,6 +21,16 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 07. 01. (Fázis 5 / 2. Lépés — Expo Web Export & Vercel SPA Konfiguráció):**
+  - **`.env` hibajavítás:** A helyi (git által figyelmen kívül hagyott) `.env` fájlba véletlenül belekerült a teljes Windows rendszer `PATH` változója, ami az Expo "dangerous environment variables" védelmét aktiválta és leállította az exportot. Eltávolítottuk az érintett sort, a többi változó változatlan maradt.
+  - **`app.json` javítás:** A `web.output: "static"` beállítás az `expo-router`-t feltételezi és annak statikus renderelési láncát indítja el — ez a projekt viszont `@react-navigation/native-stack`-et használ (nincs `expo-router` függőség), ezért a build elhasalt. Átállítottuk `"single"`-re, ami a klasszikus SPA kimenetet adja.
+  - **`metro.config.js` létrehozva:** A natív `react-native-google-mobile-ads` csomag (`App.tsx`, `AdBanner.tsx`, `HomeScreen.tsx`, `useInterstitialAd.ts`) `codegenNativeComponent` importja nem oldható fel weben, ezért egy Metro resolver override-dal web platformon egy új, biztonságos stub modulra (`src/lib/mobileAdsWebStub.ts`) irányítjuk (BannerAd/BannerAdSize/TestIds/InterstitialAd/AdEventType/mobileAds() no-op megvalósítások).
+  - **Sikeres export:** `npx expo export -p web` → tiszta `dist/` mappa (`.gitignore`-olt): `index.html`, `_expo/static/js/web` bundle, assetek.
+  - **`vercel.json` létrehozva:** SPA rewrite szabály (minden útvonal → `/index.html`), hogy az almappák (pl. `/paywall`, `/action-plan`) frissítésekor ne dobjon 404-et Vercel-en; `_expo/static` asseteknek immutable cache header; `buildCommand`/`outputDirectory` az Expo web exportra állítva.
+  - **Vercel CLI:** telepítve (`vercel@54.18.6`), de nincs helyi bejelentkezés (`vercel whoami` sikertelen) — interaktív hitelesítést igényelne, ezért nem futtattunk `vercel --prod`-ot; helyette dokumentáltuk a kézi Vercel projekt-konfigurációt (Framework: Other, Build Command: `npx expo export -p web`, Output Directory: `dist`, Install Command: `npm install`).
+  - **Típusellenőrzés:** `npx tsc --noEmit` — 0 hiba.
+  - **Git:** Commit `1330b2e`, Conductor git note csatolva.
+
 - **2026. 07. 01. (Fázis 5 / 1. Lépés — EAS Android Preview Build kiváltása):**
   - **eas.json javítás:** A `submit.production.ios` szekció üres string mezői (`appleId`, `ascAppId`, `appleTeamId`) érvénytelenné tették az `eas.json`-t (`"is not allowed to be empty"` séma hiba), ez blokkolt minden `eas build`/`submit` parancsot. Eltávolítottuk az üres iOS submit blokkot — az Android submit konfiguráció (`serviceAccountKeyPath`, `track: internal`) változatlan maradt. Az iOS submit majd a valós Apple Developer hitelesítő adatok beszerzése után kerül vissza.
   - **Build profil ellenőrzés:** Megerősítettük, hogy a `preview` profil Androidra `"buildType": "apk"`-t használ (helyi/preview telepítéshez ideális, ellentétben a `production` profil `app-bundle` kimenetével).
