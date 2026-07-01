@@ -3,7 +3,7 @@ import { RootStackParamList } from "../types/navigation";
 import React, { useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { Text, Button, Card, useTheme, ActivityIndicator, IconButton, List } from 'react-native-paper';
+import { Text, Button, Card, useTheme, ActivityIndicator, IconButton, List, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
 
@@ -12,6 +12,9 @@ export const PaywallScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [purchasing, setPurchasing] = useState(false);
+  const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const handlePurchase = async (pkg: PurchasesPackage) => {
     setPurchasing(true);
@@ -114,6 +117,19 @@ export const PaywallScreen = () => {
         </Card.Content>
       </Card>
 
+      <Banner
+        visible={ocrConfidence === 'low'}
+        actions={[
+          {
+            label: 'Újra fotózom',
+            onPress: () => setOcrConfidence(null),
+          },
+        ]}
+        icon="alert"
+      >
+        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
+      </Banner>
+
       {isLoading && !purchasing ? (
         <ActivityIndicator size="large" color="#1A237E" style={styles.loader} />
       ) : (
@@ -198,6 +214,14 @@ export const PaywallScreen = () => {
         </View>
       </View>
     )}
+
+    <Snackbar
+      visible={!!uploadError}
+      onDismiss={() => setUploadError(null)}
+      duration={3000}
+    >
+      {uploadError}
+    </Snackbar>
   </View>
   );
 };

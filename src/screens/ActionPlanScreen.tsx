@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox, ActivityIndicator } from 'react-native-paper';
+import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox, ActivityIndicator, Banner } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
@@ -17,6 +17,9 @@ export function ActionPlanScreen({ route, navigation }: { route: ActionPlanScree
   const [generating, setGenerating] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const { showAdIfAvailable } = useInterstitialAd();
 
@@ -118,6 +121,19 @@ export function ActionPlanScreen({ route, navigation }: { route: ActionPlanScree
         <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>
         <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>
+
+      <Banner
+        visible={ocrConfidence === 'low'}
+        actions={[
+          {
+            label: 'Újra fotózom',
+            onPress: () => setOcrConfidence(null),
+          },
+        ]}
+        icon="alert"
+      >
+        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
+      </Banner>
 
       {error && (
         <Surface style={styles.errorBanner} elevation={1}>
