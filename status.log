@@ -1,3 +1,20 @@
+Datum: 2026-07-01T09:02:54.000Z
+Statusz: RESZBEN SIKERES (lockfile javitva, uj build sorban all)
+Feladat: Fazis 5 - EAS Android Build helyreallitas (package-lock.json szinkronizalas)
+Hiba: EAS remote build (6653aa74-...) elhasalt npm ci lockfile-desszinkronizacioval - hianyzo @emnapi/core, @emnapi/runtime, @emnapi/wasi-threads bejegyzesek
+Javitas: npm install -> package-lock.json szinkronizalva; npm ci helyben megerositve (37 sor valtozott a lockfile-ban)
+Tipusellenorzes: npx tsc --noEmit -> 0 hiba
+Commit: f4a7eadbe4e9099a1f8e36529b4f5a34acf32a3d
+Uj build:
+  Build ID: 53279d18-6675-452d-b86f-b71b7b1dc8c3
+  Profil: preview (android apk)
+  Commit: f4a7eadbe4e9099a1f8e36529b4f5a34acf32a3d
+  Log URL: https://expo.dev/accounts/pohi9999/projects/p-search/builds/53279d18-6675-452d-b86f-b71b7b1dc8c3
+  Statusz monitorozaskor: in queue (EAS free-tier sorban allas)
+Inditotta: pohi9999
+
+---
+
 Datum: 2026-07-01T08:53:00.000Z
 Statusz: RESZBEN SIKERES (web export kesz, Vercel deploy manualis hitelesitest igenyel)
 Feladat: Fazis 5 / 2. Lepes - Expo Web Export and Vercel Deployment Configuration

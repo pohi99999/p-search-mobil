@@ -21,6 +21,17 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 07. 01. (Fázis 5 — EAS Android Build helyreállítás: package-lock.json szinkronizálás):**
+  - **Hiba:** A felhőben futó EAS Android preview build (`6653aa74-...`) elhasalt a függőségtelepítési fázisban `npm ci` lockfile-desszinkronizációval — hiányzó `@emnapi/core`, `@emnapi/runtime`, `@emnapi/wasi-threads` bejegyzések a `package-lock.json`-ban (a `@unrs/resolver-binding-wasm32-wasi` tranzitív, opcionális wasm résztvevője miatt).
+  - **Javítás:** `npm install` lefuttatva a `package-lock.json` teljes szinkronizálásához, majd `npm ci`-vel (ugyanaz a telepítési stratégia, mint az EAS felhőben) helyben is megerősítve, hogy tiszta telepítés fut le.
+  - **Verifikáció:** `npx tsc --noEmit` — 0 hiba (nincs fordítási regresszió a lockfile frissítés miatt).
+  - **Git:** Commit `f4a7ead` — *"chore(deps): Sync package-lock.json to resolve remote EAS npm ci mismatch"*, pusholva `master`-re.
+  - **Új build kiváltva:** `npx eas build --platform android --profile preview --non-interactive --no-wait`
+    - **Build ID:** `53279d18-6675-452d-b86f-b71b7b1dc8c3`
+    - **Log/Dashboard URL:** https://expo.dev/accounts/pohi9999/projects/p-search/builds/53279d18-6675-452d-b86f-b71b7b1dc8c3
+    - **Commit:** `f4a7eadbe4e9099a1f8e36529b4f5a34acf32a3d`
+    - **Státusz:** a build a monitorozás alatt `in queue` maradt (EAS free-tier sorban állás, hosszabb is lehet) — a dashboard linken követhető, amint elindul a telepítési fázis.
+
 - **2026. 07. 01. (Fázis 5 / 2. Lépés — Expo Web Export & Vercel SPA Konfiguráció):**
   - **`.env` hibajavítás:** A helyi (git által figyelmen kívül hagyott) `.env` fájlba véletlenül belekerült a teljes Windows rendszer `PATH` változója, ami az Expo "dangerous environment variables" védelmét aktiválta és leállította az exportot. Eltávolítottuk az érintett sort, a többi változó változatlan maradt.
   - **`app.json` javítás:** A `web.output: "static"` beállítás az `expo-router`-t feltételezi és annak statikus renderelési láncát indítja el — ez a projekt viszont `@react-navigation/native-stack`-et használ (nincs `expo-router` függőség), ezért a build elhasalt. Átállítottuk `"single"`-re, ami a klasszikus SPA kimenetet adja.
