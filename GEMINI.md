@@ -21,6 +21,16 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 07. 01. (Fázis 5 / 1. Lépés — EAS Android Preview Build kiváltása):**
+  - **eas.json javítás:** A `submit.production.ios` szekció üres string mezői (`appleId`, `ascAppId`, `appleTeamId`) érvénytelenné tették az `eas.json`-t (`"is not allowed to be empty"` séma hiba), ez blokkolt minden `eas build`/`submit` parancsot. Eltávolítottuk az üres iOS submit blokkot — az Android submit konfiguráció (`serviceAccountKeyPath`, `track: internal`) változatlan maradt. Az iOS submit majd a valós Apple Developer hitelesítő adatok beszerzése után kerül vissza.
+  - **Build profil ellenőrzés:** Megerősítettük, hogy a `preview` profil Androidra `"buildType": "apk"`-t használ (helyi/preview telepítéshez ideális, ellentétben a `production` profil `app-bundle` kimenetével).
+  - **EAS Build kiváltva:** `npx eas build --platform android --profile preview --non-interactive --no-wait` — sikeresen elindítva a felhőben, bejelentkezve mint `pohi9999`.
+    - **Build ID:** `6653aa74-43e6-41ea-a34e-e37c7875d19f`
+    - **Státusz (indításkor):** in queue
+    - **Log/Dashboard URL:** https://expo.dev/accounts/pohi9999/projects/p-search/builds/6653aa74-43e6-41ea-a34e-e37c7875d19f
+    - **SDK:** 56.0.0, Version 1.0.0, Version code 3, Commit `e903d383...`
+  - **Cél:** A Gemini OCR (Master Document Base) és a Paywall/AdMob változtatások helyi Android APK-n történő tesztelése.
+
 - **2026. 06. 10. (Monetizáció & Google Play):**
   - **EAS Build:** Beállítottuk az Expo EAS szolgáltatást, elkészült az első belső tesztelésre szánt Android `.aab` fájl.
   - **Google Play Console:** Létrehoztuk a Google Play API hozzáférést (Service Account), és feltöltöttük a legelső belső teszt verziót. Ezzel a jövőbeli automata CI/CD folyamatokhoz lefektettük az alapokat.

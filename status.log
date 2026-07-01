@@ -1,3 +1,18 @@
+Datum: 2026-07-01T08:46:34.000Z
+Statusz: SIKERES (build sorban all - EAS felhoben fut)
+Feladat: Fazis 5 / 1. Lepes - EAS Android Preview Build kivaltasa
+Javitas: eas.json submit.production.ios ures string mezoi eltavolitva (sema validacios hiba miatt blokkolva volt minden eas parancs)
+Build profil: preview (android.buildType: apk)
+Build ID: 6653aa74-43e6-41ea-a34e-e37c7875d19f
+Statusz inditaskor: in queue
+Log URL: https://expo.dev/accounts/pohi9999/projects/p-search/builds/6653aa74-43e6-41ea-a34e-e37c7875d19f
+SDK Version: 56.0.0
+Version / Version code: 1.0.0 / 3
+Commit: e903d3830fc27907ef3c29fe87706a4d6adfe266
+Inditotta: pohi9999
+
+---
+
 Datum: 2026-07-01T08:40:00.000Z
 Statusz: SIKERES (reszleges - lasd megjegyzes)
 Feladat: Fazis 6 - Jules aszinkron munkajanak integralasa (OCR fallback banner, Snackbar tisztitas)
