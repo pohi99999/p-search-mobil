@@ -24,6 +24,14 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 - **2026. 06. 10. (Monetizáció & Google Play):**
   - **EAS Build:** Beállítottuk az Expo EAS szolgáltatást, elkészült az első belső tesztelésre szánt Android `.aab` fájl.
   - **Google Play Console:** Létrehoztuk a Google Play API hozzáférést (Service Account), és feltöltöttük a legelső belső teszt verziót. Ezzel a jövőbeli automata CI/CD folyamatokhoz lefektettük az alapokat.
+- **2026. 07. 01. (Fázis 6 — Jules aszinkron munkájának integrálása: OCR fallback banner & Snackbar tisztítás):**
+  - **Integráció:** A `jules_session_11143774421442787145/` ideiglenes mappából beemeltük Jules módosításait az `ActionPlanScreen.tsx` és `PaywallScreen.tsx` fájlokba: `react-native-paper` `Banner` komponens és `ocrConfidence`/`uploadError`/`uploading` state hozzáadva mindkét képernyőhöz, alacsony OCR-megbízhatóság esetén megjelenő figyelmeztető sávval ("Újra fotózom" akció gombbal).
+  - **Kódhigiénia:** A `PaywallScreen.tsx`-ben a Jules `patch_screens.sh` sed-szkriptje 5 duplikált `<Snackbar>` blokkot hagyott hátra, és hiányoztak a `Banner`/`Snackbar` importok (fordítási hibát okozva). Egyetlen, az `uploadError`-hoz kötött `Snackbar`-ra konszolidáltuk, és pótoltuk a hiányzó importokat.
+  - **Megjegyzés:** A munkakönyvtár ténylegesen csak a két képernyő fájlt tartalmazta — az ígért adatbázis trigger migráció és a `useActionPlan.test.ts` teszt nem volt jelen, így ezek integrálása elmaradt ebben a körben.
+  - **Takarítás:** A `jules_session_11143774421442787145/` mappát töröltük (a `tsc --noEmit` hatókörét szennyezte feloldhatatlan relatív importokkal).
+  - **Verifikáció:** `npx tsc --noEmit` — 0 hiba; `npx jest` — 5/5 teszt sikeres (`documentGenerator.test.ts`).
+  - **Git:** Commit `b853b6f`, Conductor git note csatolva, pusholva `master`-re és `refs/notes/commits`-ra.
+
 - **2026. 07. 01. (Fázis 5, 5. Lépés — Database Performance Hardening & Production Indexing):**
   - **Qodo Code Review megállapítás:** A `action_tasks`, `action_plans` és `financial_documents` táblákon futó egymásba ágyazott RLS policy-ellenőrzések (`(select auth.uid())` gyökérkiértékeléssel) nem rendelkeztek teljeskörű indexeléssel a szűrt/join oszlopokon, ami éles környezetben full-table scan-eket okozhatott volna.
   - **Új migráció (`20260701100000_perf_rls_indexing.sql`):** Létrehoztunk négy, nem blokkoló (`CREATE INDEX IF NOT EXISTS`) indexet: `idx_action_tasks_plan_id_fk` (`action_tasks.plan_id`), `idx_action_plans_business_profile_id_match_id_fk` (`action_plans(business_profile_id, match_id)` composite), `idx_financial_documents_business_profile_id_status_fk` (`financial_documents(business_profile_id, processing_status)` composite), valamint `idx_business_profiles_user_id_fk` (`business_profiles.user_id`) — ez utóbbi az összes tenant-szintű RLS lánc gyökér-ellenőrzését gyorsítja fel.
