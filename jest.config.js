@@ -1,8 +1,14 @@
-/** @type {import("jest").Config} */
 module.exports = {
-  preset: "ts-jest",
-  testEnvironment: "node",
+  preset: 'react-native',
+  transformIgnorePatterns: [
+    'node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg))'
+  ],
+  setupFilesAfterEnv: [],
+  testEnvironment: 'node',
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.jest.json" }],
+    '^.+\\.(ts|tsx|js|jsx)$': 'babel-jest',
+  },
+  moduleNameMapper: {
+    '^test-renderer$': 'react-test-renderer',
   },
 };
