@@ -15,7 +15,7 @@ type FlatListItem = MatchWithGrant | AdItem;
 const isAdItem = (item: FlatListItem): item is AdItem =>
   'type' in item && (item as AdItem).type === 'ad';
 
-const N8N_WEBHOOK_URL = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'http://10.0.2.2:5678/webhook/p-search-onboarding';
+import { N8N_WEBHOOK_URL } from "../config/constants";
 
 import { RootStackNavigationProp } from '../types/navigation';
 
