@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
+import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
 
-// API Keys - Should be replaced with actual keys via environment variables or Constants
-const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
-const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
 
 interface BillingContextType {
   isPro: boolean;
