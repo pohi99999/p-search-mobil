@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
+import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 
 // API Keys - Should be replaced with actual keys via environment variables or Constants
 const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
@@ -109,8 +109,9 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsLoading(true);
       const { customerInfo } = await Purchases.purchasePackage(pack);
       checkProStatus(customerInfo);
-    } catch (e: any) {
-      if (!e.userCancelled) {
+    } catch (e: unknown) {
+      const isCancelled = typeof e === 'object' && e !== null && ((e as any).code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || (e as any).userCancelled);
+      if (!isCancelled) {
         console.error('Error purchasing package:', e instanceof Error ? e.message : String(e));
         // Here you might want to show an alert to the user
       }
