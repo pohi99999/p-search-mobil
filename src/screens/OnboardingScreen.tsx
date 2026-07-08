@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { AdBanner } from '../components/AdBanner';
 
 import { RootStackNavigationProp } from '../types/navigation';
+import { N8N_WEBHOOK_URL } from '../config/constants';
 
 export function OnboardingScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const [loading, setLoading] = useState(false);
@@ -18,9 +19,6 @@ export function OnboardingScreen({ navigation }: { navigation: RootStackNavigati
     yearly_revenue: '',
     goals: '',
   });
-
-  // NOTE: Replace with the actual n8n production URL in production!
-  const N8N_WEBHOOK_URL = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'http://10.0.2.2:5678/webhook/p-search-onboarding';
 
   const handleSave = async () => {
     if (!form.company_name) {
