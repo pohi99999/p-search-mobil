@@ -20,6 +20,7 @@ export function OnboardingScreen({ navigation }: { navigation: RootStackNavigati
     goals: '',
   });
 
+
   const handleSave = async () => {
     if (!form.company_name) {
       setError('A cégnév megadása kötelező!');

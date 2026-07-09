@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { useBilling } from '../context/BillingContext';
-
-// Google Play hivatalos teszt Interstitial ID
-const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-3940256099942544/1033173712';
+import { INTERSTITIAL_AD_UNIT_ID } from '../config/env';
 
 export const useInterstitialAd = () => {
   const { isPro } = useBilling();

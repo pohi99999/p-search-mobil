@@ -3,10 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { Surface } from 'react-native-paper';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 import { useBilling } from '../context/BillingContext';
+import { BANNER_AD_UNIT_ID } from '../config/env';
 
 // Google Play hivatalos teszt Banner ID
-const BANNER_AD_UNIT_ID = 'ca-app-pub-3940256099942544/6300978111';
-
 export const AdBanner: React.FC = () => {
   const { isPro } = useBilling();
   const [adFailed, setAdFailed] = useState(false);
