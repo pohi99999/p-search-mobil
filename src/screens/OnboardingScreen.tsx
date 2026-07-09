@@ -3,11 +3,14 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { AdBanner } from '../components/AdBanner';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
-import { RootStackNavigationProp } from '../types/navigation';
 import { N8N_WEBHOOK_URL } from '../config/constants';
 
-export function OnboardingScreen({ navigation }: { navigation: RootStackNavigationProp }) {
+type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+
+export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenNavigationProp }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
