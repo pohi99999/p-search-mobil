@@ -13,8 +13,7 @@ import { PaywallScreen } from './src/screens/PaywallScreen';
 import { ActionPlanScreen } from './src/screens/ActionPlanScreen';
 import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
 import { BillingProvider } from './src/context/BillingContext';
-
-import { RootStackParamList } from './src/types/navigation';
+import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
