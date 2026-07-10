@@ -36,17 +36,21 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('business_profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+      const [
+        { data: profileData, error: profileError },
+        { data: userData }
+      ] = await Promise.all([
+        supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single(),
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+      ]);
         
       if (userData) {
         setUserProfile(userData as UserProfile);
