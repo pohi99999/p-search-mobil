@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
@@ -131,7 +131,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
     }
   };
 
-  const renderMessageItem = ({ item }: { item: Message }) => {
+  const renderMessageItem = useCallback(({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     const isError = item.id.startsWith('err-');
     
@@ -176,7 +176,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         </Surface>
       </View>
     );
-  };
+  }, []);
 
   return (
     <KeyboardAvoidingView 
