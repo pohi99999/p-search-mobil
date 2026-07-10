@@ -26,7 +26,15 @@ export const useActionPlan = (businessProfileId?: string) => {
         setPlans(plansData);
 
         // 2. Lekérdezzük a feladatokat az összes tervhez
-        const planIds = plansData.map(p => p.id);
+        const planIds: string[] = [];
+        const tasksMap: Record<string, ActionTask[]> = {};
+
+        for (let i = 0; i < plansData.length; i++) {
+          const id = plansData[i].id;
+          planIds.push(id);
+          tasksMap[id] = [];
+        }
+
         const { data: tasksData, error: tasksError } = await supabase
           .from('action_tasks')
           .select('*')
@@ -36,17 +44,14 @@ export const useActionPlan = (businessProfileId?: string) => {
         if (tasksError) throw tasksError;
 
         // Csoportosítjuk a feladatokat plan_id szerint
-        const tasksMap: Record<string, ActionTask[]> = {};
-        planIds.forEach(id => {
-          tasksMap[id] = [];
-        });
-        
         if (tasksData) {
-          tasksData.forEach((task: ActionTask) => {
-            if (tasksMap[task.plan_id]) {
-              tasksMap[task.plan_id].push(task);
+          for (let i = 0; i < tasksData.length; i++) {
+            const task = tasksData[i];
+            const arr = tasksMap[task.plan_id];
+            if (arr) {
+              arr.push(task);
             }
-          });
+          }
         }
         setTasks(tasksMap);
       } else {
