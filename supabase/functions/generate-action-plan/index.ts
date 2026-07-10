@@ -39,24 +39,31 @@ serve(async (req) => {
       });
     }
 
-    // 1. Megpróbáljuk lekérni a cég adatait
-    const { data: businessData, error: businessError } = await supabaseClient
+    // 1 & 2. Párhuzamosan megpróbáljuk lekérni a cég és a pályázat adatait
+    const businessPromise = supabaseClient
       .from('business_profiles')
       .select('*')
       .eq('id', business_profile_id)
       .single();
 
+    const matchPromise = match_id
+      ? supabaseClient
+          .from('grant_matches')
+          .select('*, grants(*)')
+          .eq('id', match_id)
+          .single()
+      : Promise.resolve({ data: null, error: null });
+
+    const [businessResult, matchResult] = await Promise.all([businessPromise, matchPromise]);
+
+    const { data: businessData, error: businessError } = businessResult;
     if (businessError) throw businessError;
 
-    // 2. Megpróbáljuk lekérni a pályázat (match) adatait, ha meg van adva
     let grantTitle = 'Pályázati Felkészülési Terv';
     let grantData = null;
+
     if (match_id) {
-      const { data: matchData, error: matchError } = await supabaseClient
-        .from('grant_matches')
-        .select('*, grants(*)')
-        .eq('id', match_id)
-        .single();
+      const { data: matchData, error: matchError } = matchResult;
       
       if (matchError || !matchData) {
         return new Response(JSON.stringify({ error: 'A megadott pályázati egyezés nem található' }), {
