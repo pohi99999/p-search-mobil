@@ -8,6 +8,8 @@ import { generateAndSharePDF } from '../utils/documentGenerator';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
 import type { ActionPlanScreenProps } from "../types/navigation";
+import { getErrorMessage } from '../utils/errorUtils';
+
 
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const matchId = route?.params?.matchId;
@@ -174,7 +176,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                       setSnackbarMessage('Akcióterv sikeresen legenerálva!');
                       setSnackbarVisible(true);
                     } catch (err: unknown) {
-                      setSnackbarMessage((err instanceof Error ? err.message : String(err)) || 'Hiba történt a generálás során.');
+                      setSnackbarMessage(getErrorMessage(err) || 'Hiba történt a generálás során.');
                       setSnackbarVisible(true);
                     } finally {
                       setGenerating(false);
@@ -260,7 +262,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                             `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
                           );
                         } catch (err: unknown) {
-                          alert('PDF megnyitási hiba: ' + (err instanceof Error ? err.message : String(err)));
+                          alert('PDF megnyitási hiba: ' + getErrorMessage(err));
                         }
                       }}
                       style={[styles.pdfButton, { marginRight: 8 }]}
@@ -299,7 +301,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                           // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
                           refetch();
                         } catch (err: unknown) {
-                          alert('PDF hiba: ' + (err instanceof Error ? err.message : String(err)));
+                          alert('PDF hiba: ' + getErrorMessage(err));
                         } finally {
                           setPdfLoading(false);
                         }

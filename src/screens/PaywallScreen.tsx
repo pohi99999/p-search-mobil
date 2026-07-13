@@ -6,6 +6,8 @@ import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, Button, Card, useTheme, ActivityIndicator, IconButton, List, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
+import { getErrorMessage } from '../utils/errorUtils';
+
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
@@ -21,7 +23,7 @@ export const PaywallScreen = () => {
     try {
       await purchasePackage(pkg);
     } catch (err: unknown) {
-      alert('Vásárlási hiba: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Vásárlási hiba: ' + getErrorMessage(err));
     } finally {
       setPurchasing(false);
     }
@@ -33,7 +35,7 @@ export const PaywallScreen = () => {
       await restorePurchases();
       alert('Vásárlások sikeresen ellenőrizve!');
     } catch (err: unknown) {
-      alert('Visszaállítási hiba: ' + (err instanceof Error ? err.message : String(err)));
+      alert('Visszaállítási hiba: ' + getErrorMessage(err));
     } finally {
       setPurchasing(false);
     }
