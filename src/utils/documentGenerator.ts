@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { getErrorMessage } from './error';
 
 /**
  * Generál egy PDF fájlt a megadott HTML tartalomból, majd megnyitja a natív megosztási ablakot.
@@ -28,6 +29,6 @@ export async function generateAndSharePDF(htmlContent: string, fileName: string)
 
   } catch (error: unknown) {
     console.error('Hiba történt a PDF generálása vagy megosztása során:', error);
-    throw new Error((error instanceof Error ? error.message : String(error)) || 'Nem sikerült előállítani vagy megosztani a PDF dokumentumot.');
+    throw new Error((getErrorMessage(error)) || 'Nem sikerült előállítani vagy megosztani a PDF dokumentumot.');
   }
 }

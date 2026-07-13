@@ -6,6 +6,7 @@ import { BusinessProfile } from '../types/database';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { getErrorMessage } from '../utils/error';
 
 
 interface Message {
@@ -115,9 +116,9 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       setMessages(prev => [...prev, aiResponse]);
     } catch (err: unknown) {
       console.error('Chat error details:', err);
-      const errorMessageText = (err instanceof Error ? err.message : String(err))?.includes('Sajnálom') 
-        ? (err instanceof Error ? err.message : String(err)) 
-        : `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${(err instanceof Error ? err.message : String(err)) || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`;
+      const errorMessageText = (getErrorMessage(err))?.includes('Sajnálom')
+        ? (getErrorMessage(err))
+        : `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${(getErrorMessage(err)) || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`;
 
       const errorMessage: Message = {
         id: `err-${Math.random()}`,

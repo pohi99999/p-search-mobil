@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { ActionPlan, ActionTask, ActionTaskStatus } from '../types/database';
+import { getErrorMessage } from '../utils/error';
 
 export const useActionPlan = (businessProfileId?: string) => {
   const [plans, setPlans] = useState<ActionPlan[]>([]);
@@ -54,7 +55,7 @@ export const useActionPlan = (businessProfileId?: string) => {
         setTasks({});
       }
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Hiba történt az akciótervek betöltése során.');
+      setError((getErrorMessage(err)) || 'Hiba történt az akciótervek betöltése során.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ export const useActionPlan = (businessProfileId?: string) => {
         };
       });
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Nem sikerült frissíteni a feladat állapotát.');
+      setError((getErrorMessage(err)) || 'Nem sikerült frissíteni a feladat állapotát.');
       throw err;
     }
   };
@@ -105,7 +106,7 @@ export const useActionPlan = (businessProfileId?: string) => {
       await fetchPlansAndTasks();
       return data;
     } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : String(err)) || 'Nem sikerült legenerálni az akciótervet.');
+      setError((getErrorMessage(err)) || 'Nem sikerült legenerálni az akciótervet.');
       throw err;
     }
   };

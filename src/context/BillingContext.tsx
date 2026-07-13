@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
+import { getErrorMessage } from '../utils/error';
 
 
 interface BillingContextType {
@@ -61,7 +62,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setPackages(offerings.current.availablePackages);
         }
       } catch (e) {
-        console.warn('Error setting up RevenueCat (prevented crash):', e instanceof Error ? e.message : String(e));
+        console.warn('Error setting up RevenueCat (prevented crash):', getErrorMessage(e));
       } finally {
         setIsLoading(false);
       }
@@ -110,7 +111,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (e: unknown) {
       const isCancelled = typeof e === 'object' && e !== null && ((e as any).code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || (e as any).userCancelled);
       if (!isCancelled) {
-        console.error('Error purchasing package:', e instanceof Error ? e.message : String(e));
+        console.error('Error purchasing package:', getErrorMessage(e));
         // Here you might want to show an alert to the user
       }
     } finally {
@@ -128,7 +129,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const customerInfo = await Purchases.restorePurchases();
       checkProStatus(customerInfo);
     } catch (e) {
-      console.error('Error restoring purchases:', e instanceof Error ? e.message : String(e));
+      console.error('Error restoring purchases:', getErrorMessage(e));
     } finally {
       setIsLoading(false);
     }

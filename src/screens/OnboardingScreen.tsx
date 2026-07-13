@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 
 import { N8N_WEBHOOK_URL } from '../config/constants';
+import { getErrorMessage } from '../utils/error';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
@@ -71,7 +72,7 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
       // Siker esetén navigálás a Home oldalra
       navigation.replace('Home');
     } catch (e: unknown) {
-      setError((e instanceof Error ? e.message : String(e)) || 'Hiba történt a mentés során.');
+      setError((getErrorMessage(e)) || 'Hiba történt a mentés során.');
     } finally {
       setLoading(false);
     }
