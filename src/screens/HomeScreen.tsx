@@ -89,7 +89,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   const handleNewSearch = async () => {
     if (isPro) {
       if (profile) {
-        fetch(N8N_WEBHOOK_URL, {
+        await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -118,7 +118,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         .eq('id', userProfile?.id);
         
       if (profile) {
-        fetch(N8N_WEBHOOK_URL, {
+        await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
