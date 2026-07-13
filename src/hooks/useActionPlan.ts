@@ -36,18 +36,16 @@ export const useActionPlan = (businessProfileId?: string) => {
         if (tasksError) throw tasksError;
 
         // Csoportosítjuk a feladatokat plan_id szerint
-        const tasksMap: Record<string, ActionTask[]> = {};
-        planIds.forEach(id => {
-          tasksMap[id] = [];
-        });
+        const tasksMap = (tasksData || []).reduce((acc: Record<string, ActionTask[]>, task: ActionTask) => {
+          if (acc[task.plan_id]) {
+            acc[task.plan_id].push(task);
+          }
+          return acc;
+        }, planIds.reduce((acc: Record<string, ActionTask[]>, id) => {
+          acc[id] = [];
+          return acc;
+        }, {}));
         
-        if (tasksData) {
-          tasksData.forEach((task: ActionTask) => {
-            if (tasksMap[task.plan_id]) {
-              tasksMap[task.plan_id].push(task);
-            }
-          });
-        }
         setTasks(tasksMap);
       } else {
         setPlans([]);
