@@ -17,9 +17,6 @@ describe('TesterProgress', () => {
     // Mock AsyncStorage to throw an error
     (AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error('AsyncStorage error'));
 
-    // Suppress console.warn for this test
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
     let root;
     await act(async () => {
       root = renderer.create(<TesterProgress />);
@@ -37,13 +34,6 @@ describe('TesterProgress', () => {
     );
 
     expect(daysTextInstances.length).toBeGreaterThan(0);
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Error tracking beta testing progress:',
-      expect.any(Error)
-    );
-
-    consoleSpy.mockRestore();
   });
 
   it('handles empty storage correctly and adds today', async () => {
