@@ -4,6 +4,7 @@ import { Text, Button, Surface, Card, MD3Colors, FAB } from 'react-native-paper'
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, GrantMatch, Grant, UserProfile } from '../types/database';
 import { useBilling } from '../context/BillingContext';
+import { logger } from '../utils/logger';
 
 import { AdBanner } from '../components/AdBanner';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
@@ -101,7 +102,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
             user_id: userProfile?.id,
             action: 'new_search_pro'
           })
-        }).catch(err => console.warn('Webhook hívás hiba:', err));
+        }).catch(err => logger.warn('Webhook hívás hiba:', err));
         alert("Új Pro AI keresés elindítva!");
       }
       navigation.navigate('CopilotChat');
@@ -130,7 +131,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
             user_id: userProfile?.id,
             action: 'new_search_free'
           })
-        }).catch(err => console.warn('Webhook hívás hiba:', err));
+        }).catch(err => logger.warn('Webhook hívás hiba:', err));
       }
       alert("Ingyenes AI keresés elindítva!");
     }
@@ -201,7 +202,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
             unitId={TestIds.BANNER}
             size={BannerAdSize.BANNER}
             requestOptions={{ requestNonPersonalizedAdsOnly: true }}
-            onAdFailedToLoad={(error) => console.warn('Inline banner failed to load:', error)}
+            onAdFailedToLoad={(error) => logger.warn('Inline banner failed to load:', error)}
           />
         </View>
       );
