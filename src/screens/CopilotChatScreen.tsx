@@ -4,6 +4,7 @@ import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-n
 import { supabase } from '../lib/supabase';
 import { BusinessProfile } from '../types/database';
 import { getErrorMessage, formatChatErrorMessage } from '../utils/error';
+import { logger } from '../utils/logger';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 
@@ -51,7 +52,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           setProfile(data as BusinessProfile);
         }
       } catch (err) {
-        console.error('Hiba a profil betöltésekor a chatben:', err);
+        logger.error('Hiba a profil betöltésekor a chatben:', err);
       }
     }
 
@@ -114,7 +115,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       
       setMessages(prev => [...prev, aiResponse]);
     } catch (err: unknown) {
-      console.error('Chat error details:', err);
+      logger.error('Chat error details:', err);
       const errorMessageText = formatChatErrorMessage(err);
 
       const errorMessage: Message = {
