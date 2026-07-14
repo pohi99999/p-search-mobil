@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
 import { getErrorMessage } from '../utils/error';
+import { logger } from '../utils/logger';
 
 
 interface BillingContextType {
@@ -36,12 +37,12 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const isPlaceholderIOS = !API_KEY_IOS || API_KEY_IOS.includes('placeholder');
 
         if (Platform.OS === 'android' && isPlaceholderAndroid) {
-          console.warn('RevenueCat Android API key is missing or placeholder. Skipping RevenueCat initialization.');
+          logger.warn('RevenueCat Android API key is missing or placeholder. Skipping RevenueCat initialization.');
           setIsLoading(false);
           return;
         }
         if (Platform.OS === 'ios' && isPlaceholderIOS) {
-          console.warn('RevenueCat iOS API key is missing or placeholder. Skipping RevenueCat initialization.');
+          logger.warn('RevenueCat iOS API key is missing or placeholder. Skipping RevenueCat initialization.');
           setIsLoading(false);
           return;
         }
@@ -62,7 +63,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setPackages(offerings.current.availablePackages);
         }
       } catch (e) {
-        console.warn('Error setting up RevenueCat (prevented crash):', getErrorMessage(e));
+        logger.warn('Error setting up RevenueCat (prevented crash):', getErrorMessage(e));
       } finally {
         setIsLoading(false);
       }
@@ -101,7 +102,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const purchasePackage = async (pack: PurchasesPackage) => {
     if (!configured) {
-      console.warn('Cannot purchase package: RevenueCat is not configured.');
+      logger.warn('Cannot purchase package: RevenueCat is not configured.');
       return;
     }
     try {
@@ -111,7 +112,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (e: unknown) {
       const isCancelled = typeof e === 'object' && e !== null && ((e as any).code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || (e as any).userCancelled);
       if (!isCancelled) {
-        console.error('Error purchasing package:', getErrorMessage(e));
+        logger.error('Error purchasing package:', getErrorMessage(e));
         // Here you might want to show an alert to the user
       }
     } finally {
@@ -121,7 +122,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const restorePurchases = async () => {
     if (!configured) {
-      console.warn('Cannot restore purchases: RevenueCat is not configured.');
+      logger.warn('Cannot restore purchases: RevenueCat is not configured.');
       return;
     }
     try {
@@ -129,7 +130,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const customerInfo = await Purchases.restorePurchases();
       checkProStatus(customerInfo);
     } catch (e) {
-      console.error('Error restoring purchases:', getErrorMessage(e));
+      logger.error('Error restoring purchases:', getErrorMessage(e));
     } finally {
       setIsLoading(false);
     }
