@@ -1,75 +1,86 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": allowedOrigin,
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 serve(async (req) => {
   // CORS preflight kérések kezelése
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Nincs hitelesítési fejléc' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: "Nincs hitelesítési fejléc" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // Supabase kliens létrehozása (RLS támogatás a bejelentkezett felhasználó JWT tokenjével)
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } },
+    );
 
     // Paraméterek beolvasása a kérésből
-    const { business_profile_id, match_id } = await req.json()
+    const { business_profile_id, match_id } = await req.json();
 
     if (!business_profile_id || !match_id) {
-      return new Response(JSON.stringify({ error: 'business_profile_id és match_id megadása kötelező' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "business_profile_id és match_id megadása kötelező",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // 1. Cégprofil lekérdezése
     const { data: profile, error: profileError } = await supabaseClient
-      .from('business_profiles')
-      .select('*')
-      .eq('id', business_profile_id)
+      .from("business_profiles")
+      .select("*")
+      .eq("id", business_profile_id)
       .single();
 
     if (profileError) throw profileError;
 
     // 2. Pályázat lekérdezése
     const { data: match, error: matchError } = await supabaseClient
-      .from('grant_matches')
-      .select('*, grants(*)')
-      .eq('id', match_id)
+      .from("grant_matches")
+      .select("*, grants(*)")
+      .eq("id", match_id)
       .single();
 
     if (matchError) throw matchError;
 
     const companyName = profile.company_name;
-    const grantTitle = match.grants?.title || 'Kiválasztott Pályázat';
+    const grantTitle = match.grants?.title || "Kiválasztott Pályázat";
 
     const companyContext = `Cégnév: ${companyName}
-TEÁOR kód (iparág): ${profile.industry_code || 'Nincs megadva'}
-Alkalmazottak száma: ${profile.employee_count || 'Nincs megadva'}
-Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString('hu-HU') + ' Ft' : 'Nincs megadva'}
-Cég céljai: ${profile.goals || 'Nincs megadva'}`;
+TEÁOR kód (iparág): ${profile.industry_code || "Nincs megadva"}
+Alkalmazottak száma: ${profile.employee_count || "Nincs megadva"}
+Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString("hu-HU") + " Ft" : "Nincs megadva"}
+Cég céljai: ${profile.goals || "Nincs megadva"}`;
 
     const grantContext = `Pályázat címe: ${grantTitle}
-Kiíró: ${match.grants?.provider || 'Nincs megadva'}
-Támogatás összege: ${match.grants?.amount_min ? match.grants.amount_min.toLocaleString('hu-HU') + ' Ft' : '0'} - ${match.grants?.amount_max ? match.grants.amount_max.toLocaleString('hu-HU') + ' Ft' : '?'}
-Kritériumok: ${match.grants?.eligibility_criteria || 'Nincs megadva'}
-Pályázat leírása: ${match.grants?.description || 'Nincs megadva'}`;
+Kiíró: ${match.grants?.provider || "Nincs megadva"}
+Támogatás összege: ${match.grants?.amount_min ? match.grants.amount_min.toLocaleString("hu-HU") + " Ft" : "0"} - ${match.grants?.amount_max ? match.grants.amount_max.toLocaleString("hu-HU") + " Ft" : "?"}
+Kritériumok: ${match.grants?.eligibility_criteria || "Nincs megadva"}
+Pályázat leírása: ${match.grants?.description || "Nincs megadva"}`;
 
     // 3. Gemini Prompt összeállítása a tartalmi blokkokhoz
     const systemPrompt = `Te egy professzionális pályázatíró AI asszisztens vagy.
@@ -88,34 +99,40 @@ Pályázati adatok:
 ${grantContext}`;
 
     // 4. Gemini API hívása (REST)
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY környezeti változó hiányzik a szerveren.');
+      throw new Error(
+        "GEMINI_API_KEY környezeti változó hiányzik a szerveren.",
+      );
     }
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(geminiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         contents: [
           {
-            role: 'user',
-            parts: [{ text: 'Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.' }]
-          }
+            role: "user",
+            parts: [
+              {
+                text: "Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.",
+              },
+            ],
+          },
         ],
         systemInstruction: {
-          parts: [{ text: systemPrompt }]
+          parts: [{ text: systemPrompt }],
         },
         generationConfig: {
           temperature: 0.4,
           maxOutputTokens: 1500,
-          responseMimeType: "application/json"
-        }
-      })
+          responseMimeType: "application/json",
+        },
+      }),
     });
 
     if (!apiResponse.ok) {
@@ -124,14 +141,15 @@ ${grantContext}`;
     }
 
     const responseData = await apiResponse.json();
-    const replyJSONText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    
+    const replyJSONText =
+      responseData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
     // Parse-oljuk a Gemini JSON kimenetét
     const parsedData = JSON.parse(replyJSONText.trim());
 
-    const executiveSummary = parsedData.executive_summary || 'Nincs kitöltve.';
-    const marketAnalysis = parsedData.market_analysis || 'Nincs kitöltve.';
-    const financialPlan = parsedData.financial_plan || 'Nincs kitöltve.';
+    const executiveSummary = parsedData.executive_summary || "Nincs kitöltve.";
+    const marketAnalysis = parsedData.market_analysis || "Nincs kitöltve.";
+    const financialPlan = parsedData.financial_plan || "Nincs kitöltve.";
 
     // 5. HTML Sablon összeállítása CSS stílusokkal és az adatok behelyettesítésével
     const htmlContent = `
@@ -212,7 +230,7 @@ ${grantContext}`;
     </tr>
     <tr>
       <td class="meta-label">Dátum:</td>
-      <td>${new Date().toLocaleDateString('hu-HU')}</td>
+      <td>${new Date().toLocaleDateString("hu-HU")}</td>
     </tr>
   </table>
 
@@ -235,44 +253,43 @@ ${grantContext}`;
 
     // 6. Elmentjük a generált HTML-t az akcióterv ai_context mezőjébe a tárhelykímélő kezeléshez
     const { data: planData } = await supabaseClient
-      .from('action_plans')
-      .select('id, ai_context')
-      .eq('business_profile_id', business_profile_id)
-      .eq('match_id', match_id)
+      .from("action_plans")
+      .select("id, ai_context")
+      .eq("business_profile_id", business_profile_id)
+      .eq("match_id", match_id)
       .maybeSingle();
 
     if (planData?.id) {
       const existingContext = planData.ai_context || {};
-      const updatedContext = { ...existingContext, generated_document_html: htmlContent };
-      
+      const updatedContext = {
+        ...existingContext,
+        generated_document_html: htmlContent,
+      };
+
       const { error: updatePlanError } = await supabaseClient
-        .from('action_plans')
-        .update({ 
+        .from("action_plans")
+        .update({
           ai_context: updatedContext,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', planData.id);
+        .eq("id", planData.id);
 
       if (updatePlanError) {
-        console.error('Hiba az akcióterv ai_context frissítésekor:', updatePlanError);
+        console.error(
+          "Hiba az akcióterv ai_context frissítésekor:",
+          updatePlanError,
+        );
       }
     }
 
-    return new Response(
-      JSON.stringify({ html: htmlContent }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    )
-
+    return new Response(JSON.stringify({ html: htmlContent }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (err: any) {
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    )
+    return new Response(JSON.stringify({ error: err.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
-})
+});
