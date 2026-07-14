@@ -1,4 +1,4 @@
-import { getErrorMessage, isPurchasesError } from './error';
+import { getErrorMessage } from './error';
 
 describe('getErrorMessage', () => {
   it('returns the message property if error is an Error instance', () => {
@@ -29,21 +29,5 @@ describe('getErrorMessage', () => {
   it('returns stringified error if error is undefined', () => {
     const error = undefined;
     expect(getErrorMessage(error)).toBe('undefined');
-  });
-});
-
-describe('isPurchasesError', () => {
-  it('returns true if error has a code property', () => {
-    const error = { code: '1' };
-    expect(isPurchasesError(error)).toBe(true);
-  });
-
-  it('returns false if error is not an object', () => {
-    expect(isPurchasesError('error')).toBe(false);
-    expect(isPurchasesError(123)).toBe(false);
-  });
-
-  it('returns false if error is null', () => {
-    expect(isPurchasesError(null)).toBe(false);
   });
 });
