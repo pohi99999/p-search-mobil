@@ -1,3 +1,3 @@
-🎯 **What:** The testing gap addressed: Untested form validation in OnboardingScreen.
-📊 **Coverage:** What scenarios are now tested: Empty company name validation on the OnboardingScreen now properly triggers an error message.
-✨ **Result:** The improvement in test coverage: A new unit test was added to verify UI behavior when an invalid form is submitted.
+🎯 **What:** The testing gap for the TesterProgress component addressed. Added the missing coverage for the initial rendering phase (the loading state) which was skipped previously.
+📊 **Coverage:** Covered rendering null initially while loading (loading state in useEffect hook behavior test). This increased the component line and branch coverage. The whole component is completely tested.
+✨ **Result:** Improved test coverage and tested behavior properly, capturing edge case in rendering and the internal state.

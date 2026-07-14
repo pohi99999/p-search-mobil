@@ -13,6 +13,33 @@ describe('TesterProgress', () => {
     jest.clearAllMocks();
   });
 
+  it('renders null initially while loading', async () => {
+    let resolvePromise: (value: any) => void = () => {};
+    const promise = new Promise((resolve) => {
+      resolvePromise = resolve;
+    });
+    (AsyncStorage.getItem as jest.Mock).mockReturnValue(promise);
+
+    let root: renderer.ReactTestRenderer | undefined;
+
+    // Create the component - it will immediately start the useEffect
+    await act(async () => {
+      root = renderer.create(<TesterProgress />);
+    });
+
+    // Since the promise is not resolved yet, it should be in loading state
+    // But due to how act works with initial render + effect, the effect runs synchronously in test
+    // So we need to check the tree immediately after render but before resolving the promise
+    expect(root?.toJSON()).toBeNull();
+
+    // Now resolve the promise to complete the effect
+    await act(async () => {
+      resolvePromise(null);
+      // Give the next tick a chance to run so state updates
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+  });
+
   it('uses fallback mock data when AsyncStorage throws an error', async () => {
     // Mock AsyncStorage to throw an error
     (AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error('AsyncStorage error'));
