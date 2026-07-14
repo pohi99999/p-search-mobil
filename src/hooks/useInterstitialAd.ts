@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { useEffect, useRef, useState } from 'react';
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { useBilling } from '../context/BillingContext';
@@ -35,7 +36,7 @@ export const useInterstitialAd = () => {
 
     // Ha hiba történik betöltéskor vagy megjelenítéskor, ne ragadjon be az app
     const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
-      console.warn('Interstitial ad encountered an error:', error);
+      logger.warn('Interstitial ad encountered an error:', error);
       setIsLoaded(false);
       if (onAdFinishedRef.current) {
         onAdFinishedRef.current();
@@ -65,7 +66,7 @@ export const useInterstitialAd = () => {
     } else {
       onAdFinishedRef.current = onAdFinished;
       adInstanceRef.current.show().catch((error) => {
-        console.error('Failed to present interstitial ad:', error);
+        logger.error('Failed to present interstitial ad:', error);
         // Hiba esetén is azonnal továbblépünk
         onAdFinished();
       });
