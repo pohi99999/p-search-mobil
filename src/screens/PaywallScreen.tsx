@@ -22,7 +22,7 @@ export const PaywallScreen = () => {
     try {
       await purchasePackage(pkg);
     } catch (err: unknown) {
-      alert('Vásárlási hiba: ' + (getErrorMessage(err)));
+      alert('Vásárlási hiba: ' + getErrorMessage(err));
     } finally {
       setPurchasing(false);
     }
@@ -34,7 +34,7 @@ export const PaywallScreen = () => {
       await restorePurchases();
       alert('Vásárlások sikeresen ellenőrizve!');
     } catch (err: unknown) {
-      alert('Visszaállítási hiba: ' + (getErrorMessage(err)));
+      alert('Visszaállítási hiba: ' + getErrorMessage(err));
     } finally {
       setPurchasing(false);
     }
