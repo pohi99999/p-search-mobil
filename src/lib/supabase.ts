@@ -14,7 +14,7 @@ const rawSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-export const BYPASS_AUTH = true; // Ideiglenes bypass a teszteléshez
+export const BYPASS_AUTH = process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true'; // Controlled via environment variable
 
 // Custom supabase kliens wrapper
 export const supabase = new Proxy(rawSupabase, {
