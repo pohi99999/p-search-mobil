@@ -49,22 +49,24 @@ serve(async (req) => {
       );
     }
 
-    // 1. Cégprofil lekérdezése
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("business_profiles")
-      .select("*")
-      .eq("id", business_profile_id)
-      .single();
+    // 1. Cégprofil és Pályázat lekérdezése párhuzamosan
+    const [
+      { data: profile, error: profileError },
+      { data: match, error: matchError },
+    ] = await Promise.all([
+      supabaseClient
+        .from("business_profiles")
+        .select("*")
+        .eq("id", business_profile_id)
+        .single(),
+      supabaseClient
+        .from("grant_matches")
+        .select("*, grants(*)")
+        .eq("id", match_id)
+        .single(),
+    ]);
 
     if (profileError) throw profileError;
-
-    // 2. Pályázat lekérdezése
-    const { data: match, error: matchError } = await supabaseClient
-      .from("grant_matches")
-      .select("*, grants(*)")
-      .eq("id", match_id)
-      .single();
-
     if (matchError) throw matchError;
 
     const companyName = profile.company_name;
