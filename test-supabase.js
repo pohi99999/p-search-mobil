@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = 'https://icextvgecinmhrhjtfcm.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZXh0dmdlY2lubWhyaGp0ZmNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTU2NTEsImV4cCI6MjA5NjU3MTY1MX0.o6qQ3Op5MLv2_zfjqcmptkTqm2smE0F5lDdFWQi0ipE';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
