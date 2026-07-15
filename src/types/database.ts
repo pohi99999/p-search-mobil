@@ -47,7 +47,10 @@ export interface ActionPlan {
   business_profile_id: string;
   match_id: string | null;
   title: string;
-  ai_context: Record<string, any>;
+  ai_context: {
+    generated_document_html?: string;
+    [key: string]: unknown;
+  };
   created_at: string;
   updated_at: string;
 }

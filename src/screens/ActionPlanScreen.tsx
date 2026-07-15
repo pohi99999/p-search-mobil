@@ -257,7 +257,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                       onPress={async () => {
                         try {
                           await generateAndSharePDF(
-                            plan.ai_context.generated_document_html, 
+                            plan.ai_context.generated_document_html!,
                             `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
                           );
                         } catch (err: unknown) {
