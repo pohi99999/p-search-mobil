@@ -59,7 +59,8 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
 
       // Keresés indítása n8n webhookon keresztül (Fire and forget, nem várjuk meg)
       if (newProfile) {
-        fetch(N8N_WEBHOOK_URL, {
+        if (N8N_WEBHOOK_URL) {
+          fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -68,6 +69,9 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
             action: 'new_profile_created'
           })
         }).catch(err => logger.warn('Webhook hívás hiba:', err));
+        } else {
+          logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
+        }
       }
 
       // Siker esetén navigálás a Home oldalra
