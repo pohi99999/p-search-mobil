@@ -4,6 +4,7 @@ import { Surface } from 'react-native-paper';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 import { useBilling } from '../context/BillingContext';
 import { BANNER_AD_UNIT_ID } from '../config/env';
+import { logger } from '../utils/logger';
 
 // Google Play hivatalos teszt Banner ID
 export const AdBanner: React.FC = () => {
@@ -25,7 +26,7 @@ export const AdBanner: React.FC = () => {
             requestNonPersonalizedAdsOnly: true,
           }}
           onAdFailedToLoad={(error) => {
-            console.warn('AdBanner failed to load ad:', error);
+            logger.warn('AdBanner failed to load ad:', error);
             setAdFailed(true);
           }}
         />

@@ -8,6 +8,7 @@ import { RootStackParamList } from '../types/navigation';
 
 import { N8N_WEBHOOK_URL } from '../config/constants';
 import { getErrorMessage } from '../utils/error';
+import { logger } from '../utils/logger';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
@@ -66,7 +67,7 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
             user_id: session.user.id,
             action: 'new_profile_created'
           })
-        }).catch(err => console.warn('Webhook hívás hiba:', err));
+        }).catch(err => logger.warn('Webhook hívás hiba:', err));
       }
 
       // Siker esetén navigálás a Home oldalra
