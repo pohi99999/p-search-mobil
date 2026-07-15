@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Surface, Text, ProgressBar } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logger } from "../utils/logger";
 
 const STORAGE_KEY = "@beta_testing_days";
 const REQUIRED_DAYS = 14;
@@ -27,8 +28,7 @@ export const TesterProgress: React.FC = () => {
 
         setActiveDays(daysList);
       } catch (err) {
-        // Biztonsági másolat (Mock) ha az AsyncStorage nem lenne elérhető
-        setActiveDays(["2026-06-13", "2026-06-14", "2026-06-15"]);
+        logger.error('Error tracking beta testing progress:', err);
       } finally {
         setLoading(false);
       }
