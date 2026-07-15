@@ -1,3 +1,9 @@
+import { PurchasesError } from 'react-native-purchases';
+
+export const isPurchasesError = (error: unknown): error is PurchasesError => {
+  return typeof error === 'object' && error !== null && 'code' in error;
+};
+
 export const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
