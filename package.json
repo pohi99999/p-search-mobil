@@ -14,6 +14,7 @@
     "expo-build-properties": "~56.0.19",
     "expo-dev-client": "~56.0.20",
     "expo-print": "~56.0.4",
+    "expo-secure-store": "~56.0.4",
     "expo-sharing": "~56.0.18",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
