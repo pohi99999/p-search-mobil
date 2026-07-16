@@ -21,6 +21,18 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 07. 16. (Fázis 6 — Jules további aszinkron munkáinak integrálása: Típusbiztonság, Secure Store, Webhook tisztítás és Tesztek):**
+  - **Beolvasztás:** Összefésültünk és integráltunk Jules további 5 távoli ágát a helyi `master` ágba:
+    * `fix-actionplan-ai-context-10423163093437002364` (ActionPlan `ai_context` típuspontosítás)
+    * `fix-n8n-webhook-hardcode-10141300702066359914` (Hardcoded N8N webhook eltávolítás és logolás)
+    * `jules-5316735936058490090-8bda5f9a` (Supabase session tárolás `expo-secure-store`-ra cserélése)
+    * `jules-7876364814660582844-12499df2` (`TesterProgress` mock adatok eltávolítása és logger használata)
+    * `test-billing-context-error-path-7564761027371069340` (`BillingContext` hibakezelési tesztek hozzáadása)
+  - **Verifikáció és Tesztelés:**
+    * TypeScript típusellenőrzés (`npx tsc --noEmit`): SIKERES (0 hiba)
+    * Egységtesztek futtatása (`npx jest`): 9/9 tesztcsomag, 36/36 teszt sikeresen lefutott (100% zöld)
+  - **Git & GitHub szinkronizáció:** Integráció befejezve, pusholva a master-re és notes-ra.
+
 - **2026. 07. 15. (Fázis 6 — Jules újabb aszinkron backend és kódhigiéniai ágainak integrálása):**
   - **Beolvasztás:** Összefésültünk és integráltunk Jules további 6 távoli ágát a helyi `master` ágba:
     * `fix/billing-context-logger-12590317662744298841` (console.warn hívások lecserélése centralized `logger.warn`-ra a BillingContext-ben)
