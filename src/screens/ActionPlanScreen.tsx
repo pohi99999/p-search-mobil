@@ -9,6 +9,7 @@ import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
 import type { ActionPlanScreenProps } from "../types/navigation";
 import { getErrorMessage } from '../utils/error';
+import { logger } from '../utils/logger';
 
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const matchId = route?.params?.matchId;
@@ -39,14 +40,14 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
           .single();
 
         if (error && error.code !== 'PGRST116') {
-          console.error('Hiba a cégprofil lekérésekor:', error);
+          logger.error('Hiba a cégprofil lekérésekor:', error);
         }
 
         if (data) {
           setProfile(data as BusinessProfile);
         }
       } catch (err) {
-        console.error(err);
+        logger.error(err);
       } finally {
         setProfileLoading(false);
       }

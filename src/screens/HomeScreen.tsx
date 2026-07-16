@@ -58,7 +58,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       }
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error(profileError);
+        logger.error(profileError);
       }
 
       if (profileData) {
@@ -71,7 +71,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           .order('match_score', { ascending: false });
           
         if (matchesError) {
-          console.error(matchesError);
+          logger.error(matchesError);
         } else if (matchesData) {
           // Cast the result to our compound type
           setMatches(matchesData as unknown as MatchWithGrant[]);
@@ -81,7 +81,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         navigation.replace('Onboarding');
       }
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }

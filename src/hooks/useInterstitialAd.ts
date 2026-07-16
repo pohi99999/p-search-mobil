@@ -36,7 +36,7 @@ export const useInterstitialAd = () => {
 
     // Ha hiba történik betöltéskor vagy megjelenítéskor, ne ragadjon be az app
     const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
-      logger.warn('Interstitial ad encountered an error:', error);
+      logger.error('Interstitial ad encountered an error:', error);
       setIsLoaded(false);
       if (onAdFinishedRef.current) {
         onAdFinishedRef.current();
