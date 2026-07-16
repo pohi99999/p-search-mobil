@@ -40,7 +40,7 @@ describe('TesterProgress', () => {
     });
   });
 
-  it('uses fallback mock data when AsyncStorage throws an error', async () => {
+  it('renders correctly when AsyncStorage throws an error (0 days active)', async () => {
     // Mock AsyncStorage to throw an error
     (AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error('AsyncStorage error'));
 
@@ -49,14 +49,14 @@ describe('TesterProgress', () => {
       root = renderer.create(<TesterProgress />);
     });
 
-    // We expect 3 days active
+    // We expect 0 days active because the mock data was removed
     const daysTextInstances = root.root.findAll(
       (node) =>
         node.type === 'Text' &&
         node.props.children &&
         (
-          node.props.children === '3/14 nap aktív' ||
-          (Array.isArray(node.props.children) && node.props.children.join('') === '3/14 nap aktív')
+          node.props.children === '0/14 nap aktív' ||
+          (Array.isArray(node.props.children) && node.props.children.join('') === '0/14 nap aktív')
         )
     );
 
