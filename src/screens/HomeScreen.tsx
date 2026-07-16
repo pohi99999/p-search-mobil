@@ -94,7 +94,8 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   const handleNewSearch = async () => {
     if (isPro) {
       if (profile) {
-        await fetch(N8N_WEBHOOK_URL, {
+        if (N8N_WEBHOOK_URL) {
+          await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -103,6 +104,9 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
             action: 'new_search_pro'
           })
         }).catch(err => logger.warn('Webhook hívás hiba:', err));
+        } else {
+          logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
+        }
         alert("Új Pro AI keresés elindítva!");
       }
       navigation.navigate('CopilotChat');
@@ -123,7 +127,8 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         .eq('id', userProfile?.id);
         
       if (profile) {
-        await fetch(N8N_WEBHOOK_URL, {
+        if (N8N_WEBHOOK_URL) {
+          await fetch(N8N_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -132,6 +137,9 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
             action: 'new_search_free'
           })
         }).catch(err => logger.warn('Webhook hívás hiba:', err));
+        } else {
+          logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
+        }
       }
       alert("Ingyenes AI keresés elindítva!");
     }
