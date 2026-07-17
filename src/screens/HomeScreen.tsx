@@ -1,154 +1,36 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, Button, Surface, Card, MD3Colors, FAB } from 'react-native-paper';
-import { supabase } from '../lib/supabase';
-import { BusinessProfile, GrantMatch, Grant, UserProfile } from '../types/database';
-import { useBilling } from '../context/BillingContext';
+import { Text, Button, FAB, MD3Colors } from 'react-native-paper';
 import { logger } from '../utils/logger';
 
 import { AdBanner } from '../components/AdBanner';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { TesterProgress } from '../components/TesterProgress';
 
-type MatchWithGrant = GrantMatch & { grants: Grant };
+import { RootStackNavigationProp } from '../types/navigation';
+import { useHomeData, MatchWithGrant } from '../hooks/useHomeData';
+import { HomeEmptyState } from '../components/HomeEmptyState';
+import { MatchCard } from '../components/MatchCard';
+
 type AdItem = { type: 'ad'; id: string };
 type FlatListItem = MatchWithGrant | AdItem;
 const isAdItem = (item: FlatListItem): item is AdItem =>
   'type' in item && (item as AdItem).type === 'ad';
-
-import { N8N_WEBHOOK_URL } from "../config/constants";
-
-import { RootStackNavigationProp } from '../types/navigation';
-
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [matches, setMatches] = useState<MatchWithGrant[]>([]);
-  const { isPro } = useBilling();
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      const [
-        { data: profileData, error: profileError },
-        { data: userData }
-      ] = await Promise.all([
-        supabase
-          .from('business_profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single(),
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-      ]);
-        
-      if (userData) {
-        setUserProfile(userData as UserProfile);
-      }
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        logger.error(profileError);
-      }
-
-      if (profileData) {
-        setProfile(profileData);
-        // Fetch matches
-        const { data: matchesData, error: matchesError } = await supabase
-          .from('grant_matches')
-          .select('*, grants(*)')
-          .eq('business_id', profileData.id)
-          .order('match_score', { ascending: false });
-          
-        if (matchesError) {
-          logger.error(matchesError);
-        } else if (matchesData) {
-          // Cast the result to our compound type
-          setMatches(matchesData as unknown as MatchWithGrant[]);
-        }
-      } else {
-        // No profile found, redirect to Onboarding
-        navigation.replace('Onboarding');
-      }
-    } catch (err) {
-      logger.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
-
-  const handleNewSearch = async () => {
-    if (isPro) {
-      if (profile) {
-        if (N8N_WEBHOOK_URL) {
-          await fetch(N8N_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            business_id: profile.id,
-            user_id: userProfile?.id,
-            action: 'new_search_pro'
-          })
-        }).catch(err => logger.warn('Webhook hívás hiba:', err));
-        } else {
-          logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
-        }
-        alert("Új Pro AI keresés elindítva!");
-      }
-      navigation.navigate('CopilotChat');
-      return;
-    }
-
-    const currentCount = userProfile?.search_count || 0;
-    if (currentCount >= 1) { // 1 free search limit
-      navigation.navigate('Paywall');
-    } else {
-      // Trigger free search and increment count
-      const newCount = currentCount + 1;
-      if (userProfile) setUserProfile({ ...userProfile, search_count: newCount });
-      
-      await supabase
-        .from('profiles')
-        .update({ search_count: newCount })
-        .eq('id', userProfile?.id);
-        
-      if (profile) {
-        if (N8N_WEBHOOK_URL) {
-          await fetch(N8N_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            business_id: profile.id,
-            user_id: userProfile?.id,
-            action: 'new_search_free'
-          })
-        }).catch(err => logger.warn('Webhook hívás hiba:', err));
-        } else {
-          logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
-        }
-      }
-      alert("Ingyenes AI keresés elindítva!");
-    }
-  };
+  const {
+    loading,
+    profile,
+    matches,
+    isPro,
+    fetchData,
+    signOut,
+    handleNewSearch
+  } = useHomeData(navigation);
 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1976D2" />
+        <ActivityIndicator size="large" color={MD3Colors.primary50} />
         <Text style={{ marginTop: 16 }}>Adataid betöltése...</Text>
       </View>
     );
@@ -165,43 +47,6 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     return matches;
   }, [matches, isPro]);
 
-  const renderEmptyState = () => (
-    <Surface style={styles.surface} elevation={2}>
-      <ActivityIndicator size="large" color={MD3Colors.primary50} style={{ marginBottom: 16 }} />
-      <Text variant="titleLarge" style={{ textAlign: 'center', marginBottom: 12 }}>
-        Keresés folyamatban...
-      </Text>
-      <Text variant="bodyMedium" style={{ textAlign: 'center', marginBottom: 24, color: '#666' }}>
-        Az AI rendszerünk jelenleg elemzi a megadott TEÁOR kódot ({profile?.industry_code || 'Ismeretlen'}) és célokat. Kérjük, várj türelemmel, hamarosan megjelennek a számodra releváns pályázatok!
-      </Text>
-      <Button mode="contained" onPress={() => fetchData()}>
-        Frissítés
-      </Button>
-    </Surface>
-  );
-
-  const renderMatch = ({ item }: { item: MatchWithGrant }) => (
-    <Card style={styles.card} mode="elevated">
-      <Card.Title title={item.grants?.title || 'Ismeretlen pályázat'} subtitle={`Egyezés: ${item.match_score}%`} />
-      <Card.Content>
-        <Text variant="bodyMedium" style={{ marginBottom: 8, color: '#444' }}>
-          {item.grants?.provider}
-        </Text>
-        <Text variant="bodySmall">
-          {item.match_reasoning || item.grants?.description}
-        </Text>
-        {(item.grants?.amount_min || item.grants?.amount_max) && (
-          <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
-            Összeg: {item.grants.amount_min ? `${item.grants.amount_min.toLocaleString('hu-HU')} Ft` : '0 Ft'} - {item.grants.amount_max ? `${item.grants.amount_max.toLocaleString('hu-HU')} Ft` : '? Ft'}
-          </Text>
-        )}
-      </Card.Content>
-      <Card.Actions>
-        <Button onPress={() => navigation.navigate('ActionPlan', { matchId: item.id })}>Részletek</Button>
-      </Card.Actions>
-    </Card>
-  );
-
   const renderItem = ({ item }: { item: FlatListItem }) => {
     if (isAdItem(item)) {
       return (
@@ -215,7 +60,12 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         </View>
       );
     }
-    return renderMatch({ item });
+    return (
+      <MatchCard
+        item={item as MatchWithGrant}
+        onPress={() => navigation.navigate('ActionPlan', { matchId: item.id })}
+      />
+    );
   };
 
   return (
@@ -233,7 +83,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       
       {matches.length === 0 ? (
         <View style={styles.emptyContainer}>
-          {renderEmptyState()}
+          <HomeEmptyState industryCode={profile?.industry_code} onRefresh={fetchData} />
         </View>
       ) : (
         <FlatList<FlatListItem>
@@ -283,17 +133,6 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 8,
   },
-  surface: {
-    padding: 24,
-    borderRadius: 16,
-    backgroundColor: 'white',
-    alignItems: 'center',
-  },
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    backgroundColor: 'white',
-  },
   fab: {
     position: 'absolute',
     margin: 16,
@@ -311,4 +150,4 @@ const styles = StyleSheet.create({
     elevation: 1,
     minHeight: 50,
   },
-})
+});
