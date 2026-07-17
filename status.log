@@ -1,33 +1,40 @@
-STATUS LOG - 2026-07-16T10:22:00+02:00
+STATUS LOG - 2026-07-17T11:05:00+02:00
 =====================================
 Project: p-search-mobil
-Task: Phase 6 - Jules Async Integration Round 4
+Task: Phase 6 - Jules Async Integration Round 5
 
 Git Fetch & Pull:
 - git fetch --all: SUCCESS
 - git fetch origin refs/notes/*:refs/notes/*: SUCCESS
 
-Branches Merged (5 remote branches):
-- origin/fix-actionplan-ai-context-10423163093437002364 -> MERGED
-- origin/fix-n8n-webhook-hardcode-10141300702066359914 -> MERGED
-- origin/jules-5316735936058490090-8bda5f9a -> MERGED
-- origin/jules-7876364814660582844-12499df2 -> MERGED
-- origin/test-billing-context-error-path-7564761027371069340 -> MERGED
+Branches Merged (13 remote branches):
+- origin/add-billing-context-tests-12681550429178599571 -> MERGED
+- origin/add-onboarding-webhook-test-5634044923557727309 -> MERGED
+- origin/fix-paywall-screen-navigation-type-1227744475842237979 -> MERGED
+- origin/fix/code-health-logger-interstitial-3156820989796855919 -> MERGED
+- origin/fix/homescreen-refactor-11641050420167729533 -> MERGED (Conflict resolved)
+- origin/jules-10865840386857789294-06c86983 -> MERGED
+- origin/jules-15502268100832582598-ccdeaf21 -> MERGED
+- origin/jules-16711067427773347450-8a921dfe -> MERGED
+- origin/jules-17463291662510019205-8e2d3112 -> MERGED
+- origin/jules-3590869534698109604-a6908f4a -> MERGED (Conflict resolved)
+- origin/jules-4105165919480024367-0690e788 -> MERGED
+- origin/jules-add-paywall-screen-tests-2797631360216160027 -> MERGED (Conflict resolved)
+- origin/tests/use-interstitial-ad-11300613961908065928 -> MERGED
 
-Conflict Resolutions:
-- None (All merged cleanly using 'ort' strategy)
-
-Consolidations:
-- None (No temporary patch files generated)
+Conflict Resolutions & Additional Fixes:
+- Resolved conflicts in HomeScreen.tsx (kept useHomeData custom hook) and PaywallScreen.test.tsx (kept robust HEAD tests).
+- Fixed memory leak in useInterstitialAd.ts (unsubscribes array in ref).
+- Handled Supabase profiles update errors, rollback logic, and missing free user navigation in useHomeData.ts.
 
 Verification:
 - npm install --legacy-peer-deps: SUCCESS
 - npx tsc --noEmit: PASSED (0 errors)
-- npx jest: PASSED (9 test suites, 36 tests total)
+- npx jest: PASSED (11 test suites, 65 tests total)
 
 Git Synchronization:
-- Summary Commit: docs(progress): Update GEMINI.md and status.log for Round 4 Jules async integration [6320e4a]
-- Conductor Git Note: ATTACHED to 6320e4a
+- Summary Commit: fix(home): add null guard and navigate free users to copilot chat [0cfa353]
+- Conductor Git Note: ATTACHED to 0cfa353
 - git push: SUCCESS (master & refs/notes/* pushed to origin)
 
 Status: SUCCESS / FULLY COMPLETED AND SYNCHRONIZED

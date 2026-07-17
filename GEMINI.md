@@ -21,6 +21,31 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 07. 17. (Fázis 6 — Jules aszinkron munkáinak teljes beolvasztása és minőségi megerősítése: Tesztek, Navigáció, Memóriakezelés és Hibakezelés):**
+  - **Beolvasztás:** Összefésültünk és integráltunk Jules 13 távoli ágát a helyi `master` ágba:
+    * `add-billing-context-tests-12681550429178599571`
+    * `add-onboarding-webhook-test-5634044923557727309`
+    * `fix-paywall-screen-navigation-type-1227744475842237979`
+    * `fix/code-health-logger-interstitial-3156820989796855919`
+    * `fix/homescreen-refactor-11641050420167729533`
+    * `jules-10865840386857789294-06c86983`
+    * `jules-15502268100832582598-ccdeaf21`
+    * `jules-16711067427773347450-8a921dfe`
+    * `jules-17463291662510019205-8e2d3112`
+    * `jules-3590869534698109604-a6908f4a`
+    * `jules-4105165919480024367-0690e788`
+    * `jules-add-paywall-screen-tests-2797631360216160027`
+    * `tests/use-interstitial-ad-11300613961908065928`
+  - **Konfliktusfeloldás:** Manuálisan feloldottuk az ütközéseket a `src/screens/HomeScreen.tsx` és `src/screens/__tests__/PaywallScreen.test.tsx` fájlokban, megtartva a master logikáját és Jules tesztjeit.
+  - **Minőségbiztosítási javítások:**
+    * Megszüntettük a memóriaszivárgást a `src/hooks/useInterstitialAd.ts` hookban (leiratkozások tisztítása a cleanup-ban).
+    * Hozzáadtuk a Supabase profiles update hibaellenőrzését és a lokális állapot rollback mechanizmusát a `src/hooks/useHomeData.ts`-ben.
+    * Helyreállítottuk a navigációt és a null-guard védelmet ingyenes felhasználók esetén a HomeScreen AI keresés indításánál.
+  - **Verifikáció és Tesztelés:**
+    * TypeScript típusellenőrzés (`npx tsc --noEmit`): SIKERES (0 hiba)
+    * Egységtesztek futtatása (`npx jest`): 11/11 tesztcsomag, 65/65 teszt sikeresen lefutott (100% zöld)
+  - **Git & GitHub szinkronizáció:** Integráció és plusz javítások véglegesítve, Conductor Git Note csatolva a `0cfa353` commit-hoz, pusholva `master`-re és `refs/notes/commits`-ra.
+
 - **2026. 07. 16. (Fázis 6 — Jules további aszinkron munkáinak integrálása: Típusbiztonság, Secure Store, Webhook tisztítás és Tesztek):**
   - **Beolvasztás:** Összefésültünk és integráltunk Jules további 5 távoli ágát a helyi `master` ágba:
     * `fix-actionplan-ai-context-10423163093437002364` (ActionPlan `ai_context` típuspontosítás)
