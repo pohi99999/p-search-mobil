@@ -108,11 +108,17 @@ export function useHomeData(navigation: RootStackNavigationProp) {
       // Trigger free search and increment count
       const newCount = currentCount + 1;
       if (userProfile) setUserProfile({ ...userProfile, search_count: newCount });
-
-      await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ search_count: newCount })
         .eq('id', userProfile?.id);
+
+      if (updateError) {
+        logger.error(updateError);
+        if (userProfile) setUserProfile({ ...userProfile, search_count: currentCount });
+        alert("Hiba történt a keresési limit frissítésekor!");
+        return;
+      }
 
       if (profile) {
         if (N8N_WEBHOOK_URL) {

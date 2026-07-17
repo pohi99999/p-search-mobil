@@ -9,10 +9,15 @@ export const useInterstitialAd = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const adInstanceRef = useRef<InterstitialAd | null>(null);
   const onAdFinishedRef = useRef<(() => void) | null>(null);
+  const unsubscribesRef = useRef<(() => void)[]>([]);
 
   // Hirdetés létrehozása és betöltése
   const loadAd = () => {
     if (isPro) return;
+
+    // Clear and call previous unsubscribes
+    unsubscribesRef.current.forEach((unsub) => unsub());
+    unsubscribesRef.current = [];
 
     setIsLoaded(false);
 
@@ -44,6 +49,8 @@ export const useInterstitialAd = () => {
       }
     });
 
+    unsubscribesRef.current.push(unsubscribeLoaded, unsubscribeClosed, unsubscribeError);
+
     interstitial.load();
     adInstanceRef.current = interstitial;
   };
@@ -54,6 +61,8 @@ export const useInterstitialAd = () => {
     }
     return () => {
       // Takarítás (Clean-up)
+      unsubscribesRef.current.forEach((unsub) => unsub());
+      unsubscribesRef.current = [];
       adInstanceRef.current = null;
     };
   }, [isPro]);
