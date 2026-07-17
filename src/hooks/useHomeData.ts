@@ -80,6 +80,11 @@ export function useHomeData(navigation: RootStackNavigationProp) {
   }
 
   const handleNewSearch = async () => {
+    if (!userProfile || !userProfile.id) {
+      alert("Felhasználói profil nem található!");
+      return;
+    }
+
     if (isPro) {
       if (profile) {
         if (N8N_WEBHOOK_URL) {
@@ -88,7 +93,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               business_id: profile.id,
-              user_id: userProfile?.id,
+              user_id: userProfile.id,
               action: 'new_search_pro'
             })
           }).catch(err => logger.warn('Webhook hívás hiba:', err));
@@ -101,21 +106,21 @@ export function useHomeData(navigation: RootStackNavigationProp) {
       return;
     }
 
-    const currentCount = userProfile?.search_count || 0;
+    const currentCount = userProfile.search_count || 0;
     if (currentCount >= 1) { // 1 free search limit
       navigation.navigate('Paywall');
     } else {
       // Trigger free search and increment count
       const newCount = currentCount + 1;
-      if (userProfile) setUserProfile({ ...userProfile, search_count: newCount });
+      setUserProfile({ ...userProfile, search_count: newCount });
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ search_count: newCount })
-        .eq('id', userProfile?.id);
+        .eq('id', userProfile.id);
 
       if (updateError) {
         logger.error(updateError);
-        if (userProfile) setUserProfile({ ...userProfile, search_count: currentCount });
+        setUserProfile({ ...userProfile, search_count: currentCount });
         alert("Hiba történt a keresési limit frissítésekor!");
         return;
       }
@@ -127,7 +132,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               business_id: profile.id,
-              user_id: userProfile?.id,
+              user_id: userProfile.id,
               action: 'new_search_free'
             })
           }).catch(err => logger.warn('Webhook hívás hiba:', err));
@@ -136,6 +141,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
         }
       }
       alert("Ingyenes AI keresés elindítva!");
+      navigation.navigate('CopilotChat');
     }
   };
 
