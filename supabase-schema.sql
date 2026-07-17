@@ -69,7 +69,7 @@ CREATE POLICY "Users can insert own business profile" ON public.business_profile
 CREATE POLICY "Users can update own business profile" ON public.business_profiles FOR UPDATE USING (auth.uid() = user_id);
 
 -- Pályázatok nyilvánosan olvashatók
-CREATE POLICY "Grants are viewable by everyone" ON public.grants FOR SELECT USING (true);
+CREATE POLICY "Grants are viewable by authenticated users" ON public.grants FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Match tábla RLS
 CREATE POLICY "Users can view matches for their business" ON public.grant_matches FOR SELECT USING (
