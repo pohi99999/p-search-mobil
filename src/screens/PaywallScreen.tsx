@@ -1,5 +1,5 @@
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../types/navigation";
+import { RootStackNavigationProp } from "../types/navigation";
+
 import React, { useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
@@ -11,7 +11,7 @@ import { getErrorMessage } from '../utils/error';
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
   const theme = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<RootStackNavigationProp>();
   const [purchasing, setPurchasing] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
