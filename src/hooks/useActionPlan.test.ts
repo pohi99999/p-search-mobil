@@ -30,7 +30,8 @@ describe('useActionPlan', () => {
 
     try {
         await waitForNextUpdate();
-    } catch(e) {
+    } catch (e) {
+      console.warn('waitForNextUpdate error:', e);
         // Ignored
     }
 
@@ -56,7 +57,8 @@ describe('useActionPlan', () => {
 
     try {
         await waitForNextUpdate();
-    } catch(e) {
+    } catch (e) {
+      console.warn('waitForNextUpdate error:', e);
         // Ignored
     }
 
@@ -81,7 +83,8 @@ describe('useActionPlan', () => {
 
     try {
         await waitForNextUpdate();
-    } catch(e) {
+    } catch (e) {
+      console.warn('waitForNextUpdate error:', e);
         // Ignored
     }
 
@@ -114,7 +117,9 @@ describe('useActionPlan', () => {
 
     try {
       await waitForNextUpdate();
-    } catch (e) {}
+    } catch (e) {
+      console.warn('waitForNextUpdate error:', e);
+    }
 
     await act(async () => {
       await result.current.refetch();
