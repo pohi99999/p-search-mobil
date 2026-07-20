@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Button, List, Surface, MD3Colors, ProgressBar, Divider, IconButton, Snackbar, Checkbox, ActivityIndicator, Banner } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useActionPlan } from '../hooks/useActionPlan';
