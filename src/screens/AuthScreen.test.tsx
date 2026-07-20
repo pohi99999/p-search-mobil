@@ -55,7 +55,7 @@ describe('AuthScreen', () => {
     });
 
     expect(supabase.auth.signUp).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba regisztrációkor', mockError.message);
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
   });
 
   it('handles successful signUp with null session (email confirmation required)', async () => {
