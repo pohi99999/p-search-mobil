@@ -7,6 +7,7 @@ import { Text, Button, Card, useTheme, ActivityIndicator, IconButton, List, Bann
 import { useBilling } from '../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
 import { getErrorMessage } from '../utils/error';
+import { logger } from '../utils/logger';
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
@@ -22,7 +23,8 @@ export const PaywallScreen = () => {
     try {
       await purchasePackage(pkg);
     } catch (err: unknown) {
-      alert('Vásárlási hiba: ' + getErrorMessage(err));
+      logger.error('Vásárlási hiba:', getErrorMessage(err));
+      alert('Vásárlási hiba történt. Kérjük, próbáld újra később.');
     } finally {
       setPurchasing(false);
     }
@@ -34,7 +36,8 @@ export const PaywallScreen = () => {
       await restorePurchases();
       alert('Vásárlások sikeresen ellenőrizve!');
     } catch (err: unknown) {
-      alert('Visszaállítási hiba: ' + getErrorMessage(err));
+      logger.error('Visszaállítási hiba:', getErrorMessage(err));
+      alert('Visszaállítási hiba történt. Kérjük, próbáld újra később.');
     } finally {
       setPurchasing(false);
     }
