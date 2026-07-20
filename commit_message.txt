@@ -1,5 +1,0 @@
-⚡ Optimize task calculation in ActionPlanScreen
-
-💡 **What:** Added `useMemo` to pre-calculate task statistics (completedTasks, totalTasks, progress, percentage) instead of doing it inline during the render map. Replaced `.filter().length` with a standard `for` loop iteration.
-🎯 **Why:** Previously, array filtering `.filter(t => t.status === 'done')` ran on every render for every visible plan inside the render loop, which led to high computational overhead (large task counts) and constant object/array allocations.
-📊 **Measured Improvement:** Baseline re-render time was ~8,431 ms. Optimized re-render time was ~6,618 ms (a ~20% improvement) measured via Jest under large mock data sets (200 plans, 2000 total tasks).

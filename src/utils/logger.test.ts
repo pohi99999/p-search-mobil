@@ -15,6 +15,7 @@ describe('logger', () => {
   });
 
   beforeEach(() => {
+    console.info = jest.fn();
     console.log = jest.fn();
     console.warn = jest.fn();
     console.error = jest.fn();
@@ -32,7 +33,7 @@ describe('logger', () => {
 
     it('logs info', () => {
       logger.info('test info');
-      expect(console.log).toHaveBeenCalledWith('test info');
+      expect(console.info).toHaveBeenCalledWith('test info');
     });
 
     it('logs warn', () => {
@@ -58,7 +59,7 @@ describe('logger', () => {
 
     it('does not log info', () => {
       logger.info('test info');
-      expect(console.log).not.toHaveBeenCalled();
+      expect(console.info).not.toHaveBeenCalled();
     });
 
     it('does not log warn', () => {
@@ -88,7 +89,7 @@ describe('logger', () => {
 
     it('does not log info', () => {
       logger.info('test info');
-      expect(console.log).not.toHaveBeenCalled();
+      expect(console.info).not.toHaveBeenCalled();
     });
 
     it('does not log warn', () => {
