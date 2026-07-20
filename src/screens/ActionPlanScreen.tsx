@@ -263,8 +263,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                             `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
                           );
                         } catch (err: unknown) {
-                          logger.error('PDF megnyitási hiba:', err);
-                          alert('Hiba történt a PDF megnyitása során. Kérjük, próbálja újra később.');
+                          logger.error('PDF opening error:', err);
+                          alert('Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.');
                         }
                       }}
                       style={[styles.pdfButton, { marginRight: 8 }]}
@@ -303,8 +303,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                           // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
                           refetch();
                         } catch (err: unknown) {
-                          logger.error('PDF hiba:', err);
-                          alert('Hiba történt a PDF generálása során. Kérjük, próbálja újra később.');
+                          logger.error('PDF generation error:', err);
+                          alert('Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
                         } finally {
                           setPdfLoading(false);
                         }
