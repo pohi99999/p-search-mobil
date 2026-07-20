@@ -7,7 +7,7 @@
 export const logger = {
   info: (...args: any[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log(...args);
+      console.info(...args);
     }
   },
   warn: (...args: any[]) => {
