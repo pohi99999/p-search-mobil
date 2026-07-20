@@ -18,7 +18,7 @@ export function AuthScreen() {
       password: password,
     });
 
-    if (error) Alert.alert('Hiba bejelentkezéskor', 'Hibás e-mail cím vagy jelszó.');
+    if (error) Alert.alert('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.');
     setLoading(false);
   }
 
@@ -30,7 +30,7 @@ export function AuthScreen() {
     });
 
     if (error) {
-      Alert.alert('Hiba regisztrációkor', 'Váratlan hiba történt a regisztráció során.');
+      Alert.alert('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
     } else if (data.session == null) {
       Alert.alert('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
     } else {
