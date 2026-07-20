@@ -6,6 +6,7 @@ import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, Button, Card, useTheme, ActivityIndicator, IconButton, List, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
+import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 
 export const PaywallScreen = () => {
@@ -22,8 +23,8 @@ export const PaywallScreen = () => {
     try {
       await purchasePackage(pkg);
     } catch (err: unknown) {
-      logger.error('Purchase error:', err);
-      alert('Vásárlási hiba: Kérjük, próbáld újra később.');
+      logger.error('Vásárlási hiba:', getErrorMessage(err));
+      alert('Vásárlási hiba történt. Kérjük, próbáld újra később.');
     } finally {
       setPurchasing(false);
     }
@@ -35,8 +36,8 @@ export const PaywallScreen = () => {
       await restorePurchases();
       alert('Vásárlások sikeresen ellenőrizve!');
     } catch (err: unknown) {
-      logger.error('Restore error:', err);
-      alert('Visszaállítási hiba: Kérjük, próbáld újra később.');
+      logger.error('Visszaállítási hiba:', getErrorMessage(err));
+      alert('Visszaállítási hiba történt. Kérjük, próbáld újra később.');
     } finally {
       setPurchasing(false);
     }
