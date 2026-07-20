@@ -91,11 +91,11 @@ describe('PaywallScreen', () => {
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
 
-  it('renders loader when isLoading is true', async () => {
+  it('renders loader when isLoading is true', () => {
     (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isLoading: true });
 
     let component: renderer.ReactTestRenderer;
-    await act(async () => {
+    act(() => {
       component = renderer.create(<PaywallScreen />);
     });
 
