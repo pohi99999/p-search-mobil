@@ -1,0 +1,1 @@
+[CONDUCTOR NOTE] Integration of Jules async background contributions (16 branches): Information exposure security fixes across AuthScreen, PaywallScreen & ActionPlanScreen; Unit tests for MatchCard, HomeEmptyState & Logger utility; Performance optimizations for ActionPlanScreen rendering & useActionPlan task grouping.
