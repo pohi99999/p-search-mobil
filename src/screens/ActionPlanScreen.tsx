@@ -176,7 +176,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                       setSnackbarMessage('Akcióterv sikeresen legenerálva!');
                       setSnackbarVisible(true);
                     } catch (err: unknown) {
-                      setSnackbarMessage(getErrorMessage(err) || 'Hiba történt a generálás során.');
+                      logger.error('Hiba az akcióterv generálása során:', err);
+                      setSnackbarMessage('Hiba történt a generálás során. Kérjük, próbálja újra később.');
                       setSnackbarVisible(true);
                     } finally {
                       setGenerating(false);
@@ -262,7 +263,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                             `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
                           );
                         } catch (err: unknown) {
-                          alert('PDF megnyitási hiba: ' + getErrorMessage(err));
+                          logger.error('PDF megnyitási hiba:', err);
+                          alert('Hiba történt a PDF megnyitása során. Kérjük, próbálja újra később.');
                         }
                       }}
                       style={[styles.pdfButton, { marginRight: 8 }]}
@@ -301,7 +303,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                           // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
                           refetch();
                         } catch (err: unknown) {
-                          alert('PDF hiba: ' + getErrorMessage(err));
+                          logger.error('PDF hiba:', err);
+                          alert('Hiba történt a PDF generálása során. Kérjük, próbálja újra később.');
                         } finally {
                           setPdfLoading(false);
                         }
