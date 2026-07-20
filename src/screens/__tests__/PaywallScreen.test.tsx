@@ -170,7 +170,7 @@ describe('PaywallScreen', () => {
     });
 
     expect(failingPurchasePackage).toHaveBeenCalled();
-    expect(global.alert).toHaveBeenCalledWith('Vásárlási hiba: Test purchase error');
+    expect(global.alert).toHaveBeenCalledWith('Vásárlási hiba: Kérjük, próbáld újra később.');
   });
 
   it('renders fallback mock package when packages is empty and handles mock purchase', async () => {
@@ -239,6 +239,6 @@ describe('PaywallScreen', () => {
     });
 
     expect(failingRestore).toHaveBeenCalled();
-    expect(global.alert).toHaveBeenCalledWith('Visszaállítási hiba: Test restore error');
+    expect(global.alert).toHaveBeenCalledWith('Visszaállítási hiba: Kérjük, próbáld újra később.');
   });
 });
