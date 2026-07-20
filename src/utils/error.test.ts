@@ -1,4 +1,4 @@
-import { getErrorMessage, isPurchasesError } from './error';
+import { getErrorMessage, isPurchasesError, formatChatErrorMessage } from './error';
 
 describe('getErrorMessage', () => {
   it('returns the message property if error is an Error instance', () => {
@@ -45,5 +45,26 @@ describe('isPurchasesError', () => {
 
   it('returns false if error is null', () => {
     expect(isPurchasesError(null)).toBe(false);
+  });
+});
+
+describe('formatChatErrorMessage', () => {
+  it('returns the original message if it already includes "Sajnálom"', () => {
+    const error = new Error('Sajnálom, hiba történt');
+    expect(formatChatErrorMessage(error)).toBe('Sajnálom, hiba történt');
+  });
+
+  it('wraps the error message in a standard format if it does not contain "Sajnálom"', () => {
+    const error = new Error('Valami rosszul sült el');
+    expect(formatChatErrorMessage(error)).toBe(
+      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Valami rosszul sült el. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!'
+    );
+  });
+
+  it('uses a fallback message if the extracted error message is empty', () => {
+    const error = new Error('');
+    expect(formatChatErrorMessage(error)).toBe(
+      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: hálózati hiba. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!'
+    );
   });
 });
