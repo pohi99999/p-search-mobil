@@ -95,6 +95,25 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
     }
   };
 
+
+  const planStats = useMemo(() => {
+    const stats: Record<string, { totalTasks: number; completedTasks: number; progress: number; percentage: number }> = {};
+    visiblePlans.forEach(plan => {
+      const planTasks = tasks[plan.id] || [];
+      const totalTasks = planTasks.length;
+      let completedTasks = 0;
+      for (let i = 0; i < totalTasks; i++) {
+        if (planTasks[i].status === 'done') {
+          completedTasks++;
+        }
+      }
+      const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
+      const percentage = Math.round(progress * 100);
+      stats[plan.id] = { totalTasks, completedTasks, progress, percentage };
+    });
+    return stats;
+  }, [visiblePlans, tasks]);
+
   const isLoading = profileLoading || plansLoading;
 
   if (isLoading) {
@@ -206,10 +225,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {visiblePlans.map((plan) => {
             const planTasks = tasks[plan.id] || [];
-            const totalTasks = planTasks.length;
-            const completedTasks = planTasks.filter(t => t.status === 'done').length;
-            const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
-            const percentage = Math.round(progress * 100);
+            const { totalTasks, completedTasks, progress, percentage } = planStats[plan.id] || { totalTasks: 0, completedTasks: 0, progress: 0, percentage: 0 };
 
             return (
               <Card key={plan.id} style={styles.card} mode="elevated">
