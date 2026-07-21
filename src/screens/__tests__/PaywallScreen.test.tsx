@@ -4,6 +4,7 @@ import { PaywallScreen } from '../PaywallScreen';
 import { useBilling } from '../../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
 import { Button, ActivityIndicator } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(),
@@ -27,16 +28,6 @@ jest.mock('react-native-paper', () => {
   };
 });
 
-// Fix "No safe area value available" from r-n-p Snackbar internal usage
-jest.mock('react-native-safe-area-context', () => {
-  const inset = { top: 0, right: 0, bottom: 0, left: 0 };
-  return {
-    SafeAreaProvider: jest.fn().mockImplementation(({ children }) => children),
-    SafeAreaConsumer: jest.fn().mockImplementation(({ children }) => children(inset)),
-    useSafeAreaInsets: jest.fn().mockImplementation(() => inset),
-  };
-});
-
 // Provide timers mock
 jest.useFakeTimers();
 
@@ -51,6 +42,14 @@ describe('PaywallScreen', () => {
     restorePurchases: jest.fn(),
     isLoading: false,
     isPro: false,
+  };
+
+  const renderWithSafeArea = (children: React.ReactNode) => {
+    return renderer.create(
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        {children}
+      </SafeAreaProvider>
+    );
   };
 
   beforeEach(() => {
@@ -72,7 +71,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     await act(async () => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const root = component!.root;
@@ -96,7 +95,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     act(() => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const root = component!.root;
@@ -120,7 +119,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     await act(async () => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const root = component!.root;
@@ -158,7 +157,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     await act(async () => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const purchaseButton = component!.root.findAllByType(Button).find(
@@ -178,7 +177,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     await act(async () => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
@@ -202,7 +201,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     await act(async () => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const restoreButton = component!.root.findAllByType(Button).find(
@@ -227,7 +226,7 @@ describe('PaywallScreen', () => {
 
     let component: renderer.ReactTestRenderer;
     await act(async () => {
-      component = renderer.create(<PaywallScreen />);
+      component = renderWithSafeArea(<PaywallScreen />);
     });
 
     const restoreButton = component!.root.findAllByType(Button).find(
