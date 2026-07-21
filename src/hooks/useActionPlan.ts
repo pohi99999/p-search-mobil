@@ -17,36 +17,27 @@ export const useActionPlan = (businessProfileId?: string) => {
       // 1. Lekérdezzük az akcióterveket a cégprofilhoz
       const { data: plansData, error: plansError } = await supabase
         .from('action_plans')
-        .select('*')
+        .select('*, action_tasks(*)')
         .eq('business_profile_id', businessProfileId)
         .order('created_at', { ascending: false });
 
       if (plansError) throw plansError;
 
       if (plansData && plansData.length > 0) {
-        setPlans(plansData);
-
-        // 2. Lekérdezzük a feladatokat az összes tervhez
-        const planIds = plansData.map(p => p.id);
-
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('action_tasks')
-          .select('*')
-          .in('plan_id', planIds)
-          .order('order_index', { ascending: true });
-
-        if (tasksError) throw tasksError;
-
-        // Csoportosítjuk a feladatokat plan_id szerint
+        const parsedPlans: ActionPlan[] = [];
         const tasksMap: Record<string, ActionTask[]> = {};
-        for (const id of planIds) {
-          tasksMap[id] = [];
+
+        for (const planRow of plansData) {
+          const { action_tasks, ...plan } = planRow as any;
+          parsedPlans.push(plan);
+
+          const tasks = (action_tasks || []) as ActionTask[];
+          // Sort tasks locally by order_index
+          tasks.sort((a, b) => a.order_index - b.order_index);
+          tasksMap[plan.id] = tasks;
         }
-        for (const task of tasksData || []) {
-          if (tasksMap[task.plan_id]) {
-            tasksMap[task.plan_id].push(task);
-          }
-        }
+
+        setPlans(parsedPlans);
         setTasks(tasksMap);
       } else {
         setPlans([]);
