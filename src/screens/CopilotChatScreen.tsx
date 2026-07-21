@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
+import { useProfile } from '../context/ProfileContext';
+
 import { BusinessProfile } from '../types/database';
 import { getErrorMessage, formatChatErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
@@ -20,7 +22,7 @@ interface Message {
 type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
 
 export function CopilotChatScreen({ route, navigation }: Props) {
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const { profile } = useProfile();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -34,30 +36,6 @@ export function CopilotChatScreen({ route, navigation }: Props) {
   const flatListRef = useRef<FlatList<Message>>(null);
 
   const matchId = route?.params?.matchId || null;
-
-  // Cégprofil lekérése a bejelentkezett felhasználóhoz
-  useEffect(() => {
-    async function fetchProfile() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
-
-        const { data, error } = await supabase
-          .from('business_profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (data) {
-          setProfile(data as BusinessProfile);
-        }
-      } catch (err) {
-        logger.error('Hiba a profil betöltésekor a chatben:', err);
-      }
-    }
-
-    fetchProfile();
-  }, []);
 
   // Automatikus görgetés a lista aljára, ha új üzenet érkezik vagy az AI gépel
   useEffect(() => {
