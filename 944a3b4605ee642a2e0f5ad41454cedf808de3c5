@@ -1,0 +1,1 @@
+[CONDUCTOR NOTE] Integrated 7 async Jules branches (PaywallScreen refactor to subcomponents, ProfileContext caching for business_profile, useActionPlan single joined DB query optimization, useHomeData webhook refactor and unit tests, PaywallScreen test safe area fixes). Verified with tsc (0 errors) and jest (16 test suites, 102 tests 100% green).
