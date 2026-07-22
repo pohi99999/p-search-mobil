@@ -21,6 +21,24 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 07. 22. (Fázis 6 — Jules újabb aszinkron munkáinak teljes integrációja: 7 ág beolvasztása, PaywallScreen komponensekre bontása, ProfileContext gyorsítótár, DB lekérdezés optimalizálás és unit tesztek):**
+  - **Beolvasztott Jules ágak (7 távoli ág):**
+    * `fix-paywall-safe-area-tests-4576162164903554719` (SafeAreaProvider segítségével PaywallScreen tesztek safe area hibáinak elhárítása)
+    * `fix/paywall-screen-complexity-2-16208802507872054769` (PaywallScreen refaktorálása moduláris alkomponensekre: PaywallFeatures, PaywallOverlay, PaywallPackages, PaywallSuccess)
+    * `fix/refactor-usehomedata-webhook-4162929402938707748` (Duplikált webhook logika kiszervezése és useHomeData refaktorálása)
+    * `jules-refactor-use-action-plan-13990464052645496764` (useActionPlan hook komplexitásának csökkentése és stabilitási refaktora)
+    * `perf-cache-business-profile-6893775801407534632` (ProfileContext bevezetése a cégprofil adatainak gyorsítótárazásához CopilotChatScreen felületen)
+    * `perf-optimize-queries-25742263096086215` (ActionPlan query-k optimalizálása egyetlen `.select('*, action_tasks(*)')` joined kéréssé, elhagyva a 2. hálózati kérést)
+    * `tests/add-usehomedata-tests-3627600394194832738` (useHomeData hook unit tesztcsomag hozzáadása)
+  - **Konfliktusfeloldás:** Feloldottuk az ütközést a `src/hooks/useActionPlan.ts` fájlban, érvényesítve az egyetlen joined Supabase lekérdezést és a helyi feladat-sorbarendezést.
+  - **Integritás és Tisztítás:**
+    * Töröltük a mergelés során hátramaradt ideiglenes fájlokat (`submit.py`, `pr.md`).
+    * Lefuttattuk az `npm install --legacy-peer-deps` parancsot a csomagok frissítéséhez.
+  - **Verifikáció és Tesztelés:**
+    * TypeScript típusellenőrzés (`npx tsc --noEmit`): SIKERES (0 hiba)
+    * Egységtesztek futtatása (`npx jest`): 16/16 tesztcsomag, 102/102 teszt sikeresen lefutott (100% zöld)
+  - **Git & GitHub szinkronizáció:** Integráció befejezve, Conductor Git Note csatolva, pusholva `master`-re és `refs/notes/commits`-ra.
+
 - **2026. 07. 20. (Fázis 6 — Jules aszinkron munkáinak teljes körű beolvasztása & minőségbiztosítása: 16 ág integrációja, érzékeny adatok védelme, teljesítmény-optimalizálás és unit tesztek):**
   - **Beolvasztott Jules ágak (16 távoli ág):**
     * `add-matchcard-tests-10044237497837229981` (MatchCard komponens unit tesztek)
