@@ -13,6 +13,8 @@ import { PaywallScreen } from './src/screens/PaywallScreen';
 import { ActionPlanScreen } from './src/screens/ActionPlanScreen';
 import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
 import { BillingProvider } from './src/context/BillingContext';
+import { ProfileProvider } from './src/context/ProfileContext';
+
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -53,7 +55,8 @@ export default function App() {
 
   return (
     <BillingProvider>
-      <PaperProvider theme={theme}>
+      <ProfileProvider>
+        <PaperProvider theme={theme}>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {session && session.user ? (
@@ -69,7 +72,8 @@ export default function App() {
             )}
           </Stack.Navigator>
         </NavigationContainer>
-      </PaperProvider>
+        </PaperProvider>
+      </ProfileProvider>
     </BillingProvider>
   );
 }
