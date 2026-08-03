@@ -32,6 +32,16 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
       return;
     }
 
+    const employeeCountStr = form.employee_count ? form.employee_count.trim() : '';
+    const yearlyRevenueStr = form.yearly_revenue ? form.yearly_revenue.trim() : '';
+    const digitsOnly = /^\d+$/;
+
+    if ((employeeCountStr && !digitsOnly.test(employeeCountStr)) ||
+        (yearlyRevenueStr && !digitsOnly.test(yearlyRevenueStr))) {
+      setError('Hiba történt a mentés során.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -47,8 +57,8 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
             company_name: form.company_name,
             tax_number: form.tax_number,
             industry_code: form.industry_code,
-            employee_count: form.employee_count ? parseInt(form.employee_count) : null,
-            yearly_revenue: form.yearly_revenue ? parseInt(form.yearly_revenue) : null,
+            employee_count: employeeCountStr ? parseInt(employeeCountStr, 10) : null,
+            yearly_revenue: yearlyRevenueStr ? parseInt(yearlyRevenueStr, 10) : null,
             goals: form.goals,
           }
         ])
