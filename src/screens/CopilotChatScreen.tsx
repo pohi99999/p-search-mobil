@@ -51,7 +51,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
 
     const userText = inputText.trim();
     const userMessage: Message = {
-      id: Math.random().toString(),
+      id: crypto.randomUUID(),
       text: userText,
       sender: 'user',
       created_at: new Date().toISOString()
@@ -84,7 +84,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       const sources = Array.isArray(data?.sources) ? data.sources : undefined;
 
       const aiResponse: Message = {
-        id: Math.random().toString(),
+        id: crypto.randomUUID(),
         text: replyText,
         sender: 'ai',
         created_at: new Date().toISOString(),
@@ -97,7 +97,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       const errorMessageText = formatChatErrorMessage(err);
 
       const errorMessage: Message = {
-        id: `err-${Math.random()}`,
+        id: `err-${crypto.randomUUID()}`,
         text: errorMessageText,
         sender: 'ai',
         created_at: new Date().toISOString()
