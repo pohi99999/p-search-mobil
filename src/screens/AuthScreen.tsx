@@ -11,7 +11,30 @@ export function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const theme = useTheme();
 
+
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateInputs = () => {
+    if (!email || !password) {
+      Alert.alert('Érvénytelen adat', 'Kérlek, töltsd ki az összes mezőt.');
+      return false;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
+      return false;
+    }
+    if (password.length < 6) {
+      Alert.alert('Érvénytelen adat', 'A jelszónak legalább 6 karakter hosszúnak kell lennie.');
+      return false;
+    }
+    return true;
+  };
+
   async function signInWithEmail() {
+    if (!validateInputs()) return;
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: email,
@@ -23,6 +46,7 @@ export function AuthScreen() {
   }
 
   async function signUpWithEmail() {
+    if (!validateInputs()) return;
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: email,
