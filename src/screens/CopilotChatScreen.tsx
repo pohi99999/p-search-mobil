@@ -4,8 +4,7 @@ import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-n
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 
-import { BusinessProfile } from '../types/database';
-import { getErrorMessage, formatChatErrorMessage } from '../utils/error';
+import { formatChatErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
