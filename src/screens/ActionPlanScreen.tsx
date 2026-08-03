@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Button, List, Surface, ProgressBar, Divider, Snackbar, Checkbox, ActivityIndicator, Banner } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
+import { useProfile } from '../context/ProfileContext';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
 import { generateAndSharePDF } from '../utils/documentGenerator';
@@ -12,8 +13,7 @@ import { logger } from '../utils/logger';
 
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const matchId = route?.params?.matchId;
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const { profile, loading: profileLoading } = useProfile();
   const [pdfLoading, setPdfLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -24,36 +24,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
 
   const { showAdIfAvailable } = useInterstitialAd();
 
-  // Cégprofil lekérése a bejelentkezett felhasználóhoz
-  useEffect(() => {
-    async function fetchProfile() {
-      setProfileLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
 
-        const { data, error } = await supabase
-          .from('business_profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          logger.error('Hiba a cégprofil lekérésekor:', error);
-        }
-
-        if (data) {
-          setProfile(data as BusinessProfile);
-        }
-      } catch (err) {
-        logger.error(err);
-      } finally {
-        setProfileLoading(false);
-      }
-    }
-
-    fetchProfile();
-  }, []);
 
   // Egyedi hook meghívása a cégprofil azonosítóval
   const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus, generatePlanForMatch } = useActionPlan(profile?.id);
