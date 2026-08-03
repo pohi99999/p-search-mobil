@@ -8,7 +8,6 @@ import { generateAndSharePDF } from '../utils/documentGenerator';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
 import type { ActionPlanScreenProps } from "../types/navigation";
-import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
