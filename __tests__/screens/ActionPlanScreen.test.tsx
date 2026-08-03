@@ -6,6 +6,14 @@ import { supabase } from '../../src/lib/supabase';
 import { useInterstitialAd } from '../../src/hooks/useInterstitialAd';
 
 jest.mock('../../src/hooks/useActionPlan');
+
+jest.mock('../../src/context/ProfileContext', () => ({
+  useProfile: () => ({
+    profile: { id: 'test-profile' },
+    loading: false
+  })
+}));
+
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
     auth: {
