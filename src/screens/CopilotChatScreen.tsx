@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, IconButton, ActivityIndicator, Surface } from 'react-native-paper';
+import { Text, TextInput, ActivityIndicator, Surface } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 
