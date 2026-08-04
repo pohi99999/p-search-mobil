@@ -3,7 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import { AuthScreen } from './AuthScreen';
 import { supabase } from '../lib/supabase';
 import { Alert } from 'react-native';
-import { Button } from 'react-native-paper';
+import { Button, TextInput } from 'react-native-paper';
 
 jest.mock('../lib/supabase', () => ({
   supabase: {
@@ -29,13 +29,64 @@ describe('AuthScreen', () => {
     expect(component.toJSON()).toBeTruthy();
   });
 
+  it('prevents sign in with invalid email', async () => {
+    let component;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => {
+      textInputs[0].props.onChangeText('invalidemail');
+      textInputs[1].props.onChangeText('password123');
+    });
+
+    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Bejelentkezés');
+
+    await act(async () => {
+      await actionBtn.props.onPress();
+    });
+
+    expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
+  });
+
+  it('prevents sign in with short password', async () => {
+    let component;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => {
+      textInputs[0].props.onChangeText('test@example.com');
+      textInputs[1].props.onChangeText('123');
+    });
+
+    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Bejelentkezés');
+
+    await act(async () => {
+      await actionBtn.props.onPress();
+    });
+
+    expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'A jelszónak legalább 6 karakter hosszúnak kell lennie.');
+  });
+
   it('handles signUp error correctly', async () => {
     let component;
     act(() => {
       component = renderer.create(<AuthScreen />);
     });
 
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => {
+      textInputs[0].props.onChangeText('test@example.com');
+      textInputs[1].props.onChangeText('password123');
+    });
+
     const mockError = new Error('Invalid email');
+
     (supabase.auth.signUp as jest.Mock).mockResolvedValueOnce({
       data: { session: null },
       error: mockError,
@@ -64,6 +115,12 @@ describe('AuthScreen', () => {
       component = renderer.create(<AuthScreen />);
     });
 
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => {
+      textInputs[0].props.onChangeText('test@example.com');
+      textInputs[1].props.onChangeText('password123');
+    });
+
     (supabase.auth.signUp as jest.Mock).mockResolvedValueOnce({
       data: { session: null },
       error: null,
@@ -90,6 +147,12 @@ describe('AuthScreen', () => {
     let component;
     act(() => {
       component = renderer.create(<AuthScreen />);
+    });
+
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => {
+      textInputs[0].props.onChangeText('test@example.com');
+      textInputs[1].props.onChangeText('password123');
     });
 
     (supabase.auth.signUp as jest.Mock).mockResolvedValueOnce({
