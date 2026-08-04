@@ -20,6 +20,54 @@ interface Message {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
 
+const MessageItem = React.memo(({ item }: { item: Message }) => {
+  const isUser = item.sender === 'user';
+  const isError = item.id.startsWith('err-');
+
+  return (
+    <View style={[
+      styles.messageRow,
+      isUser ? styles.userRow : styles.aiRow
+    ]}>
+      <Surface style={[
+        styles.bubble,
+        isUser ? styles.userBubble : styles.aiBubble,
+        isError && styles.errorBubble
+      ]} elevation={1}>
+        <Text style={[
+          styles.messageText,
+          isUser ? styles.userText : styles.aiText,
+          isError && styles.errorText
+        ]}>
+          {item.text}
+        </Text>
+
+        {/* RAG források megjelenítése a válasz alatt */}
+        {!isUser && item.sources && item.sources.length > 0 && (
+          <View style={styles.sourcesContainer}>
+            <Text style={styles.sourcesTitle}>Források:</Text>
+            <View style={styles.sourcesList}>
+              {item.sources.map((src, index) => (
+                <View key={index} style={styles.sourceTag}>
+                  <Text style={styles.sourceTagText}>{src}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <Text style={[
+          styles.timestampText,
+          isUser ? styles.userTimestamp : styles.aiTimestamp
+        ]}>
+          {new Date(item.created_at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+      </Surface>
+    </View>
+  );
+});
+
+
 export function CopilotChatScreen({ route, navigation }: Props) {
   const { profile } = useProfile();
   const [messages, setMessages] = useState<Message[]>([
@@ -107,54 +155,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
     }
   };
 
-  const renderMessageItem = useCallback(({ item }: { item: Message }) => {
-    const isUser = item.sender === 'user';
-    const isError = item.id.startsWith('err-');
-    
     return (
-      <View style={[
-        styles.messageRow,
-        isUser ? styles.userRow : styles.aiRow
-      ]}>
-        <Surface style={[
-          styles.bubble,
-          isUser ? styles.userBubble : styles.aiBubble,
-          isError && styles.errorBubble
-        ]} elevation={1}>
-          <Text style={[
-            styles.messageText,
-            isUser ? styles.userText : styles.aiText,
-            isError && styles.errorText
-          ]}>
-            {item.text}
-          </Text>
-
-          {/* RAG források megjelenítése a válasz alatt */}
-          {!isUser && item.sources && item.sources.length > 0 && (
-            <View style={styles.sourcesContainer}>
-              <Text style={styles.sourcesTitle}>Források:</Text>
-              <View style={styles.sourcesList}>
-                {item.sources.map((src, index) => (
-                  <View key={index} style={styles.sourceTag}>
-                    <Text style={styles.sourceTagText}>{src}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          <Text style={[
-            styles.timestampText,
-            isUser ? styles.userTimestamp : styles.aiTimestamp
-          ]}>
-            {new Date(item.created_at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-        </Surface>
-      </View>
-    );
-  }, []);
-
-  return (
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -169,7 +170,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         ref={flatListRef}
         data={messages}
         keyExtractor={item => item.id}
-        renderItem={renderMessageItem}
+        renderItem={({ item }) => <MessageItem item={item} />}
         contentContainerStyle={styles.listContent}
         ListFooterComponent={
           isTyping ? (
