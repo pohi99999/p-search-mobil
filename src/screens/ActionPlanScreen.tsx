@@ -67,21 +67,21 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
 
 
   const planStats = useMemo(() => {
-    const stats: Record<string, { totalTasks: number; completedTasks: number; progress: number; percentage: number }> = {};
-    visiblePlans.forEach(plan => {
+    return visiblePlans.reduce((stats, plan) => {
       const planTasks = tasks[plan.id] || [];
       const totalTasks = planTasks.length;
-      let completedTasks = 0;
-      for (let i = 0; i < totalTasks; i++) {
-        if (planTasks[i].status === 'done') {
-          completedTasks++;
-        }
-      }
+
+      const completedTasks = planTasks.reduce(
+        (acc, task) => acc + (task.status === 'done' ? 1 : 0),
+        0
+      );
+
       const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
       const percentage = Math.round(progress * 100);
+
       stats[plan.id] = { totalTasks, completedTasks, progress, percentage };
-    });
-    return stats;
+      return stats;
+    }, {} as Record<string, { totalTasks: number; completedTasks: number; progress: number; percentage: number }>);
   }, [visiblePlans, tasks]);
 
   const isLoading = profileLoading || plansLoading;
