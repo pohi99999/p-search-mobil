@@ -19,7 +19,8 @@ export const useActionPlan = (businessProfileId?: string) => {
         .from('action_plans')
         .select('*, action_tasks(*)')
         .eq('business_profile_id', businessProfileId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('order_index', { referencedTable: 'action_tasks', ascending: true });
 
       if (plansError) throw plansError;
 
@@ -32,8 +33,6 @@ export const useActionPlan = (businessProfileId?: string) => {
           parsedPlans.push(plan);
 
           const tasks = (action_tasks || []) as ActionTask[];
-          // Sort tasks locally by order_index
-          tasks.sort((a, b) => a.order_index - b.order_index);
           tasksMap[plan.id] = tasks;
         }
 

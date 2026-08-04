@@ -19,7 +19,7 @@ describe('useActionPlan', () => {
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({ data: null, error: new Error(errorMessage) }),
+      order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: null, error: new Error(errorMessage) }) }),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -49,7 +49,7 @@ describe('useActionPlan', () => {
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({ data: null, error: 'A string error' }),
+      order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: null, error: 'A string error' }) }),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -75,7 +75,7 @@ describe('useActionPlan', () => {
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockRejectedValue(''), // An empty string error
+      order: jest.fn().mockReturnValue({ order: jest.fn().mockRejectedValue('') }),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -104,12 +104,12 @@ describe('useActionPlan', () => {
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockImplementation(() => {
+      order: jest.fn().mockReturnValue({ order: jest.fn().mockImplementation(() => {
         if (shouldFail) {
           return Promise.resolve({ data: null, error: new Error(errorMessage) });
         }
         return Promise.resolve({ data: [], error: null });
-      }),
+      }) }),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
