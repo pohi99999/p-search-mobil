@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { ProfileProvider, useProfile } from './ProfileContext';
+import { ProfileProvider, useProfile, clearProfileCache } from './ProfileContext';
 import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
 
@@ -31,6 +31,7 @@ describe('ProfileContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clearProfileCache();
     mockUnsubscribe = jest.fn();
 
     mockOnAuthStateChange = supabase.auth.onAuthStateChange as jest.Mock;

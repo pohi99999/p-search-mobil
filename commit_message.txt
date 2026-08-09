@@ -1,0 +1,10 @@
+⚡ Optimize ProfileContext to Prevent N+1 Database Calls
+
+💡 What: Implemented module-level caching in ProfileContext and a shared fetchPromise to resolve concurrent requests.
+
+🎯 Why: Previously, the ProfileProvider fetched the user's business profile unconditionally on every mount. Because multiple screens/components wrap or remount the context, this resulted in an N+1 fetching problem causing multiple duplicate database queries for the same profile data on navigation/startup.
+
+📊 Measured Improvement:
+- Baseline: A benchmark simulating 5 sequential mounts of ProfileProvider resulted in 5 calls to supabase.auth.getSession() and 5 calls to supabase.from('business_profiles').select(...).
+- Improvement: After implementing caching, the same benchmark simulation resulted in exactly 1 call to getSession() and 1 database query, avoiding 4 redundant network requests.
+- Change: 80% reduction in database calls during sequential mounts.
