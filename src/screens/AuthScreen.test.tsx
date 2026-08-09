@@ -70,7 +70,7 @@ describe('AuthScreen', () => {
     });
 
     expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'A jelszónak legalább 6 karakter hosszúnak kell lennie.');
+    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
   });
 
   it('handles signUp error correctly', async () => {

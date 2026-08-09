@@ -26,8 +26,8 @@ export function AuthScreen() {
       Alert.alert('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
       return false;
     }
-    if (password.length < 6) {
-      Alert.alert('Érvénytelen adat', 'A jelszónak legalább 6 karakter hosszúnak kell lennie.');
+    if (password.length < 8) {
+      Alert.alert('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
       return false;
     }
     return true;
