@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
@@ -98,14 +99,14 @@ export function useHomeData(navigation: RootStackNavigationProp) {
 
   const handleNewSearch = async () => {
     if (!userProfile || !userProfile.id) {
-      alert("Felhasználói profil nem található!");
+      Alert.alert("Felhasználói profil nem található!");
       return;
     }
 
     if (isPro) {
       if (profile) {
         await triggerSearchWebhook('new_search_pro', profile.id, userProfile.id);
-        alert("Új Pro AI keresés elindítva!");
+        Alert.alert("Új Pro AI keresés elindítva!");
       }
       navigation.navigate('CopilotChat');
       return;
@@ -126,14 +127,14 @@ export function useHomeData(navigation: RootStackNavigationProp) {
       if (updateError) {
         logger.error(updateError);
         setUserProfile({ ...userProfile, search_count: currentCount });
-        alert("Hiba történt a keresési limit frissítésekor!");
+        Alert.alert("Hiba történt a keresési limit frissítésekor!");
         return;
       }
 
       if (profile) {
         await triggerSearchWebhook('new_search_free', profile.id, userProfile.id);
       }
-      alert("Ingyenes AI keresés elindítva!");
+      Alert.alert("Ingyenes AI keresés elindítva!");
       navigation.navigate('CopilotChat');
     }
   };

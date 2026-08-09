@@ -1,4 +1,5 @@
 import { renderHook, act } from '@testing-library/react-hooks';
+import { Alert } from 'react-native';
 import { useHomeData } from '../useHomeData';
 import { supabase } from '../../lib/supabase';
 import { useBilling } from '../../context/BillingContext';
@@ -44,7 +45,7 @@ describe('useHomeData', () => {
     jest.clearAllMocks();
     (useBilling as jest.Mock).mockReturnValue({ isPro: false });
 
-    global.alert = jest.fn();
+    Alert.alert = jest.fn();
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
 
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
@@ -208,7 +209,7 @@ describe('useHomeData', () => {
         await result.current.handleNewSearch();
       });
 
-      expect(global.alert).toHaveBeenCalledWith("Felhasználói profil nem található!");
+      expect(Alert.alert).toHaveBeenCalledWith("Felhasználói profil nem található!");
     });
 
     it('handles Pro user search', async () => {
@@ -223,7 +224,7 @@ describe('useHomeData', () => {
       });
 
       expect(global.fetch).toHaveBeenCalledWith('http://mock-webhook-url', expect.any(Object));
-      expect(global.alert).toHaveBeenCalledWith("Új Pro AI keresés elindítva!");
+      expect(Alert.alert).toHaveBeenCalledWith("Új Pro AI keresés elindítva!");
       expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
     });
 
@@ -239,7 +240,7 @@ describe('useHomeData', () => {
 
       expect(supabase.from).toHaveBeenCalledWith('profiles');
       expect(global.fetch).toHaveBeenCalledWith('http://mock-webhook-url', expect.any(Object));
-      expect(global.alert).toHaveBeenCalledWith("Ingyenes AI keresés elindítva!");
+      expect(Alert.alert).toHaveBeenCalledWith("Ingyenes AI keresés elindítva!");
       expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
     });
 
@@ -269,7 +270,7 @@ describe('useHomeData', () => {
       });
 
       expect(logger.error).toHaveBeenCalledWith(updateError);
-      expect(global.alert).toHaveBeenCalledWith("Hiba történt a keresési limit frissítésekor!");
+      expect(Alert.alert).toHaveBeenCalledWith("Hiba történt a keresési limit frissítésekor!");
     });
   });
 });
