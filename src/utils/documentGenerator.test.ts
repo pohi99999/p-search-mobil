@@ -62,6 +62,7 @@ describe('generateAndSharePDF', () => {
       .toThrow('A megosztás nem támogatott ezen az eszközön.');
 
     expect(Print.printToFileAsync).toHaveBeenCalledTimes(1);
+    expect(Sharing.isAvailableAsync).toHaveBeenCalledTimes(1);
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalled();
   });
@@ -98,6 +99,16 @@ describe('generateAndSharePDF', () => {
     await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
       .rejects
       .toThrow('String error message');
+
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it('should fallback to default error message if error message is empty', async () => {
+    (Print.printToFileAsync as jest.Mock).mockRejectedValue('');
+
+    await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
+      .rejects
+      .toThrow('Nem sikerült előállítani vagy megosztani a PDF dokumentumot.');
 
     expect(console.error).toHaveBeenCalled();
   });
