@@ -21,6 +21,23 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 08. 10. (Fázis 8 — Jules aszinkron munkáinak teljes körű integrációja: 9 ág beolvasztása, biztonsági javítások, Native Alert migráció, ProfileContext N+1 lekérdezés optimalizálás és tesztlefedettség bővítés):**
+  - **Beolvasztott Jules ágak (9 távoli ág):**
+    * `code-health/replace-alert-4980265881057392389` (Web `alert` lecserélése React Native `Alert` komponensre a `useHomeData.ts` hookban)
+    * `fix-billing-alert-12151609325915070228` (TODO lecserélése React Native `Alert`-re a `BillingContext.tsx`-ben)
+    * `fix-insecure-auth-bypass-9046185907460064766` (Biztonsági javítás: insecure auth bypass lehetőség megszüntetése a Supabase kliensben)
+    * `jules-11379514548675409904-f4c4c0a3` (Globális `alert` cseréje React Native `Alert`-re a `PaywallScreen.tsx` és `PaywallPackages.tsx` felületén)
+    * `jules-4276392363570333569-3bbaa1c2` (Biztonsági javítás: Gyenge jelszóhossz ellenőrzés szigorítása az `AuthScreen.tsx`-ben)
+    * `jules-9166426080173264633-f90c9c99` (`useHomeData.test.ts` frissítése az új `Alert` hívások teszteléséhez)
+    * `jules-billing-tests-1707478190650451280` (`BillingContext` unit teszt lefedettség bővítése a `purchasePackage` hibákra és `useEffect` cleanup-ra)
+    * `jules-code-health-document-generator-test-9416161886670867097` (`documentGenerator.test.ts` tesztlefedettség növelése a megosztás elérhetetlenségi ágára)
+    * `perf-optimize-profile-context-16403700029061645357` (N+1 adatbázis lekérdezések megelőzése és teljesítmény-optimalizálás a `ProfileContext.tsx`-ben)
+  - **Integritás és tisztítás:** Eltávolítottuk az ideiglenes fájlokat (`commit_message.txt`, `0.26.0`), feloldottuk a dupla import jellegű tesztütközést a `useHomeData.test.ts`-ben.
+  - **Verifikáció és Tesztelés:**
+    * `npm install --legacy-peer-deps`: SIKERES
+    * TypeScript típusellenőrzés (`npx tsc --noEmit`): SIKERES (0 hiba)
+    * Egységtesztek futtatása (`npx jest`): 20/20 tesztcsomag, 126/126 teszt sikeresen lefutott (100% zöld)
+
 - **2026. 08. 04. (Fázis 7 — Jules aszinkron munkáinak végleges integrációja, temp fájlok tisztítása és teljes verifikáció):**
   - **Beolvasztott / ellenőrzött ágak:**
     * `origin/jules-10706789068212173606-35c66bf2` (MessageItem kivonás a CopilotChatScreen-ből)
