@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import renderer from 'react-test-renderer';
 import { ActionPlanScreen } from '../../src/screens/ActionPlanScreen';
 import { useActionPlan } from '../../src/hooks/useActionPlan';
@@ -82,7 +83,7 @@ describe('ActionPlanScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAlert = jest.spyOn(global, 'alert').mockImplementation(() => {});
+    mockAlert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { user: { id: 'test-user' } } },
