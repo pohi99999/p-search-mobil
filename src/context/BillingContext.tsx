@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
 import { getErrorMessage, isPurchasesError } from '../utils/error';
@@ -113,7 +113,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const isCancelled = isPurchasesError(e) && (e.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || e.userCancelled);
       if (!isCancelled) {
         logger.error('Error purchasing package:', getErrorMessage(e));
-        // Here you might want to show an alert to the user
+        Alert.alert('Hiba', 'Sikertelen vásárlás');
       }
     } finally {
       setIsLoading(false);

@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import Purchases from 'react-native-purchases';
 import { BillingProvider, useBilling } from './BillingContext';
 import { logger } from '../utils/logger';
@@ -52,6 +52,7 @@ describe('BillingContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Platform.OS = 'ios';
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockEnv = {
       API_KEY_ANDROID: 'test-android-key',
       API_KEY_IOS: 'test-ios-key',
@@ -240,6 +241,7 @@ describe('BillingContext', () => {
       });
 
       expect(logger.error).toHaveBeenCalledWith('Error purchasing package:', 'Generic error');
+      expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Sikertelen vásárlás');
       expect(getContext().isLoading).toBe(false);
     });
   });
