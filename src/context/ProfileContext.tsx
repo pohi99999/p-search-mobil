@@ -3,6 +3,18 @@ import { supabase } from '../lib/supabase';
 import { BusinessProfile } from '../types/database';
 import { logger } from '../utils/logger';
 
+let cachedProfile: BusinessProfile | null = null;
+let hasFetched = false;
+let fetchPromise: Promise<void> | null = null;
+
+// Only to be used in tests
+export const clearProfileCache = () => {
+  cachedProfile = null;
+  hasFetched = false;
+  fetchPromise = null;
+};
+
+
 interface ProfileContextType {
   profile: BusinessProfile | null;
   loading: boolean;
@@ -20,38 +32,66 @@ const ProfileContext = createContext<ProfileContextType>({
 export const useProfile = () => useContext(ProfileContext);
 
 export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  const [profile, setProfileState] = useState<BusinessProfile | null>(cachedProfile);
+
+  const setProfile = (newProfile: BusinessProfile | null) => {
+    cachedProfile = newProfile;
+    hasFetched = true;
+    setProfileState(newProfile);
+  };
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setProfile(null);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('business_profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        logger.error('Error fetching profile in ProfileContext:', error);
-      }
-
-      if (data) {
-        setProfile(data as BusinessProfile);
-      } else {
-        setProfile(null);
-      }
-    } catch (err) {
-      logger.error('Unexpected error fetching profile in ProfileContext:', err);
-    } finally {
+  const fetchProfile = async (forceRefresh = false) => {
+    if (hasFetched && !forceRefresh) {
+      setProfileState(cachedProfile);
       setLoading(false);
+      return;
     }
+
+    if (fetchPromise && !forceRefresh) {
+      setLoading(true);
+      await fetchPromise;
+      setProfileState(cachedProfile);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    fetchPromise = (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          cachedProfile = null;
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          logger.error('Error fetching profile in ProfileContext:', error);
+        }
+
+        if (data) {
+          cachedProfile = data as BusinessProfile;
+        } else {
+          cachedProfile = null;
+        }
+      } catch (err) {
+        logger.error('Unexpected error fetching profile in ProfileContext:', err);
+      } finally {
+        hasFetched = true;
+        fetchPromise = null;
+      }
+    })();
+
+    await fetchPromise;
+    setProfileState(cachedProfile);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -59,7 +99,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        fetchProfile();
+        fetchProfile(true);
       } else {
         setProfile(null);
       }
@@ -71,7 +111,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, refreshProfile: fetchProfile, setProfile }}>
+    <ProfileContext.Provider value={{ profile, loading, refreshProfile: () => fetchProfile(true), setProfile }}>
       {children}
     </ProfileContext.Provider>
   );

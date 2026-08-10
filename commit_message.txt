@@ -1,5 +1,0 @@
-🔒 Fix weak password length validation
-
-🎯 What: The minimum password length requirement in `AuthScreen` was set to an insecure value of 6 characters. It is now raised to 8 characters.
-⚠️ Risk: A 6-character password is significantly easier to crack using brute-force or dictionary attacks compared to an 8-character password. This could lead to unauthorized account access.
-🛡️ Solution: Updated the minimum length condition in `src/screens/AuthScreen.tsx` from `password.length < 6` to `password.length < 8` and updated the corresponding error message. Also updated the test assertions to match the new behavior.
