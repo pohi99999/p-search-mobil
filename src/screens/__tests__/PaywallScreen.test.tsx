@@ -3,6 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import { PaywallScreen } from '../PaywallScreen';
 import { useBilling } from '../../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
+import { Alert } from 'react-native';
 import { Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -53,10 +54,10 @@ describe('PaywallScreen', () => {
   };
 
   beforeEach(() => {
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     jest.clearAllMocks();
     (useNavigation as jest.Mock).mockReturnValue(mockNavigation);
     (useBilling as jest.Mock).mockReturnValue(mockBilling);
-    global.alert = jest.fn();
     // hide unhelpful react-native-paper warnings about Surface overflow
     jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -64,6 +65,7 @@ describe('PaywallScreen', () => {
   afterEach(() => {
     jest.clearAllTimers();
     (console.warn as jest.Mock).mockRestore();
+    jest.restoreAllMocks();
   });
 
   it('renders success view when isPro is true and navigates back on button press', async () => {
@@ -169,7 +171,7 @@ describe('PaywallScreen', () => {
     });
 
     expect(failingPurchasePackage).toHaveBeenCalled();
-    expect(global.alert).toHaveBeenCalledWith('Vásárlási hiba történt. Kérjük, próbáld újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
   });
 
   it('renders fallback mock package when packages is empty and handles mock purchase', async () => {
@@ -193,7 +195,7 @@ describe('PaywallScreen', () => {
       await purchaseButton!.props.onPress();
     });
 
-    expect(global.alert).toHaveBeenCalledWith('Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.');
+    expect(Alert.alert).toHaveBeenCalledWith('Figyelem', 'Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.');
   });
 
   it('handles successful restore purchases', async () => {
@@ -214,7 +216,7 @@ describe('PaywallScreen', () => {
     });
 
     expect(mockBilling.restorePurchases).toHaveBeenCalled();
-    expect(global.alert).toHaveBeenCalledWith('Vásárlások sikeresen ellenőrizve!');
+    expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Vásárlások sikeresen ellenőrizve!');
   });
 
   it('handles restore purchases error', async () => {
@@ -238,6 +240,6 @@ describe('PaywallScreen', () => {
     });
 
     expect(failingRestore).toHaveBeenCalled();
-    expect(global.alert).toHaveBeenCalledWith('Visszaállítási hiba történt. Kérjük, próbáld újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
   });
 });

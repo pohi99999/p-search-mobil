@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import { PurchasesPackage } from 'react-native-purchases';
 
+import { Alert } from 'react-native';
 interface PaywallPackagesProps {
   packages: PurchasesPackage[];
   purchasing: boolean;
@@ -31,7 +32,7 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
               contentStyle={styles.purchaseButtonContent}
               disabled={purchasing}
               onPress={async () => {
-                alert('Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.');
+                Alert.alert('Figyelem', 'Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.');
               }}
             >
               Előfizetés indítása
