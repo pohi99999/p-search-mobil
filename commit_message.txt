@@ -1,0 +1,12 @@
+🧹 Replace hardcoded alert with proper React Native Alert.alert component
+
+🎯 What: Replaced the web-based alert() calls in ActionPlanScreen with React Native's native Alert.alert() component.
+
+💡 Why: The project guidelines explicitly state to use the native Alert.alert from react-native instead of the web-based alert(). This provides a more native look and feel on mobile platforms, allows setting titles for alerts, and adheres to React Native best practices.
+
+✅ Verification:
+- TypeScript compiler checks passed.
+- Updated the ActionPlanScreen unit tests to mock and assert calls against Alert.alert instead of global.alert.
+- All automated test suites (npx jest) run successfully.
+
+✨ Result: A cleaner implementation that uses the platform-appropriate method, aligning with standard conventions and improving maintainability.
