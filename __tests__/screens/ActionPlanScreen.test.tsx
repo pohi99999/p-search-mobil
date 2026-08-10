@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import { ActionPlanScreen } from '../../src/screens/ActionPlanScreen';
@@ -70,7 +71,7 @@ if (typeof global.alert === 'undefined') {
 }
 
 describe('ActionPlanScreen', () => {
-  let mockAlert: jest.SpyInstance;
+  let mockAlert: jest.Mock;
 
   beforeAll(() => {
     jest.useFakeTimers();
@@ -82,7 +83,9 @@ describe('ActionPlanScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAlert = jest.spyOn(global, 'alert').mockImplementation(() => {});
+
+    mockAlert = jest.fn();
+    Alert.alert = mockAlert;
 
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { user: { id: 'test-user' } } },
@@ -101,7 +104,7 @@ describe('ActionPlanScreen', () => {
   });
 
   afterEach(() => {
-    mockAlert.mockRestore();
+    mockAlert.mockClear();
     jest.clearAllTimers();
   });
 
@@ -143,7 +146,7 @@ describe('ActionPlanScreen', () => {
     });
 
     expect(mockUpdateTaskStatus).toHaveBeenCalledWith('task-1', 'plan-1', 'in_progress');
-    expect(mockAlert).toHaveBeenCalledWith('Nem sikerült frissíteni a feladat állapotát.');
+    expect(mockAlert).toHaveBeenCalledWith('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
 
     // Cleanup to prevent open handles/timers
     await renderer.act(async () => {
