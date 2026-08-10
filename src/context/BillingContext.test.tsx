@@ -86,6 +86,17 @@ describe('BillingContext', () => {
   };
 
   describe('Initialization', () => {
+
+    it('cleans up customer info update listener on unmount', async () => {
+      const { root } = await renderProvider();
+      expect(Purchases.addCustomerInfoUpdateListener).toHaveBeenCalled();
+
+      await act(async () => {
+        root.unmount();
+      });
+
+      expect(Purchases.removeCustomerInfoUpdateListener).toHaveBeenCalled();
+    });
     it('configures for iOS and fetches customer info and offerings', async () => {
       Platform.OS = 'ios';
       (Purchases.getOfferings as jest.Mock).mockResolvedValueOnce({
@@ -186,6 +197,39 @@ describe('BillingContext', () => {
   });
 
   describe('purchasePackage', () => {
+
+    it('handles userCancelled error true without logging as error', async () => {
+      const { getContext } = await renderProvider();
+      const cancelError = new Error('User Cancelled');
+      cancelError.userCancelled = true;
+
+      (Purchases.purchasePackage as jest.Mock).mockRejectedValueOnce(cancelError);
+      (isPurchasesError as jest.Mock).mockReturnValue(true);
+
+      await act(async () => {
+        await getContext().purchasePackage({ identifier: 'pro' });
+      });
+
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(getContext().isLoading).toBe(false);
+    });
+
+    it('logs error for other PurchasesError types not cancelled', async () => {
+      const { getContext } = await renderProvider();
+      const otherError = new Error('Network Error');
+      otherError.code = 'NETWORK_ERROR';
+      otherError.userCancelled = false;
+
+      (Purchases.purchasePackage as jest.Mock).mockRejectedValueOnce(otherError);
+      (isPurchasesError as jest.Mock).mockReturnValue(true);
+
+      await act(async () => {
+        await getContext().purchasePackage({ identifier: 'pro' });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith('Error purchasing package:', 'Network Error');
+      expect(getContext().isLoading).toBe(false);
+    });
     it('warns if RevenueCat is not configured', async () => {
       mockEnv.API_KEY_IOS = 'placeholder-key'; // skip init
       const { getContext } = await renderProvider();
