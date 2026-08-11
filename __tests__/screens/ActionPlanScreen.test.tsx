@@ -72,7 +72,7 @@ if (typeof global.alert === 'undefined') {
 }
 
 describe('ActionPlanScreen', () => {
-  let mockAlert: jest.SpyInstance;
+  let mockAlert: jest.Mock;
 
   beforeAll(() => {
     jest.useFakeTimers();
@@ -103,7 +103,7 @@ describe('ActionPlanScreen', () => {
   });
 
   afterEach(() => {
-    mockAlert.mockRestore();
+    mockAlert.mockClear();
     jest.clearAllTimers();
   });
 
