@@ -291,6 +291,18 @@ describe('BillingContext', () => {
   });
 
   describe('restorePurchases', () => {
+    it('catches and logs error when Purchases.restorePurchases throws an error', async () => {
+      const { getContext } = await renderProvider();
+      const testError = new Error('Test restore error');
+      (Purchases.restorePurchases as jest.Mock).mockRejectedValueOnce(testError);
+
+      await act(async () => {
+        await getContext().restorePurchases();
+      });
+
+      expect(logger.error).toHaveBeenCalledWith('Error restoring purchases:', 'Test restore error');
+    });
+
     it('warns if RevenueCat is not configured', async () => {
       mockEnv.API_KEY_IOS = 'placeholder-key'; // skip init
       const { getContext } = await renderProvider();
