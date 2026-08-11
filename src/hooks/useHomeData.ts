@@ -4,26 +4,18 @@ import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
 import { useBilling } from '../context/BillingContext';
 import { logger } from '../utils/logger';
-import { N8N_WEBHOOK_URL } from '../config/constants';
 import { RootStackNavigationProp } from '../types/navigation';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 
 
 async function triggerSearchWebhook(action: 'new_search_pro' | 'new_search_free', businessId: string, userId: string) {
-  if (N8N_WEBHOOK_URL) {
-    await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        business_id: businessId,
-        user_id: userId,
-        action: action
-      })
-    }).catch(err => logger.warn('Webhook hívás hiba:', err));
-  } else {
-    logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
-  }
+  await supabase.functions.invoke('trigger-n8n-webhook', {
+    body: {
+      business_id: businessId,
+      action: action
+    }
+  }).catch(err => logger.warn('Edge function hívás hiba:', err));
 }
 
 export function useHomeData(navigation: RootStackNavigationProp) {

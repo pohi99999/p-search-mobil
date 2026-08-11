@@ -6,7 +6,6 @@ import { AdBanner } from '../components/AdBanner';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 
-import { N8N_WEBHOOK_URL } from '../config/constants';
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 
@@ -67,21 +66,14 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
 
       if (dbError) throw dbError;
 
-      // Keresés indítása n8n webhookon keresztül (Fire and forget, nem várjuk meg)
+      // Keresés indítása edge functionön keresztül (Fire and forget, nem várjuk meg)
       if (newProfile) {
-        if (N8N_WEBHOOK_URL) {
-          fetch(N8N_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        supabase.functions.invoke('trigger-n8n-webhook', {
+          body: {
             business_id: newProfile.id,
-            user_id: session.user.id,
             action: 'new_profile_created'
-          })
-        }).catch(err => logger.warn('Webhook hívás hiba:', err));
-        } else {
-          logger.warn('N8N_WEBHOOK_URL is not defined, skipping webhook fetch.');
-        }
+          }
+        }).catch(err => logger.warn('Edge function hívás hiba:', err));
       }
 
       // Siker esetén navigálás a Home oldalra

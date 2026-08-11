@@ -12,6 +12,9 @@ jest.mock('../../lib/supabase', () => ({
       signOut: jest.fn(),
     },
     from: jest.fn(),
+    functions: {
+      invoke: jest.fn(),
+    }
   },
 }));
 
@@ -24,10 +27,6 @@ jest.mock('../../utils/logger', () => ({
     error: jest.fn(),
     warn: jest.fn(),
   },
-}));
-
-jest.mock('../../config/constants', () => ({
-  N8N_WEBHOOK_URL: 'http://mock-webhook-url',
 }));
 
 describe('useHomeData', () => {
@@ -46,7 +45,7 @@ describe('useHomeData', () => {
     (useBilling as jest.Mock).mockReturnValue({ isPro: false });
 
     Alert.alert = jest.fn();
-    global.fetch = jest.fn().mockResolvedValue({ ok: true });
+    supabase.functions.invoke = jest.fn().mockResolvedValue({ data: { success: true }, error: null });
 
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: mockSession },
@@ -223,7 +222,7 @@ describe('useHomeData', () => {
         await result.current.handleNewSearch();
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('http://mock-webhook-url', expect.any(Object));
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
       expect(Alert.alert).toHaveBeenCalledWith("Új Pro AI keresés elindítva!");
       expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
     });
@@ -239,7 +238,7 @@ describe('useHomeData', () => {
       });
 
       expect(supabase.from).toHaveBeenCalledWith('profiles');
-      expect(global.fetch).toHaveBeenCalledWith('http://mock-webhook-url', expect.any(Object));
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
       expect(Alert.alert).toHaveBeenCalledWith("Ingyenes AI keresés elindítva!");
       expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
     });
@@ -255,7 +254,7 @@ describe('useHomeData', () => {
       });
 
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall');
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(supabase.functions.invoke).not.toHaveBeenCalled();
     });
 
     it('handles Free user update error', async () => {
