@@ -21,6 +21,22 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 08. 11. (Fázis 8 — Jules aszinkron munkáinak teljes körű integrációja: 8 ág beolvasztása, Native Alert migráció, useActionPlan típusbiztonság és BillingContext unit tesztek):**
+  - **Beolvasztott Jules ágak (8 távoli ág):**
+    * `chore/use-native-alert-in-action-plan-screen-5894015347022519069` (Web `alert` cseréje React Native `Alert.alert` komponensre az `ActionPlanScreen.tsx`-ben és tesztjében)
+    * `code-health/replace-alert-actionplanscreen-13835959647325985399` (Alert refaktorálása az `ActionPlanScreen.tsx`-ben)
+    * `jules-1348980329208216902-532aff20` (Native Alert refaktor az `ActionPlanScreen`-en)
+    * `jules-15361184064750103627-6bdeffd1` (Native Alert komponens használata)
+    * `jules-3278009109010611225-c6053e6c` (Native Alert migráció és teszt igazítás)
+    * `jules-4784590401509994513-a11a121e` (`BillingContext` unit teszt lefedettség bővítése restore purchases hibakezelésre)
+    * `jules-7951389918277281722-72241fc5` (Típusbiztonság javítása: `any` típus kivezetése a `useActionPlan` hookban)
+    * `jules-8160826500190169492-34786392` (Alert.alert komponens szinkronizálása)
+  - **Integritás és tisztítás:** Eltávolítottuk az ideiglenes fájlokat (`commit_message.txt`, `0.26.0`), feloldottuk a duplikált import ütközést az `ActionPlanScreen.test.tsx`-ben.
+  - **Verifikáció és Tesztelés:**
+    * `npm install --legacy-peer-deps`: SIKERES
+    * TypeScript típusellenőrzés (`npx tsc --noEmit`): SIKERES (0 hiba)
+    * Egységtesztek futtatása (`npx jest`): 20/20 tesztcsomag, 127/127 teszt sikeresen lefutott (100% zöld)
+
 - **2026. 08. 10. (Fázis 8 — Jules aszinkron munkáinak teljes körű integrációja: 9 ág beolvasztása, biztonsági javítások, Native Alert migráció, ProfileContext N+1 lekérdezés optimalizálás és tesztlefedettség bővítés):**
   - **Beolvasztott Jules ágak (9 távoli ág):**
     * `code-health/replace-alert-4980265881057392389` (Web `alert` lecserélése React Native `Alert` komponensre a `useHomeData.ts` hookban)
