@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import { Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { logger } from '../../utils/logger';
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(),
@@ -55,6 +56,7 @@ describe('PaywallScreen', () => {
 
   beforeEach(() => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.spyOn(logger, 'error').mockImplementation(() => {});
     jest.clearAllMocks();
     (useNavigation as jest.Mock).mockReturnValue(mockNavigation);
     (useBilling as jest.Mock).mockReturnValue(mockBilling);
@@ -172,6 +174,7 @@ describe('PaywallScreen', () => {
 
     expect(failingPurchasePackage).toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
+    expect(logger.error).toHaveBeenCalledWith('Vásárlási hiba:', 'Test purchase error');
   });
 
   it('renders fallback mock package when packages is empty and handles mock purchase', async () => {
@@ -241,5 +244,6 @@ describe('PaywallScreen', () => {
 
     expect(failingRestore).toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
+    expect(logger.error).toHaveBeenCalledWith('Visszaállítási hiba:', 'Test restore error');
   });
 });
