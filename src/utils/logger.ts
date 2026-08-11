@@ -5,22 +5,22 @@
  */
 
 export const logger = {
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.info(...args);
     }
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.warn(...args);
     }
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.error(...args);
     }
   },
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.debug(...args);
     }
