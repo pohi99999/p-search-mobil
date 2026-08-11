@@ -29,6 +29,15 @@ jest.mock('../../src/lib/supabase', () => ({
 jest.mock('../../src/hooks/useInterstitialAd', () => ({
   useInterstitialAd: jest.fn(),
 }));
+jest.mock('../../src/utils/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+
 jest.mock('../../src/utils/documentGenerator', () => ({
   generateAndSharePDF: jest.fn(),
 }));
@@ -147,6 +156,56 @@ describe('ActionPlanScreen', () => {
     expect(mockAlert).toHaveBeenCalledWith('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
 
     // Cleanup to prevent open handles/timers
+    await renderer.act(async () => {
+      component!.unmount();
+    });
+  });
+
+
+  it('shows an error snackbar when generatePlanForMatch fails', async () => {
+    const mockGeneratePlanForMatch = jest.fn().mockRejectedValue(new Error('Generation failed'));
+
+    (useActionPlan as jest.Mock).mockReturnValue({
+      plans: [],
+      tasks: {},
+      loading: false,
+      error: null,
+      refetch: jest.fn(),
+      updateTaskStatus: jest.fn(),
+      generatePlanForMatch: mockGeneratePlanForMatch,
+    });
+
+    const { SafeAreaProvider } = require('react-native-safe-area-context');
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <SafeAreaProvider>
+          <ActionPlanScreen
+            route={{ params: { matchId: 'match-1' } } as any}
+            navigation={{ replace: jest.fn() } as any}
+          />
+        </SafeAreaProvider>
+      );
+    });
+
+    const root = component!.root;
+
+    // Find the Generate button
+    const generateButton = root.find(el =>
+      el.props.children === 'Akcióterv Generálása'
+    );
+
+    await renderer.act(async () => {
+      await generateButton.props.onPress();
+    });
+
+    expect(mockGeneratePlanForMatch).toHaveBeenCalledWith('test-profile', 'match-1');
+
+    // Find Snackbar
+    const snackbar = root.findByType(require('react-native-paper').Snackbar);
+    expect(snackbar.props.visible).toBe(true);
+    expect(snackbar.props.children).toBe('Hiba történt a generálás során. Kérjük, próbálja újra később.');
+
     await renderer.act(async () => {
       component!.unmount();
     });
