@@ -1,6 +1,5 @@
 import { Alert } from 'react-native';
 import React from 'react';
-import { Alert } from 'react-native';
 import renderer from 'react-test-renderer';
 import { ActionPlanScreen } from '../../src/screens/ActionPlanScreen';
 import { useActionPlan } from '../../src/hooks/useActionPlan';
