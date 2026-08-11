@@ -1,5 +1,0 @@
-🧪 Add error handling test for restore purchases in BillingContext
-
-🎯 What: Added explicit missing error handling test for `restorePurchases`.
-📊 Coverage: Ensures `Purchases.restorePurchases` rejection is caught and logged to `logger.error`.
-✨ Result: Improved test coverage and reliability for BillingContext.
