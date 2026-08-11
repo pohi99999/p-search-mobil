@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, Button, List, Surface, ProgressBar, Divider, Snackbar, Checkbox, ActivityIndicator, Banner } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
@@ -45,7 +45,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
     try {
       await updateTaskStatus(task.id, task.plan_id, newStatus);
     } catch (err) {
-      alert('Nem sikerült frissíteni a feladat állapotát.');
+      Alert.alert('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
     }
   }, [updateTaskStatus]);
 
@@ -250,7 +250,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                           );
                         } catch (err: unknown) {
                           logger.error('PDF opening error:', err);
-                          alert('Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.');
+                          Alert.alert('Hiba', 'Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.');
                         }
                       }}
                       style={[styles.pdfButton, { marginRight: 8 }]}
@@ -266,7 +266,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                     disabled={pdfLoading}
                     onPress={() => {
                       if (!profile || !plan.match_id) {
-                        alert('Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
+                        Alert.alert('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
                         return;
                       }
                       showAdIfAvailable(async () => {
@@ -290,7 +290,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                           refetch();
                         } catch (err: unknown) {
                           logger.error('PDF generation error:', err);
-                          alert('Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+                          Alert.alert('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
                         } finally {
                           setPdfLoading(false);
                         }
