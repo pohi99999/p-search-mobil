@@ -112,30 +112,24 @@ export function useHomeData(navigation: RootStackNavigationProp) {
       return;
     }
 
-    const currentCount = userProfile.search_count || 0;
-    if (currentCount >= 1) { // 1 free search limit
-      navigation.navigate('Paywall');
-    } else {
-      // Trigger free search and increment count
-      const newCount = currentCount + 1;
-      setUserProfile({ ...userProfile, search_count: newCount });
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ search_count: newCount })
-        .eq('id', userProfile.id);
+    const { data, error: invokeError } = await supabase.functions.invoke('increment-search-count');
 
-      if (updateError) {
-        logger.error(updateError);
-        setUserProfile({ ...userProfile, search_count: currentCount });
-        Alert.alert("Hiba történt a keresési limit frissítésekor!");
-        return;
-      }
+    if (invokeError) {
+      logger.error(invokeError);
+      Alert.alert("Hiba történt a keresési limit ellenőrzésekor!");
+      return;
+    }
+
+    if (data?.allowed) {
+      setUserProfile({ ...userProfile, search_count: data.newCount });
 
       if (profile) {
         await triggerSearchWebhook('new_search_free', profile.id, userProfile.id);
       }
       Alert.alert("Ingyenes AI keresés elindítva!");
       navigation.navigate('CopilotChat');
+    } else {
+      navigation.navigate('Paywall');
     }
   };
 
