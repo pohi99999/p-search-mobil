@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabase';
 jest.mock('../lib/supabase', () => ({
   supabase: {
     from: jest.fn(),
+    functions: {
+      invoke: jest.fn(),
+    },
   },
 }));
 
@@ -134,5 +137,103 @@ describe('useActionPlan', () => {
     });
 
     expect(result.current.error).toBeNull();
+  });
+
+
+  describe('generatePlanForMatch', () => {
+    it('should set error state when invokeError is present', async () => {
+      const errorMessage = 'Function Invoke Error';
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: null,
+        error: new Error(errorMessage)
+      });
+
+      const mockFrom = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      };
+      (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+      const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+
+      try {
+        await waitForNextUpdate();
+      } catch (e) {
+        // Ignored
+      }
+
+      await act(async () => {
+        try {
+          await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+        } catch (e) {
+          // Ignored expected throw
+        }
+      });
+
+      expect(result.current.error).toBe(errorMessage);
+    });
+
+    it('should set error state when data.error is present', async () => {
+      const errorMessage = 'Data Payload Error';
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: { error: errorMessage },
+        error: null
+      });
+
+      const mockFrom = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      };
+      (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+      const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+
+      try {
+        await waitForNextUpdate();
+      } catch (e) {
+        // Ignored
+      }
+
+      await act(async () => {
+        try {
+          await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+        } catch (e) {
+          // Ignored expected throw
+        }
+      });
+
+      expect(result.current.error).toBe(errorMessage);
+    });
+
+    it('should successfully generate plan and clear error', async () => {
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      const mockFrom = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      };
+      (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+      const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+
+      try {
+        await waitForNextUpdate();
+      } catch (e) {
+        // Ignored
+      }
+
+      await act(async () => {
+        const response = await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+        expect(response).toEqual({ success: true });
+      });
+
+      expect(result.current.error).toBeNull();
+    });
   });
 });
