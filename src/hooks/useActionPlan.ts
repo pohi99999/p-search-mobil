@@ -29,10 +29,10 @@ export const useActionPlan = (businessProfileId?: string) => {
         const tasksMap: Record<string, ActionTask[]> = {};
 
         for (const planRow of plansData) {
-          const { action_tasks, ...plan } = planRow as any;
+          const { action_tasks, ...plan } = planRow as ActionPlan & { action_tasks: ActionTask[] | null };
           parsedPlans.push(plan);
 
-          const tasks = (action_tasks || []) as ActionTask[];
+          const tasks = action_tasks || [];
           tasksMap[plan.id] = tasks;
         }
 
