@@ -14,28 +14,21 @@ describe('useActionPlan', () => {
   });
 
   it('should handle errors during fetchPlansAndTasks', async () => {
-    // Mock Supabase to throw an error
     const errorMessage = 'Network Error';
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: null, error: new Error(errorMessage) }) }),
+      order: jest.fn().mockReturnThis(),
+      then: jest.fn().mockImplementation((resolve) => resolve({ data: null, error: new Error(errorMessage) }))
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-    const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
 
-    // The initial state should be loading
+    // initial state should be loading
     expect(result.current.loading).toBe(true);
 
-    try {
-        await waitForNextUpdate();
-    } catch (e) {
-      console.warn('waitForNextUpdate error:', e);
-        // Ignored
-    }
-
-    // Call refetch inside act to ensure the error handling path is covered
+    // Call refetch inside act
     await act(async () => {
       await result.current.refetch();
     });
@@ -49,18 +42,12 @@ describe('useActionPlan', () => {
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: null, error: 'A string error' }) }),
+      order: jest.fn().mockReturnThis(),
+      then: jest.fn().mockImplementation((resolve) => resolve({ data: null, error: 'A string error' }))
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-    const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
-
-    try {
-        await waitForNextUpdate();
-    } catch (e) {
-      console.warn('waitForNextUpdate error:', e);
-        // Ignored
-    }
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
 
     await act(async () => {
       await result.current.refetch();
@@ -71,28 +58,20 @@ describe('useActionPlan', () => {
   });
 
   it('should handle falsy errors during fetchPlansAndTasks', async () => {
-    // Simulate throwing a non-error falsy value, like a null or empty string
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnValue({ order: jest.fn().mockRejectedValue('') }),
+      order: jest.fn().mockReturnThis(),
+      then: jest.fn().mockImplementation((resolve, reject) => reject(''))
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-    const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
-
-    try {
-        await waitForNextUpdate();
-    } catch (e) {
-      console.warn('waitForNextUpdate error:', e);
-        // Ignored
-    }
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
 
     await act(async () => {
       await result.current.refetch();
     });
 
-    // Default error message
     expect(result.current.error).toBe('Hiba történt az akciótervek betöltése során.');
     expect(result.current.loading).toBe(false);
   });
@@ -104,22 +83,17 @@ describe('useActionPlan', () => {
     const mockFrom = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnValue({ order: jest.fn().mockImplementation(() => {
+      order: jest.fn().mockReturnThis(),
+      then: jest.fn().mockImplementation((resolve) => {
         if (shouldFail) {
-          return Promise.resolve({ data: null, error: new Error(errorMessage) });
+          return resolve({ data: null, error: new Error(errorMessage) });
         }
-        return Promise.resolve({ data: [], error: null });
-      }) }),
+        return resolve({ data: [], error: null });
+      })
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-    const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
-
-    try {
-      await waitForNextUpdate();
-    } catch (e) {
-      console.warn('waitForNextUpdate error:', e);
-    }
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
 
     await act(async () => {
       await result.current.refetch();
