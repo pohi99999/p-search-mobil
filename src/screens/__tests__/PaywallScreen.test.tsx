@@ -16,6 +16,15 @@ jest.mock('../../context/BillingContext', () => ({
   useBilling: jest.fn(),
 }));
 
+jest.mock('../../utils/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 jest.mock('../../utils/error', () => ({
   getErrorMessage: (err: any) => err.message || 'Hiba történt',
   isPurchasesError: () => false,
