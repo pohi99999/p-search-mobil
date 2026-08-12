@@ -108,6 +108,83 @@ describe('ProfileContext', () => {
     expect(getContext().loading).toBe(false);
     expect(logger.error).not.toHaveBeenCalled();
   });
+  it("returns cached profile if already fetched", async () => {
+    const mockProfile = { id: "profile-cached", company_name: "Cached Co" };
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: "user-123" } } }
+    });
+    mockSingle.mockResolvedValue({ data: mockProfile, error: null });
+
+    const { root } = await renderProvider();
+
+    mockGetSession.mockClear();
+
+    await act(async () => {
+      root.unmount();
+    });
+
+    const { getContext: getContextSecond } = await renderProvider();
+
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(getContextSecond().profile).toEqual(mockProfile);
+    expect(getContextSecond().loading).toBe(false);
+  });
+  it("awaits existing fetch promise if concurrent fetch requested", async () => {
+    const mockProfile = { id: "profile-concurrent", company_name: "Concurrent Co" };
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: "user-123" } } }
+    });
+
+    let resolveMockSingle: any;
+    const mockSinglePromise = new Promise((resolve) => {
+      resolveMockSingle = resolve;
+    });
+    mockSingle.mockReturnValue(mockSinglePromise);
+
+    const { root, getContext } = await renderProvider(); // This starts the first fetch
+
+    mockGetSession.mockClear();
+    mockFrom.mockClear();
+
+    // While the first fetch is in progress, render a second provider or trigger another fetch somehow.
+    // The easiest way is to unmount and remount very fast, or just call refreshProfile if it didn`t forceRefresh.
+    // Wait, refreshProfile forces refresh. But the second mount doesn`t force refresh!
+
+    let getContextSecond: any;
+    const TestComponent = () => {
+      getContextSecond = useProfile();
+      return null;
+    };
+
+    let rootSecond: renderer.ReactTestRenderer;
+    await act(async () => {
+      rootSecond = renderer.create(
+        <ProfileProvider>
+          <TestComponent />
+        </ProfileProvider>
+      );
+    });
+
+    // Neither should have completed yet
+    expect(getContext().loading).toBe(true);
+    expect(getContextSecond.loading).toBe(true);
+
+    // The second render shouldn`t have triggered another from() call because fetchPromise is pending
+    expect(mockFrom).not.toHaveBeenCalled();
+
+    // Resolve the single query
+    await act(async () => {
+      resolveMockSingle({ data: mockProfile, error: null });
+    });
+
+    // Both should now be populated and no longer loading
+    expect(getContext().profile).toEqual(mockProfile);
+    expect(getContextSecond.profile).toEqual(mockProfile);
+    expect(getContext().loading).toBe(false);
+    expect(getContextSecond.loading).toBe(false);
+  });
+
+
 
   it('logs error if fetching profile fails with a non-PGRST116 error', async () => {
     const dbError = { code: 'OTHER_ERR', message: 'DB Error' };
@@ -121,6 +198,18 @@ describe('ProfileContext', () => {
     expect(logger.error).toHaveBeenCalledWith('Error fetching profile in ProfileContext:', dbError);
     expect(getContext().profile).toBeNull();
     expect(getContext().loading).toBe(false);
+  });
+
+  it('logs error if the database query throws an exception', async () => {
+    const unexpectedError = new Error('Database exception');
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: 'user-123' } } }
+    });
+    mockSingle.mockRejectedValue(unexpectedError);
+
+    const { getContext } = await renderProvider();
+
+    expect(logger.error).toHaveBeenCalledWith('Unexpected error fetching profile in ProfileContext:', unexpectedError);
   });
 
   it('logs unexpected errors', async () => {
