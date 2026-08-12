@@ -11,6 +11,9 @@ jest.mock('../../lib/supabase', () => ({
       getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
     },
     from: jest.fn(),
+    functions: {
+        invoke: jest.fn(),
+    },
   },
 }));
 
@@ -18,10 +21,6 @@ jest.mock('../../components/AdBanner', () => ({
   AdBanner: () => null,
 }));
 
-
-jest.mock('../../config/constants', () => ({
-  N8N_WEBHOOK_URL: 'https://mock-webhook.url',
-}));
 
 jest.mock('../../utils/logger', () => ({
   logger: {
@@ -112,7 +111,7 @@ describe('OnboardingScreen Database Error Handling', () => {
 describe('OnboardingScreen Webhook Handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn();
+    supabase.functions.invoke = jest.fn();
   });
 
   afterEach(() => {
@@ -135,7 +134,7 @@ describe('OnboardingScreen Webhook Handling', () => {
     (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
     const fetchError = new Error('Network error');
-    (global.fetch as jest.Mock).mockRejectedValueOnce(fetchError);
+    (supabase.functions.invoke as jest.Mock).mockRejectedValueOnce(fetchError);
 
     let component;
     await act(async () => {
@@ -164,16 +163,14 @@ describe('OnboardingScreen Webhook Handling', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('https://mock-webhook.url', expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', {
+      body: {
         business_id: 'profile-id',
-        user_id: 'test-user-id',
         action: 'new_profile_created'
-      })
-    }));
+      }
+    });
 
-    expect(logger.warn).toHaveBeenCalledWith('Webhook hívás hiba:', fetchError);
+    expect(logger.warn).toHaveBeenCalledWith('Edge function hívás hiba:', fetchError);
     expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
   });
 });
