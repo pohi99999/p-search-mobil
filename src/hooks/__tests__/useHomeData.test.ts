@@ -12,6 +12,9 @@ jest.mock('../../lib/supabase', () => ({
       signOut: jest.fn(),
     },
     from: jest.fn(),
+    functions: {
+      invoke: jest.fn(),
+    },
   },
 }));
 
@@ -230,6 +233,11 @@ describe('useHomeData', () => {
 
     it('handles Free user with available search', async () => {
       setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: { allowed: true, newCount: 1 },
+        error: null,
+      });
+
       const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
 
       await waitForUpdateOrTimeout(waitForNextUpdate);
@@ -238,7 +246,7 @@ describe('useHomeData', () => {
         await result.current.handleNewSearch();
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('profiles');
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('increment-search-count');
       expect(global.fetch).toHaveBeenCalledWith('http://mock-webhook-url', expect.any(Object));
       expect(Alert.alert).toHaveBeenCalledWith("Ingyenes AI keresés elindítva!");
       expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
@@ -246,6 +254,11 @@ describe('useHomeData', () => {
 
     it('handles Free user exhausted search', async () => {
       setupSupabaseMocks(null, mockBusinessProfile, { id: 'test', search_count: 1 });
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: { allowed: false, reason: 'Limit reached' },
+        error: null,
+      });
+
       const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
 
       await waitForUpdateOrTimeout(waitForNextUpdate);
@@ -259,8 +272,13 @@ describe('useHomeData', () => {
     });
 
     it('handles Free user update error', async () => {
-      const updateError = new Error('Update failed');
-      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, null, mockMatches, updateError as any);
+      setupSupabaseMocks();
+      const updateError = new Error('Invoke failed');
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: null,
+        error: updateError,
+      });
+
       const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
 
       await waitForUpdateOrTimeout(waitForNextUpdate);
@@ -270,7 +288,7 @@ describe('useHomeData', () => {
       });
 
       expect(logger.error).toHaveBeenCalledWith(updateError);
-      expect(Alert.alert).toHaveBeenCalledWith("Hiba történt a keresési limit frissítésekor!");
+      expect(Alert.alert).toHaveBeenCalledWith("Hiba történt a keresési limit ellenőrzésekor!");
     });
   });
 });
