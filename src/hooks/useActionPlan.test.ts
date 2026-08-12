@@ -79,6 +79,46 @@ describe('useActionPlan', () => {
     expect(result.current.loading).toBe(false);
   });
 
+
+  it('should handle errors during updateTaskStatus', async () => {
+    const errorMessage = 'Update Error';
+
+    const mockUpdateEq = jest.fn().mockResolvedValue({ error: new Error(errorMessage) });
+    const mockOrder2 = jest.fn().mockResolvedValue({ data: [], error: null });
+    const mockOrder1 = jest.fn().mockReturnValue({ order: mockOrder2 });
+    const mockEq = jest.fn().mockReturnValue({ order: mockOrder1 });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+
+    (supabase.from as jest.Mock).mockImplementation((table) => {
+      if (table === 'action_tasks') {
+        return {
+          update: jest.fn().mockReturnValue({ eq: mockUpdateEq })
+        };
+      }
+      return {
+        select: mockSelect
+      };
+    });
+
+    const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+
+    if (result.current.loading) {
+      try {
+        await waitForNextUpdate();
+      } catch (e) {
+        // sometimes renderHook completes synchronously in this test environment
+      }
+    }
+
+    await act(async () => {
+      await expect(
+        result.current.updateTaskStatus('task-1', 'plan-1', 'IN_PROGRESS' as any)
+      ).rejects.toThrow(errorMessage);
+    });
+
+    expect(result.current.error).toBe(errorMessage);
+  });
+
   it('should clear error state on successful fetch', async () => {
     const errorMessage = 'Initial Error';
     let shouldFail = true;
