@@ -264,7 +264,8 @@ describe('useHomeData', () => {
       });
 
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall');
-      expect(supabase.functions.invoke).not.toHaveBeenCalled();
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('increment-search-count');
+      expect(supabase.functions.invoke).not.toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
     });
 
     it('handles Free user update error', async () => {
