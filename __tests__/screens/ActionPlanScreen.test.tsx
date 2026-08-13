@@ -162,6 +162,45 @@ describe('ActionPlanScreen', () => {
   });
 
 
+  it('calls navigation.goBack when the back button is pressed', async () => {
+    (useActionPlan as jest.Mock).mockReturnValue({
+      plans: [],
+      tasks: {},
+      loading: false,
+      error: null,
+      refetch: jest.fn(),
+      updateTaskStatus: jest.fn(),
+      generatePlanForMatch: jest.fn(),
+    });
+
+    const mockGoBack = jest.fn();
+    const { SafeAreaProvider } = require('react-native-safe-area-context');
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <SafeAreaProvider>
+          <ActionPlanScreen
+            route={{ params: { matchId: 'match-1' } } as any}
+            navigation={{ replace: jest.fn(), goBack: mockGoBack, canGoBack: jest.fn(() => true) } as any}
+          />
+        </SafeAreaProvider>
+      );
+    });
+
+    const root = component!.root;
+    const backButton = root.findByProps({ testID: 'action-plan-back-button' });
+
+    await renderer.act(async () => {
+      backButton.props.onPress();
+    });
+
+    expect(mockGoBack).toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      component!.unmount();
+    });
+  });
+
   it('shows an error snackbar when generatePlanForMatch fails', async () => {
     const mockGeneratePlanForMatch = jest.fn().mockRejectedValue(new Error('Generation failed'));
 

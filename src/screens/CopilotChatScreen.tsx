@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, ActivityIndicator, Surface } from 'react-native-paper';
+import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 
@@ -19,6 +20,13 @@ interface Message {
 }
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
+
+// Az AI beszélgetés-előzmény felső korlátja: ennyi legutóbbi üzenetet tárolunk
+// eszközön és ennyit küldünk el kontextusként az edge function felé.
+const MAX_HISTORY_MESSAGES = 50;
+
+const getChatHistoryStorageKey = (userId: string, matchId: string | null) =>
+  `@copilot_chat_history_${userId}_${matchId ?? 'general'}`;
 
 const MessageItem = React.memo(({ item }: { item: Message }) => {
   const isUser = item.sender === 'user';
@@ -80,9 +88,65 @@ export function CopilotChatScreen({ route, navigation }: Props) {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList<Message>>(null);
+  const hasLoadedHistoryRef = useRef(false);
 
   const matchId = route?.params?.matchId || null;
+
+  // Bejelentkezett felhasználó azonosítójának lekérése, hogy a cache kulcsa
+  // felhasználónként elkülönüljön (elkerülve a kijelentkezés utáni "átszivárgást")
+  useEffect(() => {
+    let isMounted = true;
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (isMounted) {
+          setUserId(data?.session?.user?.id ?? null);
+        }
+      })
+      .catch(err => {
+        logger.error('Failed to resolve authenticated user for chat history:', err);
+        if (isMounted) {
+          setUserId(null);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Korábbi beszélgetés-előzmény betöltése eszközön tárolt cache-ből
+  useEffect(() => {
+    hasLoadedHistoryRef.current = false;
+    // Ismeretlen felhasználó esetén nem töltünk be és nem is mentünk előzményt,
+    // nehogy egy másik felhasználó beszélgetése szivárogjon át (nincs fallback kulcs).
+    if (!userId) return;
+    const loadHistory = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(getChatHistoryStorageKey(userId, matchId));
+        if (stored) {
+          const parsed: unknown = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed as Message[]);
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to load persisted chat history:', err);
+      } finally {
+        hasLoadedHistoryRef.current = true;
+      }
+    };
+    loadHistory();
+  }, [matchId, userId]);
+
+  // Beszélgetés-előzmény mentése eszközön tárolt cache-be minden változáskor
+  useEffect(() => {
+    if (!hasLoadedHistoryRef.current || !userId) return;
+    const cappedMessages = messages.slice(-MAX_HISTORY_MESSAGES);
+    AsyncStorage.setItem(getChatHistoryStorageKey(userId, matchId), JSON.stringify(cappedMessages)).catch(err => {
+      logger.error('Failed to persist chat history:', err);
+    });
+  }, [messages, matchId, userId]);
 
   // Automatikus görgetés a lista aljára, ha új üzenet érkezik vagy az AI gépel
   useEffect(() => {
@@ -113,7 +177,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       const { data, error: invokeError } = await supabase.functions.invoke('chat-with-gemini', {
         body: {
           message: userText,
-          history: messages,
+          history: messages.slice(-MAX_HISTORY_MESSAGES),
           business_profile_id: profile?.id || null,
           match_id: matchId
         }
@@ -162,8 +226,16 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <View style={styles.header}>
-        <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
-        <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+          testID="copilot-chat-back-button"
+        />
+        <View style={styles.headerTextContainer}>
+          <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
+          <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+        </View>
       </View>
 
       <FlatList
@@ -215,12 +287,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
     elevation: 1,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontWeight: 'bold',

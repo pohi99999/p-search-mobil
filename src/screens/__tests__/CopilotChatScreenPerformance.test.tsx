@@ -4,6 +4,11 @@ import { CopilotChatScreen } from '../CopilotChatScreen';
 import { supabase } from '../../lib/supabase';
 import { ProfileProvider } from '../../context/ProfileContext';
 
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn().mockResolvedValue(null),
+  setItem: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock Supabase globally for this test
 jest.mock('../../lib/supabase', () => {
   const mockSingle = jest.fn().mockResolvedValue({
