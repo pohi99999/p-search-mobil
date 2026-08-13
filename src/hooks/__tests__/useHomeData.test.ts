@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
-import { renderHook, act } from '@testing-library/react-hooks';
+import { waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '../../test-utils/renderHook';
 import { useHomeData } from '../useHomeData';
 import { supabase } from '../../lib/supabase';
 import { useBilling } from '../../context/BillingContext';
@@ -95,20 +96,12 @@ describe('useHomeData', () => {
     (supabase.from as jest.Mock).mockImplementation(mockFrom);
   };
 
-  const waitForUpdateOrTimeout = async (waitForNextUpdate: any) => {
-    try {
-      await waitForNextUpdate({ timeout: 100 });
-    } catch (e) {
-      // ignore timeout
-    }
-  };
-
   describe('fetchData', () => {
     it('handles missing session', async () => {
       (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null } });
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(supabase.from).not.toHaveBeenCalled();
     });
@@ -116,9 +109,9 @@ describe('useHomeData', () => {
     it('fetches data successfully', async () => {
       setupSupabaseMocks();
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(result.current.profile).toEqual(mockBusinessProfile);
       expect(result.current.matches).toEqual(mockMatches);
@@ -128,9 +121,9 @@ describe('useHomeData', () => {
     it('redirects to Onboarding if profile is missing', async () => {
       setupSupabaseMocks(null, null);
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(mockNavigation.replace).toHaveBeenCalledWith('Onboarding');
     });
@@ -139,9 +132,9 @@ describe('useHomeData', () => {
       const error = { code: 'OTHER_ERR', message: 'Test error' };
       setupSupabaseMocks(error as any);
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(logger.error).toHaveBeenCalledWith(error);
     });
@@ -150,9 +143,9 @@ describe('useHomeData', () => {
       const error = { code: 'PGRST116', message: 'No rows' };
       setupSupabaseMocks(error as any, null);
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(logger.error).not.toHaveBeenCalledWith(error);
       expect(mockNavigation.replace).toHaveBeenCalledWith('Onboarding');
@@ -162,9 +155,9 @@ describe('useHomeData', () => {
       const matchesErr = new Error('Matches error');
       setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, matchesErr as any);
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(logger.error).toHaveBeenCalledWith(matchesErr);
     });
@@ -173,9 +166,9 @@ describe('useHomeData', () => {
        const unexpectedErr = new Error('Session error');
        (supabase.auth.getSession as jest.Mock).mockRejectedValue(unexpectedErr);
 
-       const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+       const { result } = renderHook(() => useHomeData(mockNavigation));
 
-       await waitForUpdateOrTimeout(waitForNextUpdate);
+       await waitFor(() => expect(result.current.loading).toBe(false));
 
        expect(logger.error).toHaveBeenCalledWith(unexpectedErr);
        expect(result.current.loading).toBe(false);
@@ -185,9 +178,9 @@ describe('useHomeData', () => {
   describe('signOut', () => {
     it('calls supabase.auth.signOut', async () => {
       setupSupabaseMocks();
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         await result.current.signOut();
@@ -200,9 +193,9 @@ describe('useHomeData', () => {
   describe('handleNewSearch', () => {
     it('alerts if user profile is missing', async () => {
       setupSupabaseMocks(null, mockBusinessProfile, null);
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         await result.current.handleNewSearch();
@@ -214,9 +207,9 @@ describe('useHomeData', () => {
     it('handles Pro user search', async () => {
       (useBilling as jest.Mock).mockReturnValue({ isPro: true });
       setupSupabaseMocks();
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         await result.current.handleNewSearch();
@@ -234,9 +227,9 @@ describe('useHomeData', () => {
         error: null,
       });
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         await result.current.handleNewSearch();
@@ -255,9 +248,9 @@ describe('useHomeData', () => {
         error: null,
       });
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         await result.current.handleNewSearch();
@@ -276,9 +269,9 @@ describe('useHomeData', () => {
         error: updateError,
       });
 
-      const { result, waitForNextUpdate } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-      await waitForUpdateOrTimeout(waitForNextUpdate);
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         await result.current.handleNewSearch();
