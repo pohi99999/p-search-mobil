@@ -181,7 +181,7 @@ describe('ActionPlanScreen', () => {
         <SafeAreaProvider>
           <ActionPlanScreen
             route={{ params: { matchId: 'match-1' } } as any}
-            navigation={{ replace: jest.fn(), goBack: mockGoBack } as any}
+            navigation={{ replace: jest.fn(), goBack: mockGoBack, canGoBack: jest.fn(() => true) } as any}
           />
         </SafeAreaProvider>
       );

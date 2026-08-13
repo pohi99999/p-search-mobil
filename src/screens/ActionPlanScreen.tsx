@@ -112,7 +112,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => navigation.goBack()}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="action-plan-back-button"
         />
         <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>

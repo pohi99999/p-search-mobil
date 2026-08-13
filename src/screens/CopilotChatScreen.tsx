@@ -21,8 +21,12 @@ interface Message {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
 
-const getChatHistoryStorageKey = (matchId: string | null) =>
-  `@copilot_chat_history_${matchId ?? 'general'}`;
+// Az AI beszélgetés-előzmény felső korlátja: ennyi legutóbbi üzenetet tárolunk
+// eszközön és ennyit küldünk el kontextusként az edge function felé.
+const MAX_HISTORY_MESSAGES = 50;
+
+const getChatHistoryStorageKey = (userId: string, matchId: string | null) =>
+  `@copilot_chat_history_${userId}_${matchId ?? 'general'}`;
 
 const MessageItem = React.memo(({ item }: { item: Message }) => {
   const isUser = item.sender === 'user';
@@ -84,21 +88,46 @@ export function CopilotChatScreen({ route, navigation }: Props) {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList<Message>>(null);
   const hasLoadedHistoryRef = useRef(false);
 
   const matchId = route?.params?.matchId || null;
 
+  // Bejelentkezett felhasználó azonosítójának lekérése, hogy a cache kulcsa
+  // felhasználónként elkülönüljön (elkerülve a kijelentkezés utáni "átszivárgást")
+  useEffect(() => {
+    let isMounted = true;
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (isMounted) {
+          setUserId(data?.session?.user?.id ?? null);
+        }
+      })
+      .catch(err => {
+        logger.error('Failed to resolve authenticated user for chat history:', err);
+        if (isMounted) {
+          setUserId(null);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Korábbi beszélgetés-előzmény betöltése eszközön tárolt cache-ből
   useEffect(() => {
     hasLoadedHistoryRef.current = false;
+    // Ismeretlen felhasználó esetén nem töltünk be és nem is mentünk előzményt,
+    // nehogy egy másik felhasználó beszélgetése szivárogjon át (nincs fallback kulcs).
+    if (!userId) return;
     const loadHistory = async () => {
       try {
-        const stored = await AsyncStorage.getItem(getChatHistoryStorageKey(matchId));
+        const stored = await AsyncStorage.getItem(getChatHistoryStorageKey(userId, matchId));
         if (stored) {
-          const parsed: Message[] = JSON.parse(stored);
-          if (parsed.length > 0) {
-            setMessages(parsed);
+          const parsed: unknown = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed as Message[]);
           }
         }
       } catch (err) {
@@ -108,15 +137,16 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       }
     };
     loadHistory();
-  }, [matchId]);
+  }, [matchId, userId]);
 
   // Beszélgetés-előzmény mentése eszközön tárolt cache-be minden változáskor
   useEffect(() => {
-    if (!hasLoadedHistoryRef.current) return;
-    AsyncStorage.setItem(getChatHistoryStorageKey(matchId), JSON.stringify(messages)).catch(err => {
+    if (!hasLoadedHistoryRef.current || !userId) return;
+    const cappedMessages = messages.slice(-MAX_HISTORY_MESSAGES);
+    AsyncStorage.setItem(getChatHistoryStorageKey(userId, matchId), JSON.stringify(cappedMessages)).catch(err => {
       logger.error('Failed to persist chat history:', err);
     });
-  }, [messages, matchId]);
+  }, [messages, matchId, userId]);
 
   // Automatikus görgetés a lista aljára, ha új üzenet érkezik vagy az AI gépel
   useEffect(() => {
@@ -147,7 +177,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       const { data, error: invokeError } = await supabase.functions.invoke('chat-with-gemini', {
         body: {
           message: userText,
-          history: messages,
+          history: messages.slice(-MAX_HISTORY_MESSAGES),
           business_profile_id: profile?.id || null,
           match_id: matchId
         }
@@ -199,7 +229,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => navigation.goBack()}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="copilot-chat-back-button"
         />
         <View style={styles.headerTextContainer}>
