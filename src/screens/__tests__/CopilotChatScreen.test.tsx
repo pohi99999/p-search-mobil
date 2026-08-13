@@ -1,8 +1,14 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CopilotChatScreen } from '../CopilotChatScreen';
 import { supabase } from '../../lib/supabase';
 import { TextInput } from 'react-native-paper';
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn().mockResolvedValue(null),
+  setItem: jest.fn().mockResolvedValue(undefined),
+}));
 
 // Mock Supabase globally for all tests in this file
 jest.mock('../../lib/supabase', () => ({
@@ -194,6 +200,113 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
     });
 
     expect(mockNavigation.goBack).toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      component.unmount();
+    });
+  });
+});
+
+describe('CopilotChatScreen Chat History Persistence', () => {
+  const mockNavigation: any = {
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+  };
+
+  const mockRoute: any = {
+    params: {
+      matchId: 'test-match-id',
+    },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { user: { id: 'test-user-id' } } },
+    });
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+  });
+
+  it('loads persisted chat history from AsyncStorage on mount', async () => {
+    const storedMessages = [
+      { id: 'm1', text: 'Korábbi kérdésem', sender: 'user', created_at: '2026-08-01T10:00:00.000Z' },
+      { id: 'm2', text: 'Korábbi AI válasz', sender: 'ai', created_at: '2026-08-01T10:00:05.000Z' },
+    ];
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedMessages));
+
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+      );
+    });
+
+    const treeStr = JSON.stringify(component!.toJSON());
+    expect(treeStr).toContain('Korábbi kérdésem');
+    expect(treeStr).toContain('Korábbi AI válasz');
+    expect(treeStr).not.toContain('Szia! Én vagyok a P-Search AI asszisztense');
+    expect(AsyncStorage.getItem).toHaveBeenCalledWith(expect.stringContaining('test-match-id'));
+
+    await renderer.act(async () => {
+      component.unmount();
+    });
+  });
+
+  it('falls back to the default welcome message when no persisted history exists', async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+      );
+    });
+
+    const treeStr = JSON.stringify(component!.toJSON());
+    expect(treeStr).toContain('Szia! Én vagyok a P-Search AI asszisztense');
+
+    await renderer.act(async () => {
+      component.unmount();
+    });
+  });
+
+  it('persists messages to AsyncStorage after sending a message', async () => {
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { reply: 'AI válasz szöveg' },
+    });
+
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+      );
+    });
+
+    const root = component!.root;
+    const input = root.findByType(TextInput);
+
+    await renderer.act(async () => {
+      input.props.onChangeText('Új kérdésem');
+    });
+
+    await renderer.act(async () => {
+      input.props.right.props.onPress();
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const lastCall = (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1);
+    expect(lastCall[0]).toContain('test-match-id');
+    const persisted = JSON.parse(lastCall[1]);
+    expect(persisted.some((m: any) => m.text === 'Új kérdésem')).toBe(true);
+    expect(persisted.some((m: any) => m.text === 'AI válasz szöveg')).toBe(true);
 
     await renderer.act(async () => {
       component.unmount();

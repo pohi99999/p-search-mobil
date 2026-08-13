@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 
@@ -19,6 +20,9 @@ interface Message {
 }
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
+
+const getChatHistoryStorageKey = (matchId: string | null) =>
+  `@copilot_chat_history_${matchId ?? 'general'}`;
 
 const MessageItem = React.memo(({ item }: { item: Message }) => {
   const isUser = item.sender === 'user';
@@ -81,8 +85,38 @@ export function CopilotChatScreen({ route, navigation }: Props) {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef<FlatList<Message>>(null);
+  const hasLoadedHistoryRef = useRef(false);
 
   const matchId = route?.params?.matchId || null;
+
+  // Korábbi beszélgetés-előzmény betöltése eszközön tárolt cache-ből
+  useEffect(() => {
+    hasLoadedHistoryRef.current = false;
+    const loadHistory = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(getChatHistoryStorageKey(matchId));
+        if (stored) {
+          const parsed: Message[] = JSON.parse(stored);
+          if (parsed.length > 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to load persisted chat history:', err);
+      } finally {
+        hasLoadedHistoryRef.current = true;
+      }
+    };
+    loadHistory();
+  }, [matchId]);
+
+  // Beszélgetés-előzmény mentése eszközön tárolt cache-be minden változáskor
+  useEffect(() => {
+    if (!hasLoadedHistoryRef.current) return;
+    AsyncStorage.setItem(getChatHistoryStorageKey(matchId), JSON.stringify(messages)).catch(err => {
+      logger.error('Failed to persist chat history:', err);
+    });
+  }, [messages, matchId]);
 
   // Automatikus görgetés a lista aljára, ha új üzenet érkezik vagy az AI gépel
   useEffect(() => {
