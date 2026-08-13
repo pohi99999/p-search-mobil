@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '../test-utils/renderHook';
 import { useActionPlan } from './useActionPlan';
 import { supabase } from '../lib/supabase';
 
@@ -100,15 +101,9 @@ describe('useActionPlan', () => {
       };
     });
 
-    const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
 
-    if (result.current.loading) {
-      try {
-        await waitForNextUpdate();
-      } catch (e) {
-        // sometimes renderHook completes synchronously in this test environment
-      }
-    }
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await expect(
@@ -169,13 +164,9 @@ describe('useActionPlan', () => {
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-      const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+      const { result } = renderHook(() => useActionPlan('test-business-id'));
 
-      try {
-        await waitForNextUpdate();
-      } catch (e) {
-        // Ignored
-      }
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         try {
@@ -202,13 +193,9 @@ describe('useActionPlan', () => {
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-      const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+      const { result } = renderHook(() => useActionPlan('test-business-id'));
 
-      try {
-        await waitForNextUpdate();
-      } catch (e) {
-        // Ignored
-      }
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         try {
@@ -234,13 +221,9 @@ describe('useActionPlan', () => {
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
-      const { result, waitForNextUpdate } = renderHook(() => useActionPlan('test-business-id'));
+      const { result } = renderHook(() => useActionPlan('test-business-id'));
 
-      try {
-        await waitForNextUpdate();
-      } catch (e) {
-        // Ignored
-      }
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
         const response = await result.current.generatePlanForMatch('test-business-id', 'test-match-id');

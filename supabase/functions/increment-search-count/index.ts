@@ -70,7 +70,8 @@ export async function handler(
       status: 200,
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : String(error)
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
@@ -81,6 +82,11 @@ export async function handler(
 // (i.e. when Supabase's Edge Runtime executes it directly). When the module
 // is imported from a test, `import.meta.main` is false, so no server binds
 // to a port and `handler` can be invoked directly with a synthetic Request.
+//
+// Wrapped (not passed directly) because Deno's serve() calls its handler
+// with a second (ConnInfo) argument -- passing `handler` directly would let
+// that argument silently override `deps`'s default value, breaking
+// `deps.createClient` in production. The wrapper forwards only `req`.
 if (import.meta.main) {
-  serve(handler)
+  serve((req) => handler(req))
 }

@@ -1,0 +1,14 @@
+appId: com.pohankaestarsa.psearch
+---
+# Smoke test: app launches and, with no active session, shows the Auth
+# screen (email/password sign-in form) rather than crashing to a blank
+# screen. This is the same class of bug the 2026-08-13 audit found on the
+# web deploy (missing env vars -> blank screen at runtime, no build error).
+- launchApp
+- assertVisible: "P-Search"
+- assertVisible:
+    text: "E-mail cím"
+- assertVisible:
+    text: "Jelszó"
+- assertVisible:
+    text: "Bejelentkezés"

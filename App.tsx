@@ -4,7 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { Session } from '@supabase/supabase-js';
 import mobileAds from 'react-native-google-mobile-ads';
+import * as Sentry from '@sentry/react-native';
 import { supabase } from './src/lib/supabase';
+import { SENTRY_DSN } from './src/config/env';
 
 import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -16,6 +18,15 @@ import { BillingProvider } from './src/context/BillingContext';
 import { ProfileProvider } from './src/context/ProfileContext';
 
 import type { RootStackParamList } from './src/types/navigation';
+
+// Csak akkor inicializáljuk, ha van beállított DSN -- e nélkül a Sentry
+// hívások (logger.ts-en keresztül) biztonságosan no-op-ok maradnak.
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: 0.2,
+  });
+}
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

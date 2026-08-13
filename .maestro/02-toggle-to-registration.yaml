@@ -1,0 +1,10 @@
+appId: com.pohankaestarsa.psearch
+---
+# Smoke test: the Auth screen's login/registration toggle actually flips
+# the form mode and back, without navigating away or crashing.
+- launchApp
+- assertVisible: "Bejelentkezés"
+- tapOn: "Nincs még fiókod? Regisztrálj!"
+- assertVisible: "Már van fiókod? Lépj be!"
+- tapOn: "Már van fiókod? Lépj be!"
+- assertVisible: "Nincs még fiókod? Regisztrálj!"
