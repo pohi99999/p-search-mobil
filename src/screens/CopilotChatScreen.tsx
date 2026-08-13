@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, ActivityIndicator, Surface } from 'react-native-paper';
+import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 
@@ -162,8 +162,16 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <View style={styles.header}>
-        <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
-        <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+          testID="copilot-chat-back-button"
+        />
+        <View style={styles.headerTextContainer}>
+          <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
+          <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+        </View>
       </View>
 
       <FlatList
@@ -215,12 +223,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
     elevation: 1,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontWeight: 'bold',

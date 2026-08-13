@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, List, Surface, ProgressBar, Divider, Snackbar, Checkbox, ActivityIndicator, Banner } from 'react-native-paper';
+import { Text, Card, Button, List, Surface, ProgressBar, Divider, Snackbar, Checkbox, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 import { useActionPlan } from '../hooks/useActionPlan';
@@ -109,6 +109,12 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+          testID="action-plan-back-button"
+        />
         <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>
         <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>

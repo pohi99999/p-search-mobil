@@ -176,4 +176,27 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
       component.unmount();
     });
   });
+
+  it('calls navigation.goBack when the back button is pressed', async () => {
+    let component: renderer.ReactTestRenderer;
+
+    await renderer.act(async () => {
+      component = renderer.create(
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+      );
+    });
+
+    const root = component!.root;
+    const backButton = root.findByProps({ testID: 'copilot-chat-back-button' });
+
+    await renderer.act(async () => {
+      backButton.props.onPress();
+    });
+
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      component.unmount();
+    });
+  });
 });
