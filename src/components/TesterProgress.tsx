@@ -15,7 +15,7 @@ export const TesterProgress: React.FC = () => {
     const trackActivity = async () => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        let daysList: string[] = stored ? JSON.parse(stored) : [];
+        const daysList: string[] = stored ? JSON.parse(stored) : [];
 
         // Ma dátuma YYYY-MM-DD formátumban
         const today = new Date().toISOString().split("T")[0];

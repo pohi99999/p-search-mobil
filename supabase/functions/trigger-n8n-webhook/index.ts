@@ -9,7 +9,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+// Dependency-injection seam so this handler can be exercised by Deno tests
+// without hitting the network. Production usage (below, guarded by
+// `import.meta.main`) always uses the real `createClient` from supabase-js
+// and the real global `fetch`, so runtime behavior is unchanged.
+export type CreateClientFn = typeof createClient
+export type FetchFn = typeof fetch
+
+export async function handler(
+  req: Request,
+  deps: { createClient: CreateClientFn; fetch: FetchFn } = { createClient, fetch }
+): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -23,7 +33,7 @@ serve(async (req) => {
       });
     }
 
-    const supabaseClient = createClient(
+    const supabaseClient = deps.createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
@@ -67,7 +77,7 @@ serve(async (req) => {
         throw new Error("N8N_WEBHOOK_URL nincs beállítva");
     }
 
-    const response = await fetch(n8nWebhookUrl, {
+    const response = await deps.fetch(n8nWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -93,4 +103,12 @@ serve(async (req) => {
       status: 500,
     });
   }
-});
+}
+
+// Only start the real HTTP listener when this file is the entry point
+// (i.e. when Supabase's Edge Runtime executes it directly). When the module
+// is imported from a test, `import.meta.main` is false, so no server binds
+// to a port and `handler` can be invoked directly with a synthetic Request.
+if (import.meta.main) {
+  serve(handler);
+}

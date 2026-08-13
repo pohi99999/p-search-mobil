@@ -43,7 +43,7 @@ export const supabase = new Proxy(rawSupabase, {
         return {
           getSession: async () => ({ data: { session: mockData.fakeSession }, error: null }),
           getUser: async () => ({ data: { user: mockData.fakeUser }, error: null }),
-          onAuthStateChange: (callback: Function) => {
+          onAuthStateChange: (callback: (event: string, session: unknown) => void) => {
             callback('SIGNED_IN', mockData.fakeSession);
             return { data: { subscription: { unsubscribe: () => {} } } };
           },

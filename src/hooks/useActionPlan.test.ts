@@ -250,4 +250,90 @@ describe('useActionPlan', () => {
       expect(result.current.error).toBeNull();
     });
   });
+
+  it('should parse plans and build a tasks map when fetch returns data', async () => {
+    const planRow = {
+      id: 'plan-1',
+      business_profile_id: 'test-business-id',
+      title: 'Test Plan',
+      action_tasks: [
+        { id: 'task-1', status: 'TODO' },
+        { id: 'task-2', status: 'DONE' },
+      ],
+    };
+
+    const mockFrom = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      then: jest.fn().mockImplementation((resolve) => resolve({ data: [planRow], error: null })),
+    };
+    (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+    // `action_tasks` must be split off the plan row into the separate
+    // `tasks` map (keyed by plan id) -- the plan object itself must NOT
+    // still carry the nested tasks array.
+    expect(result.current.plans).toEqual([
+      { id: 'plan-1', business_profile_id: 'test-business-id', title: 'Test Plan' },
+    ]);
+    expect(result.current.tasks).toEqual({
+      'plan-1': [
+        { id: 'task-1', status: 'TODO' },
+        { id: 'task-2', status: 'DONE' },
+      ],
+    });
+  });
+
+  it('should optimistically update the local task list after a successful updateTaskStatus', async () => {
+    const initialPlanRow = {
+      id: 'plan-1',
+      action_tasks: [
+        { id: 'task-1', status: 'TODO' },
+        { id: 'task-2', status: 'TODO' },
+      ],
+    };
+
+    const mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
+    const mockFrom = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      then: jest.fn().mockImplementation((resolve) => resolve({ data: [initialPlanRow], error: null })),
+    };
+
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'action_tasks') {
+        return { update: jest.fn().mockReturnValue({ eq: mockUpdateEq }) };
+      }
+      return mockFrom;
+    });
+
+    const { result } = renderHook(() => useActionPlan('test-business-id'));
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.tasks['plan-1'].map((t) => t.status)).toEqual(['TODO', 'TODO']);
+
+    await act(async () => {
+      await result.current.updateTaskStatus('task-1', 'plan-1', 'DONE' as any);
+    });
+
+    // Only the targeted task's status should flip; the sibling task in the
+    // same plan must be left untouched.
+    expect(result.current.tasks['plan-1']).toEqual([
+      expect.objectContaining({ id: 'task-1', status: 'DONE' }),
+      expect.objectContaining({ id: 'task-2', status: 'TODO' }),
+    ]);
+    expect(result.current.error).toBeNull();
+  });
 });

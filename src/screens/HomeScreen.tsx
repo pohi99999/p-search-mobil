@@ -27,15 +27,6 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     handleNewSearch
   } = useHomeData(navigation);
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={MD3Colors.primary50} />
-        <Text style={{ marginTop: 16 }}>Adataid betöltése...</Text>
-      </View>
-    );
-  }
-
   const listData = useMemo<FlatListItem[]>(() => {
     if (!isPro && matches.length > 1) {
       return [
@@ -46,6 +37,15 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     }
     return matches;
   }, [matches, isPro]);
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={MD3Colors.primary50} />
+        <Text style={{ marginTop: 16 }}>Adataid betöltése...</Text>
+      </View>
+    );
+  }
 
   const renderItem = ({ item }: { item: FlatListItem }) => {
     if (isAdItem(item)) {
