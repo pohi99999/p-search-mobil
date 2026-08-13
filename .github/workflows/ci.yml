@@ -19,3 +19,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --ci
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno test --allow-env supabase/functions/increment-search-count/
+      - run: deno test --allow-env supabase/functions/trigger-n8n-webhook/
