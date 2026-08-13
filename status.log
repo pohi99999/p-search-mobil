@@ -1,5 +1,44 @@
 ===============================================================================
 P-SEARCH MOBIL - INTEGRATION & VERIFICATION STATUS LOG
+Timestamp: 2026-08-13T21:00:00+02:00
+Target Commit: 4f9a54f (master, release-hardening batch merged)
+Status: SUCCESS (100% GREEN)
+===============================================================================
+
+-1. RELEASE-HARDENING BATCH (follow-up to the audit below, same day, see
+    GEMINI.md 2026-08-13 "folytatás" entry for full detail):
+    - iOS platform dropped from app.json/eas.json (no Apple credentials).
+    - npm audit: 5 advisories fixed safely; remainder needs an Expo
+      SDK downgrade to fix and was deliberately left as accepted risk.
+    - @testing-library/react-hooks removed at the root cause (not just
+      papered over) -- migrated to a local react-test-renderer-based
+      renderHook; .npmrc (legacy-peer-deps=true) removed entirely,
+      `npm ci` now succeeds cleanly without it.
+    - CRITICAL PRODUCTION BUG found by actually running the Deno tests
+      for the first time (Deno CLI installed via npx): serve(handler)
+      was silently clobbering the DI deps parameter on every real
+      request to increment-search-count and trigger-n8n-webhook, both
+      already live and broken until this fix -- redeployed immediately.
+    - Sentry error reporting added (logger.ts previously dropped every
+      production error silently -- console output was __DEV__-gated
+      with no other reporting path).
+    - docs/RELEASE_CHECKLIST.md added; Maestro E2E scaffold added
+      (unverified, no device in this environment).
+    - Play Console reviewed via browser: app status Draft, Internal
+      testing track Inactive despite 3 prior uploaded releases, temp
+      "unreviewed" app name shown to testers -- store listing/review
+      setup incomplete; left for user decision, not auto-fixed.
+    - New EAS production Android build triggered (id
+      792db38e-29d4-43ce-9d13-22d80c2159cd, versionCode 3->4) -- the
+      last successful production build was 2026-06-10 (versionCode 3),
+      meaning no fix from this entire session had ever reached a real
+      build until now.
+    - Verification: typecheck 0 errors, jest 20/20 suites / 151/151
+      tests (up from 135 at session start), lint 0 errors/114 warnings.
+
+===============================================================================
+PREVIOUS STATUS LOG ENTRY
+===============================================================================
 Timestamp: 2026-08-13T19:30:00+02:00
 Target Commit: post-review-fixes, pre-merge (feature/full-project-audit-hardening)
 Status: SUCCESS (100% GREEN)
