@@ -21,6 +21,14 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 08. 13. (EAS build hibaelhárítás + Play Store submit lezárva):**
+  - Az előző bejegyzésben elindított EAS production build (`792db38e`, versionCode 4) **ERRORED** státusszal futott le. A hiba forrása NEM Gradle/Kotlin build hiba volt, hanem a teljes Gradle log elolvasásával derült ki: a `@sentry/react-native` plugin auto source-map-feltöltő taskja (`createBundleReleaseJsAndAssets_SentryUpload`) hibázott: `error: An organization ID or slug is required` — a Sentry be volt kötve (lásd lentebb), de sosem lett hozzá valódi org/project/auth token konfigurálva, így a feltöltési lépés elbukott, és ezzel az egész buildet elvitte.
+  - **Javítás:** `SENTRY_DISABLE_AUTO_UPLOAD=true` hozzáadva mind a 4 `eas.json` build profilhoz (development, development-client, preview, production), hogy a feltöltési task kihagyásra kerüljön hiba helyett. Commit `0a28642`, pusholva `master`-re.
+  - Új build (`015c23fb`, versionCode 5) **SIKERESEN** lefutott.
+  - Az `eas submit` első futása elutasításra került: "The service account is missing the necessary permissions to submit the app to Google Play Store." Élő Play Console ellenőrzéssel (böngészőn keresztül) kiderült: az `eas-builder@play-console-api-499011.iam.gserviceaccount.com` service account **egyáltalán nem volt meghívva** a Users and permissions alá — nulla hozzáférés, nem csak elégtelen. Ez fiók-jogosultsági módosítás, ezért ezt szándékosan NEM hajtottuk végre automatikusan — a felhasználó adta meg (Admin permission a P-Search appra), amit böngészőben ellenőriztünk.
+  - `eas submit` újrafuttatva a már meglévő build-en (nem kellett újra buildelni) — **SIKERES**. Submission `74c189e1-96df-4c8b-a5dc-9f0e0b474f5a`, az app élesen elérhető a Play Store internal testing trackjén, versionCode 5.
+  - **Nyitott, felhasználói döntést igénylő elem (nem lett automatikusan javítva):** az app státusza továbbra is "Draft", az Internal testing track "Inactive" (immár 4 feltöltött release ellenére), és a tesztelők egy ideiglenes "unreviewed" app-nevet látnak — a store listing / content rating / review beküldés még hiányzik ahhoz, hogy a tesztelők ténylegesen telepíteni tudják az appot.
+
 - **2026. 08. 13. (folytatás — release-hardening batch: dependency root-cause javítások, éles Edge Function bugfix, Sentry, E2E váz, EAS build):**
   - A záró összefoglalóban javasolt következő lépések közül a felhasználó kérésére a lehető legtöbbet azonnal végrehajtottuk, `feature/release-hardening` branch-en, majd `master`-be mergelve.
   - **iOS platform eltávolítva** `app.json`/`eas.json`-ból (nincs Apple credential, nincs iOS build terv) — ezzel a hiányzó AdMob `iosAppId` crash-kockázat is megszűnt.

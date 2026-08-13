@@ -1,9 +1,49 @@
 ===============================================================================
 P-SEARCH MOBIL - INTEGRATION & VERIFICATION STATUS LOG
-Timestamp: 2026-08-13T21:00:00+02:00
-Target Commit: 4f9a54f (master, release-hardening batch merged)
-Status: SUCCESS (100% GREEN)
+Timestamp: 2026-08-13T22:00:00+02:00
+Target Commit: 0a28642 (master, EAS build fix)
+Status: SUCCESS (100% GREEN) -- Android build LIVE on Play Store internal track
 ===============================================================================
+
+-2. EAS ANDROID BUILD + PLAY STORE SUBMIT (follow-up to -1 below, same day):
+    - First production build attempt (792db38e, versionCode 4) ERRORED at the
+      "Run gradlew" step. Root cause found by reading the full Gradle log
+      (not just the top-level error summary): the @sentry/react-native
+      Gradle plugin's auto source-map-upload task
+      (createBundleReleaseJsAndAssets_SentryUpload) failed with
+      "An organization ID or slug is required (provide with --org)" --
+      Sentry was wired into the app (see -1 below) but no real org/project/
+      auth token was ever configured, so the CLI upload step had nothing to
+      authenticate against and failed the whole Gradle build.
+    - Fix: added SENTRY_DISABLE_AUTO_UPLOAD=true to all 4 eas.json build
+      profiles (development, development-client, preview, production) so
+      the upload task is skipped instead of failing the build. Committed
+      as 0a28642 and pushed to master.
+    - Second build (015c23fb, versionCode 5) succeeded -- .aab artifact
+      produced.
+    - `eas submit` to the Play Store internal track initially failed:
+      "The service account is missing the necessary permissions to submit
+      the app to Google Play Store." Root cause (verified live in Play
+      Console via browser): the eas-builder@play-console-api-499011.iam.
+      gserviceaccount.com service account had never been invited as a user
+      under Users and permissions -- 0 access, not just insufficient
+      access. This is an account-permission change, so it was left for the
+      user to grant (out of scope for automated action) rather than
+      fixed directly.
+    - User granted the service account Admin app-permission on P-Search via
+      Play Console; verified in-browser (Users and permissions >
+      eas-builder@... > Permissions for P-Search > "Admin (all
+      permissions)" checked).
+    - Re-ran `eas submit` on the existing build (no rebuild needed) --
+      SUCCEEDED. Submission 74c189e1-96df-4c8b-a5dc-9f0e0b474f5a, app now
+      live on the Play Store internal testing track as versionCode 5.
+    - Outstanding, left for user decision (not auto-fixed, found during the
+      -1 Play Console review): app status is "Draft", the Internal testing
+      track itself shows "Inactive" despite now having 4 uploaded releases
+      (3 prior + this one), and testers see a temporary "unreviewed" app
+      name -- store listing / content rating / review submission still
+      needs to be completed by the user before testers can actually
+      install the build.
 
 -1. RELEASE-HARDENING BATCH (follow-up to the audit below, same day, see
     GEMINI.md 2026-08-13 "folytatás" entry for full detail):
