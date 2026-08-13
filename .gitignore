@@ -52,3 +52,6 @@ supabase/.temp/
 coverage/
 .vercel
 .env*
+
+# Superpowers SDD process scratch (session ledgers, not app code)
+.superpowers/
