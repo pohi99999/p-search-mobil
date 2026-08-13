@@ -1,0 +1,14 @@
+{
+  "extends": ["expo", "eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "env": { "jest": true },
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-require-imports": "warn",
+    "react-hooks/set-state-in-effect": "warn",
+    "react-hooks/immutability": "warn"
+  },
+  "ignorePatterns": ["dist/", "node_modules/", ".expo/", "supabase/functions/**"]
+}

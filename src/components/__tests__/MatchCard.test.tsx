@@ -131,7 +131,7 @@ describe('MatchCard', () => {
     const amountInstances = root!.root.findAll(
       (node) => {
         if (node.type !== 'Text' || !node.props.children) return false;
-        let childrenStr = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
+        const childrenStr = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
         return childrenStr.includes('Összeg:');
       }
     );
