@@ -5,6 +5,10 @@ module.exports = {
   ],
   setupFilesAfterEnv: ['./setupJest.js'],
   testEnvironment: 'node',
+  // supabase/functions/** are Deno Edge Functions (run via `deno test`, not
+  // Jest) -- they use Deno-only URL imports (https://deno.land/std/...)
+  // that Jest/Node cannot resolve, and must stay out of Jest's test run.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/supabase/'],
   transform: {
     '^.+\\.(ts|tsx|js|jsx)$': 'babel-jest',
   },

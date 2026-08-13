@@ -6,7 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+// Dependency-injection seam so this handler can be exercised by Deno tests
+// without hitting the network. Production usage (below, guarded by
+// `import.meta.main`) always uses the real `createClient` from supabase-js,
+// so runtime behavior is unchanged.
+export type CreateClientFn = typeof createClient
+
+export async function handler(
+  req: Request,
+  deps: { createClient: CreateClientFn } = { createClient }
+): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -17,14 +26,14 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    const supabaseClient = createClient(
+    const supabaseClient = deps.createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     )
 
     // Admin client to bypass RLS if needed, but we can just use it to update the user's count securely
-    const supabaseAdmin = createClient(
+    const supabaseAdmin = deps.createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
@@ -66,4 +75,12 @@ serve(async (req) => {
       status: 400,
     })
   }
-})
+}
+
+// Only start the real HTTP listener when this file is the entry point
+// (i.e. when Supabase's Edge Runtime executes it directly). When the module
+// is imported from a test, `import.meta.main` is false, so no server binds
+// to a port and `handler` can be invoked directly with a synthetic Request.
+if (import.meta.main) {
+  serve(handler)
+}
