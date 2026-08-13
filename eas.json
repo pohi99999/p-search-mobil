@@ -11,9 +11,6 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
       },
-      "ios": {
-        "simulator": false
-      },
       "env": {
         "APP_ENV": "development"
       }
@@ -24,9 +21,6 @@
       "android": {
         "buildType": "apk"
       },
-      "ios": {
-        "simulator": false
-      },
       "env": {
         "APP_ENV": "development"
       }
@@ -36,9 +30,6 @@
       "android": {
         "buildType": "apk"
       },
-      "ios": {
-        "simulator": false
-      },
       "env": {
         "APP_ENV": "preview"
       }
@@ -47,9 +38,6 @@
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "ios": {
-        "autoIncrement": true
       },
       "env": {
         "APP_ENV": "production"

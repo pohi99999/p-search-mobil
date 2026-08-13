@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "platforms": [
-      "ios",
       "android",
       "web"
     ],
@@ -15,10 +14,6 @@
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#1976D2"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.pohankaestarsa.psearch"
     },
     "android": {
       "package": "com.pohankaestarsa.psearch",
