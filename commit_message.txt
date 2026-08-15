@@ -1,0 +1,5 @@
+🧪 Add tests for PaywallPackages component
+
+🎯 **What:** The testing gap for PaywallPackages addressed.
+📊 **Coverage:** Covered rendering states (empty/fallback, populated list), simulating purchase clicks (Alert and standard handlePurchase), and disabling the buttons when purchasing=true.
+✨ **Result:** Adds coverage and ensures regression prevention for the paywall package UI.
