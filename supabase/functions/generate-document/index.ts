@@ -49,6 +49,15 @@ serve(async (req) => {
       );
     }
 
+    // 0. Felhasználó azonosítása
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: "Érvénytelen vagy lejárt hitelesítési token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 1. Cégprofil és Pályázat lekérdezése párhuzamosan
     const [
       { data: profile, error: profileError },
@@ -68,6 +77,14 @@ serve(async (req) => {
 
     if (profileError) throw profileError;
     if (matchError) throw matchError;
+
+    // Jogosultság ellenőrzése: Csak a saját cégprofilhoz generálhat dokumentumot
+    if (profile.user_id !== userData.user.id) {
+      return new Response(
+        JSON.stringify({ error: "Nincs jogosultság a megadott cégprofilhoz" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const companyName = profile.company_name;
     const grantTitle = match.grants?.title || "Kiválasztott Pályázat";
