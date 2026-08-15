@@ -1,0 +1,103 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PaywallFeatures renders correctly 1`] = `
+<View
+  mode="outlined"
+  style={
+    {
+      "backgroundColor": "#ffffff",
+      "borderColor": "#E3F2FD",
+      "borderRadius": 16,
+      "borderWidth": 1.5,
+      "elevation": 0,
+      "marginBottom": 24,
+      "width": "100%",
+    }
+  }
+>
+  <View>
+    <View
+      data-testID="list-item"
+      description="Gemini AI megírja az igénylési dokumentumokat, elemzi a pályázatokat és felkészít a hitelügyintézésre."
+      descriptionNumberOfLines={3}
+      descriptionStyle={
+        {
+          "color": "#757575",
+          "fontSize": 13,
+          "marginTop": 2,
+        }
+      }
+      title="✍️ Korlátlan AI Pályázatíró & Hitelügyintéző"
+      titleNumberOfLines={2}
+      titleStyle={
+        {
+          "color": "#1565C0",
+          "fontSize": 16,
+          "fontWeight": "bold",
+        }
+      }
+    />
+    <View
+      data-testID="list-item"
+      description="Töltsd fel pénzügyi kimutatásaidat — az AI OCR-rel automatikusan feldolgozza és strukturálja az adatokat."
+      descriptionNumberOfLines={3}
+      descriptionStyle={
+        {
+          "color": "#757575",
+          "fontSize": 13,
+          "marginTop": 2,
+        }
+      }
+      title="📂 Automatikus Master Dokumentum Bázis (OCR)"
+      titleNumberOfLines={2}
+      titleStyle={
+        {
+          "color": "#1565C0",
+          "fontSize": 16,
+          "fontWeight": "bold",
+        }
+      }
+    />
+    <View
+      data-testID="list-item"
+      description="Professzionálisan előkitöltött pályázati dokumentumok egy kattintással, letölthetőn és megoszthatóan."
+      descriptionNumberOfLines={3}
+      descriptionStyle={
+        {
+          "color": "#757575",
+          "fontSize": 13,
+          "marginTop": 2,
+        }
+      }
+      title="📄 Teljes PDF & DOCX Export"
+      titleNumberOfLines={2}
+      titleStyle={
+        {
+          "color": "#1565C0",
+          "fontSize": 16,
+          "fontWeight": "bold",
+        }
+      }
+    />
+    <View
+      data-testID="list-item"
+      description="Tiszta, zavaró tényezőktől mentes kezelőfelület a gyorsabb munkához."
+      descriptionStyle={
+        {
+          "color": "#757575",
+          "fontSize": 13,
+          "marginTop": 2,
+        }
+      }
+      title="🚫 Hirdetésmentesség"
+      titleStyle={
+        {
+          "color": "#1565C0",
+          "fontSize": 16,
+          "fontWeight": "bold",
+        }
+      }
+    />
+  </View>
+</View>
+`;
