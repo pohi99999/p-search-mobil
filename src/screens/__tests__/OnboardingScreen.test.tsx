@@ -3,6 +3,9 @@ import renderer, { act } from 'react-test-renderer';
 import { OnboardingScreen } from '../OnboardingScreen';
 import { supabase } from '../../lib/supabase';
 import { TextInput, Button, HelperText } from 'react-native-paper';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../types/navigation';
+import { logger } from '../../utils/logger';
 
 // Mock dependencies globally for all tests in this file
 jest.mock('../../lib/supabase', () => ({
@@ -28,7 +31,6 @@ jest.mock('../../utils/logger', () => ({
   },
 }));
 
-import { logger } from '../../utils/logger';
 
 describe('OnboardingScreen Form Validation', () => {
   beforeEach(() => {
@@ -36,7 +38,7 @@ describe('OnboardingScreen Form Validation', () => {
   });
 
   it('shows error when company name is empty and save is clicked', async () => {
-    const navigationMock = { replace: jest.fn() } as any;
+    const navigationMock = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
     let root;
     act(() => {
@@ -62,7 +64,7 @@ describe('OnboardingScreen Database Error Handling', () => {
   it('should display an error message if database insert fails', async () => {
     const mockNavigation = {
       replace: jest.fn(),
-    } as any;
+    } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
     const mockGetSession = jest.fn().mockResolvedValue({
       data: { session: { user: { id: 'test-user-id' } } },
@@ -121,7 +123,7 @@ describe('OnboardingScreen Webhook Handling', () => {
   it('navigates to Home even if webhook fails and logs warning', async () => {
     const mockNavigation = {
       replace: jest.fn(),
-    } as any;
+    } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
     const mockGetSession = jest.fn().mockResolvedValue({
       data: { session: { user: { id: 'test-user-id' } } },
