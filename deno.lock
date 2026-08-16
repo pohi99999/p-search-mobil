@@ -45,6 +45,7 @@
         "npm:@react-native/jest-preset@0.85.3",
         "npm:@react-navigation/native-stack@^7.17.1",
         "npm:@react-navigation/native@^7.3.0",
+        "npm:@sentry/react-native@7.11",
         "npm:@supabase/supabase-js@^2.108.2",
         "npm:@testing-library/jest-native@^5.4.3",
         "npm:@testing-library/react-native@^14.0.1",
