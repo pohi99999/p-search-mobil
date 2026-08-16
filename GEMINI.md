@@ -21,6 +21,25 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+- **2026. 08. 16. (Fázis 9 — Jules aszinkron munkáinak teljes körű integrációja: 8 ág beolvasztása, Edge Function felhasználói jogosultság- és tulajdonos-ellenőrzések, OnboardingScreen típusbiztonság és Paywall komponensek unit tesztlefedettsége):**
+  - **Beolvasztott Jules ágak (8 távoli ág):**
+    * `origin/fix-auth-generate-document-15029701622628873233` (Jogosultság-ellenőrzés: `generate-document` Edge Function felhasználói azonosítás és cégprofil-tulajdonos vizsgálat)
+    * `origin/fix/generate-action-plan-ownership-check-5146681392758291630` (Biztonsági javítás: `generate-action-plan` Edge Function profil-tulajdonos és match-id ellenőrzés)
+    * `origin/jules-14793723853994453037-db2f7b7a` (Biztonsági javítás: `chat-with-gemini` Edge Function felhasználói token és cégprofil jogosultság-ellenőrzés)
+    * `origin/jules-11456218767956946978-4ef94dba` (Típusbiztonság javítása: `OnboardingScreen.test.tsx` navigation mock típusillesztése)
+    * `origin/fix-paywall-overlay-test-6086672450999665184` (PaywallOverlay komponens egységtesztek)
+    * `origin/jules-12898894219876429773-6f78627d` (PaywallFeatures komponens egységtesztek és snapshot)
+    * `origin/jules-15796050393441428962-689e61ef` (PaywallPackages komponens egységtesztek vásárlási és fallback funkciókra)
+    * `origin/test/paywall-success-coverage-4190870909927094345` (PaywallSuccess komponens egységtesztek)
+  - **Integritás és tisztítás:** Eltávolítottuk az ideiglenes fájlokat (`commit_message.txt`, `fix.patch`, `0.26.0`), feloldottuk a `package-lock.json` ütközést a master tiszta konfigurációjának megőrzésével.
+  - **Verifikáció és Tesztelés:**
+    * `npm ci`: SIKERES
+    * TypeScript típusellenőrzés (`npm run typecheck` / `npx tsc --noEmit`): SIKERES (0 hiba)
+    * Egységtesztek futtatása (`npm test` / `npx jest`): 24/24 tesztcsomag, 162/162 teszt sikeresen lefutott (100% zöld, 151-ről 162-re nőtt)
+    * Deno Edge Function tesztek (`npx deno test --allow-env --allow-net`): 14/14 teszt sikeres (100% zöld)
+    * Linter (`npm run lint`): 0 hiba, 120 warning (típus / unused-vars figyelmeztetések)
+  - **Git & GitHub szinkronizáció:** Commit `fbc6818`, Conductor Git Note csatolva, pusholva `master`-re és `refs/notes/*`-ra.
+
 - **2026. 08. 13. (EAS build hibaelhárítás + Play Store submit lezárva):**
   - Az előző bejegyzésben elindított EAS production build (`792db38e`, versionCode 4) **ERRORED** státusszal futott le. A hiba forrása NEM Gradle/Kotlin build hiba volt, hanem a teljes Gradle log elolvasásával derült ki: a `@sentry/react-native` plugin auto source-map-feltöltő taskja (`createBundleReleaseJsAndAssets_SentryUpload`) hibázott: `error: An organization ID or slug is required` — a Sentry be volt kötve (lásd lentebb), de sosem lett hozzá valódi org/project/auth token konfigurálva, így a feltöltési lépés elbukott, és ezzel az egész buildet elvitte.
   - **Javítás:** `SENTRY_DISABLE_AUTO_UPLOAD=true` hozzáadva mind a 4 `eas.json` build profilhoz (development, development-client, preview, production), hogy a feltöltési task kihagyásra kerüljön hiba helyett. Commit `0a28642`, pusholva `master`-re.

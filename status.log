@@ -1,5 +1,45 @@
 ===============================================================================
 P-SEARCH MOBIL - INTEGRATION & VERIFICATION STATUS LOG
+Timestamp: 2026-08-16T13:15:00+02:00
+Target Commit: fbc6818 (feat(integration): Merge Jules async contributions)
+Git Ref Notes: refs/notes/commits
+Status: SUCCESS (100% GREEN) -- 24/24 Test Suites / 162/162 Tests Passed
+===============================================================================
+
+1. MERGED JULES ASYNC BRANCHES (8 remote branches):
+   - origin/fix-auth-generate-document-15029701622628873233
+     (Authorization & company profile ownership checks in generate-document function)
+   - origin/fix/generate-action-plan-ownership-check-5146681392758291630
+     (Ownership authorization and match_id ownership check in generate-action-plan function)
+   - origin/jules-14793723853994453037-db2f7b7a
+     (Authorization token verification & company profile ownership check in chat-with-gemini function)
+   - origin/jules-11456218767956946978-4ef94dba
+     (Type safety improvements: explicit navigation mock typing in OnboardingScreen.test.tsx)
+   - origin/fix-paywall-overlay-test-6086672450999665184
+     (Unit test suite for PaywallOverlay component)
+   - origin/jules-12898894219876429773-6f78627d
+     (Unit test suite and snapshot for PaywallFeatures component)
+   - origin/jules-15796050393441428962-689e61ef
+     (Unit test suite for PaywallPackages component)
+   - origin/test/paywall-success-coverage-4190870909927094345
+     (Unit test suite for PaywallSuccess component)
+
+2. INTEGRITY & VERIFICATION CHECKS:
+   - Dependency Install: `npm ci` -> SUCCESS (clean npm ci without legacy-peer-deps)
+   - TypeScript Check: `npm run typecheck` (`tsc --noEmit`) -> 0 errors (PASSED)
+   - Jest Test Suite: `npm test` (`jest`) -> 24/24 Test Suites Passed, 162/162 Tests Passed (PASSED)
+   - Deno Edge Function Tests: `npx deno test --allow-env --allow-net` -> 14/14 Tests Passed (PASSED)
+   - Linter: `npm run lint` (`eslint .`) -> 0 errors, 120 warnings (PASSED)
+   - Clean Up: Purged temp files (commit_message.txt, fix.patch, 0.26.0) -> CLEAN
+
+3. GIT & REMOTE SYNCHRONIZATION:
+   - Integration Commit: fbc6818
+   - Conductor Git Note: Attached [CONDUCTOR NOTE] to fbc6818
+   - Sync Target: `git push origin master` and `git push origin refs/notes/*`
+
+===============================================================================
+PREVIOUS STATUS LOG ENTRY
+===============================================================================
 Timestamp: 2026-08-13T22:00:00+02:00
 Target Commit: 0a28642 (master, EAS build fix)
 Status: SUCCESS (100% GREEN) -- Android build LIVE on Play Store internal track
@@ -44,108 +84,3 @@ Status: SUCCESS (100% GREEN) -- Android build LIVE on Play Store internal track
       name -- store listing / content rating / review submission still
       needs to be completed by the user before testers can actually
       install the build.
-
--1. RELEASE-HARDENING BATCH (follow-up to the audit below, same day, see
-    GEMINI.md 2026-08-13 "folytatás" entry for full detail):
-    - iOS platform dropped from app.json/eas.json (no Apple credentials).
-    - npm audit: 5 advisories fixed safely; remainder needs an Expo
-      SDK downgrade to fix and was deliberately left as accepted risk.
-    - @testing-library/react-hooks removed at the root cause (not just
-      papered over) -- migrated to a local react-test-renderer-based
-      renderHook; .npmrc (legacy-peer-deps=true) removed entirely,
-      `npm ci` now succeeds cleanly without it.
-    - CRITICAL PRODUCTION BUG found by actually running the Deno tests
-      for the first time (Deno CLI installed via npx): serve(handler)
-      was silently clobbering the DI deps parameter on every real
-      request to increment-search-count and trigger-n8n-webhook, both
-      already live and broken until this fix -- redeployed immediately.
-    - Sentry error reporting added (logger.ts previously dropped every
-      production error silently -- console output was __DEV__-gated
-      with no other reporting path).
-    - docs/RELEASE_CHECKLIST.md added; Maestro E2E scaffold added
-      (unverified, no device in this environment).
-    - Play Console reviewed via browser: app status Draft, Internal
-      testing track Inactive despite 3 prior uploaded releases, temp
-      "unreviewed" app name shown to testers -- store listing/review
-      setup incomplete; left for user decision, not auto-fixed.
-    - New EAS production Android build triggered (id
-      792db38e-29d4-43ce-9d13-22d80c2159cd, versionCode 3->4) -- the
-      last successful production build was 2026-06-10 (versionCode 3),
-      meaning no fix from this entire session had ever reached a real
-      build until now.
-    - Verification: typecheck 0 errors, jest 20/20 suites / 151/151
-      tests (up from 135 at session start), lint 0 errors/114 warnings.
-
-===============================================================================
-PREVIOUS STATUS LOG ENTRY
-===============================================================================
-Timestamp: 2026-08-13T19:30:00+02:00
-Target Commit: post-review-fixes, pre-merge (feature/full-project-audit-hardening)
-Status: SUCCESS (100% GREEN)
-===============================================================================
-
-0. FULL PROJECT AUDIT & HARDENING SESSION (see GEMINI.md 2026-08-13 entry for
-   full detail; plan: docs/superpowers/plans/2026-08-13-full-project-audit-and-hardening.md):
-   - Dev infra: ESLint + Prettier + npm scripts + .env.example + CI workflow added.
-   - Test coverage: 16 Deno tests for the 2 security-critical Edge Functions,
-     2 new Jest tests for useActionPlan.ts gaps.
-   - Production fixes (live Supabase, user-approved): action_plans RLS policy
-     added, 3 missing Edge Functions deployed (generate-document,
-     increment-search-count, trigger-n8n-webhook), N8N_WEBHOOK_URL/
-     N8N_WEBHOOK_SECRET/ALLOWED_ORIGIN secrets set, Auth Site URL + Redirect
-     URL updated from localhost to the real production URL.
-   - Vercel deploy fixed (.npmrc for a pre-existing --legacy-peer-deps
-     requirement) + a production blank-screen bug fixed (missing env vars on
-     Vercel, now set) — https://p-search-mobil.vercel.app verified working.
-   - Refactor: jest-expo aligned to Expo SDK 56, dead app.json key removed,
-     navigation dead-end fixed (ActionPlan/CopilotChat had no way back to Home).
-   - Premium feature: CopilotChat conversation history now persists via
-     AsyncStorage across navigation and app restarts (matchId-scoped).
-
-1. INTEGRITY & VERIFICATION CHECKS (session end, commit 05d2733):
-   - TypeScript Check: `npx tsc --noEmit` -> 0 errors (PASSED)
-   - Jest Test Suite: `npx jest` -> 20/20 Test Suites Passed, 142/142 Tests Passed (PASSED)
-   - Lint: `npm run lint` -> 0 errors, 121 warnings (no-explicit-any/no-unused-vars,
-     intentionally set to warn during a bounded first lint-introduction pass)
-
-===============================================================================
-PREVIOUS STATUS LOG ENTRY
-===============================================================================
-Timestamp: 2026-08-12T14:13:30+02:00
-Target Commit: ba73396 (feat(integration): Merge Jules async contributions)
-Git Ref Notes: refs/notes/commits (34673b1)
-Status: SUCCESS (100% GREEN)
-===============================================================================
-
-1. MERGED JULES ASYNC BRANCHES (10 remote branches):
-   - origin/fix-search-count-vulnerability-5504452606255234396
-     (Move search count increment to server-side edge function)
-   - origin/fix-webhook-vuln-13443825014439597221
-     (Fix client-side webhook triggering vulnerability via edge function)
-   - origin/jules-13646968802841757656-de0edd31
-     (Improve error handling test coverage for fetchPlansAndTasks)
-   - origin/jules-5222334198212720759-e2284ab1
-     (Add error UI tests for restoring purchases and purchasing packages)
-   - origin/jules-logger-type-safety-11093214509841278186
-     (Improve type safety in logger)
-   - origin/test-action-plan-failure-9624227384919109413
-     (Add test for plan generation failure UI state)
-   - origin/test-generate-plan-match-13543824217403003686
-     (Add tests for generatePlanForMatch in useActionPlan)
-   - origin/test-improvement-profile-context-error-flow-17199792741112605422
-     (ProfileContext error flow, caching, and concurrency tests)
-   - origin/test-paywall-logger-errors-7418644410016668268
-     (Add error logging tests for PaywallScreen)
-   - origin/test-useactionplan-error-3956716551247702738
-     (Add test for useActionPlan updateTaskStatus error path)
-
-2. INTEGRITY & VERIFICATION CHECKS:
-   - Dependency Install: `npm install --legacy-peer-deps` -> SUCCESS
-   - TypeScript Check: `npx tsc --noEmit` -> 0 errors (PASSED)
-   - Jest Test Suite: `npx jest` -> 20/20 Test Suites Passed, 135/135 Tests Passed (PASSED)
-   - Clean Up: Untracked files (pr_description.md, 0.26.0) purged -> CLEAN
-
-3. GIT & REMOTE SYNCHRONIZATION:
-   - Commit Hash: ba73396
-   - Git Notes: Attached [CONDUCTOR NOTE] to ba73396
-   - Remote Sync: `git push origin master` and `git push origin refs/notes/*` -> PUSHED
