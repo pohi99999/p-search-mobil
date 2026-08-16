@@ -1,59 +1,71 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
 
-const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
+const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
+  'Access-Control-Allow-Origin': allowedOrigin,
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
 serve(async (req) => {
-  console.log("Kérés megérkezett. Metódus:", req.method);
+  console.log('Kérés megérkezett. Metódus:', req.method);
 
   // CORS preflight kérések kezelése
-  if (req.method === "OPTIONS") {
-    console.log("OPTIONS preflight kérés lekezelve.");
-    return new Response("ok", {
+  if (req.method === 'OPTIONS') {
+    console.log('OPTIONS preflight kérés lekezelve.');
+    return new Response('ok', {
       status: 200,
       headers: corsHeaders,
     });
   }
 
   try {
-    console.log("Authorization fejléc ellenőrzése...");
-    const authHeader = req.headers.get("Authorization");
+    console.log('Authorization fejléc ellenőrzése...');
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error("Hiba: Nincs hitelesítési fejléc");
-      return new Response(
-        JSON.stringify({ error: "Nincs hitelesítési fejléc" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      console.error('Hiba: Nincs hitelesítési fejléc');
+      return new Response(JSON.stringify({ error: 'Nincs hitelesítési fejléc' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(
-      "Supabase kliens inicializálása service_role kulccsal az RLS kikerüléséhez...",
-    );
+    console.log('Supabase kliens inicializálása service_role kulccsal az RLS kikerüléséhez...');
     // Supabase kliens létrehozása service_role kulccsal
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
     );
 
-    console.log("Kérés törzsének (JSON) beolvasása...");
+    console.log('Felhasználó azonosítása...');
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } },
+    );
+
+    const {
+      data: { user },
+      error: authError,
+    } = await userClient.auth.getUser();
+    if (authError || !user) {
+      console.error('Hiba a felhasználó azonosításakor:', authError);
+      return new Response(JSON.stringify({ error: 'Érvénytelen hitelesítés' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('Kérés törzsének (JSON) beolvasása...');
     // Kliens paraméterek beolvasása
     const requestData = await req.json();
-    console.log("Beolvasott adatok:", JSON.stringify(requestData));
+    console.log('Beolvasott adatok:', JSON.stringify(requestData));
 
-    const message =
-      requestData.prompt || requestData.message || requestData.text || "";
+    const message = requestData.prompt || requestData.message || requestData.text || '';
     const history = requestData.history || [];
     const business_profile_id =
       requestData.business_profile_id || requestData.businessProfileId || null;
@@ -64,122 +76,113 @@ serve(async (req) => {
     console.log(`Előzmények száma: ${history.length}`);
 
     if (!message) {
-      console.error("Hiba: message/prompt paraméter hiányzik");
-      return new Response(
-        JSON.stringify({ error: "message paraméter megadása kötelező" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      console.error('Hiba: message/prompt paraméter hiányzik');
+      return new Response(JSON.stringify({ error: 'message paraméter megadása kötelező' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // 1. Cégprofil adatainak lekérdezése (ha van ID)
-    let companyContext = "";
+    let companyContext = '';
     if (business_profile_id) {
-      console.log(
-        `Cégprofil lekérdezése az adatbázisból: ${business_profile_id}...`,
-      );
+      console.log(`Cégprofil lekérdezése az adatbázisból: ${business_profile_id}...`);
       const { data: profile, error: profileDbError } = await supabaseClient
-        .from("business_profiles")
-        .select("*")
-        .eq("id", business_profile_id)
+        .from('business_profiles')
+        .select('*')
+        .eq('id', business_profile_id)
         .single();
 
       if (profileDbError) {
-        console.warn("Nem sikerült lekérni a cégprofilt:", profileDbError);
+        console.warn('Nem sikerült lekérni a cégprofilt:', profileDbError);
       }
 
       if (profile) {
+        if (profile.user_id !== user.id) {
+          console.error('Jogosulatlan hozzáférés a cégprofilhoz');
+          return new Response(JSON.stringify({ error: 'Nincs jogosultság a megadott profilhoz' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         companyContext = `Cégnév: ${profile.company_name}
-TEÁOR kód (iparág): ${profile.industry_code || "Nincs megadva"}
-Alkalmazottak száma: ${profile.employee_count || "Nincs megadva"}
-Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString("hu-HU") + " Ft" : "Nincs megadva"}
-Cég céljai: ${profile.goals || "Nincs megadva"}`;
-        console.log("Cégprofil kontextus sikeresen felépítve.");
+TEÁOR kód (iparág): ${profile.industry_code || 'Nincs megadva'}
+Alkalmazottak száma: ${profile.employee_count || 'Nincs megadva'}
+Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString('hu-HU') + ' Ft' : 'Nincs megadva'}
+Cég céljai: ${profile.goals || 'Nincs megadva'}`;
+        console.log('Cégprofil kontextus sikeresen felépítve.');
       }
     }
 
     // 2. Pályázat adatainak lekérdezése (ha van ID)
-    let grantContext = "";
+    let grantContext = '';
     if (match_id) {
-      console.log(
-        `Pályázati egyezés lekérdezése az adatbázisból: ${match_id}...`,
-      );
+      console.log(`Pályázati egyezés lekérdezése az adatbázisból: ${match_id}...`);
       const { data: match, error: matchDbError } = await supabaseClient
-        .from("grant_matches")
-        .select("*, grants(*)")
-        .eq("id", match_id)
+        .from('grant_matches')
+        .select('*, grants(*)')
+        .eq('id', match_id)
         .single();
 
       if (matchDbError) {
-        console.warn(
-          "Nem sikerült lekérni a pályázati egyezést:",
-          matchDbError,
-        );
+        console.warn('Nem sikerült lekérni a pályázati egyezést:', matchDbError);
       }
 
       if (match?.grants) {
         const g = match.grants;
         grantContext = `Pályázat címe: ${g.title}
-Kiíró/Szolgáltató: ${g.provider || "Nincs megadva"}
-Típus: ${g.grant_type || "Nincs megadva"}
-Összeg: ${g.amount_min ? g.amount_min.toLocaleString("hu-HU") + " Ft" : "0"} - ${g.amount_max ? g.amount_max.toLocaleString("hu-HU") + " Ft" : "?"}
-Határidő: ${g.deadline || "Nincs megadva"}
-Elfogadhatósági feltételek: ${g.eligibility_criteria || "Nincs megadva"}
-Leírás: ${g.description || "Nincs megadva"}`;
-        console.log("Pályázat kontextus sikeresen felépítve.");
+Kiíró/Szolgáltató: ${g.provider || 'Nincs megadva'}
+Típus: ${g.grant_type || 'Nincs megadva'}
+Összeg: ${g.amount_min ? g.amount_min.toLocaleString('hu-HU') + ' Ft' : '0'} - ${g.amount_max ? g.amount_max.toLocaleString('hu-HU') + ' Ft' : '?'}
+Határidő: ${g.deadline || 'Nincs megadva'}
+Elfogadhatósági feltételek: ${g.eligibility_criteria || 'Nincs megadva'}
+Leírás: ${g.description || 'Nincs megadva'}`;
+        console.log('Pályázat kontextus sikeresen felépítve.');
       }
     }
 
     // 3. Feladatok lekérdezése a céghez az azonosítókkal a rendszerpromptba dúsításhoz
-    let tasksContext = "";
+    let tasksContext = '';
     if (business_profile_id) {
-      console.log("Aktív felkészülési feladatok lekérdezése...");
+      console.log('Aktív felkészülési feladatok lekérdezése...');
       const { data: plans, error: plansDbError } = await supabaseClient
-        .from("action_plans")
-        .select("id, title")
-        .eq("business_profile_id", business_profile_id);
+        .from('action_plans')
+        .select('id, title')
+        .eq('business_profile_id', business_profile_id);
 
       if (plansDbError) {
-        console.warn("Nem sikerült lekérni az akcióterveket:", plansDbError);
+        console.warn('Nem sikerült lekérni az akcióterveket:', plansDbError);
       }
 
       if (plans && plans.length > 0) {
         const planIds = plans.map((p) => p.id);
         const { data: tasks, error: tasksDbError } = await supabaseClient
-          .from("action_tasks")
-          .select("id, title, status")
-          .in("plan_id", planIds)
-          .order("order_index", { ascending: true });
+          .from('action_tasks')
+          .select('id, title, status')
+          .in('plan_id', planIds)
+          .order('order_index', { ascending: true });
 
         if (tasksDbError) {
-          console.warn(
-            "Nem sikerült lekérni az akciófeladatokat:",
-            tasksDbError,
-          );
+          console.warn('Nem sikerült lekérni az akciófeladatokat:', tasksDbError);
         }
 
         if (tasks && tasks.length > 0) {
           tasksContext =
-            "Az adatbázisban szereplő aktív felkészülési feladatok és azonosítóik (UUID):\n";
+            'Az adatbázisban szereplő aktív felkészülési feladatok és azonosítóik (UUID):\n';
           tasks.forEach((t) => {
             tasksContext += `- Feladat: "${t.title}", Állapot: "${t.status}", Azonosító (ID): "${t.id}"\n`;
           });
-          console.log(
-            `Feladatok kontextus felépítve (${tasks.length} feladat).`,
-          );
+          console.log(`Feladatok kontextus felépítve (${tasks.length} feladat).`);
         }
       }
     }
 
-    console.log("API kulcs ellenőrzése a környezeti változókban...");
+    console.log('API kulcs ellenőrzése a környezeti változókban...');
     // 4. Gemini API kulcs lekérése és az SDK inicializálása
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
-      throw new Error(
-        "GEMINI_API_KEY környezeti változó nincs beállítva a Deno környezetben.",
-      );
+      throw new Error('GEMINI_API_KEY környezeti változó nincs beállítva a Deno környezetben.');
     }
     const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -194,11 +197,9 @@ Leírás: ${g.description || "Nincs megadva"}`;
 
     let queryEmbedding: number[] = [];
     try {
-      console.log(
-        "Embedding generálása a felhasználói kérdésre ('gemini-embedding-001')...",
-      );
+      console.log("Embedding generálása a felhasználói kérdésre ('gemini-embedding-001')...");
       const embeddingModel = genAI.getGenerativeModel({
-        model: "gemini-embedding-001",
+        model: 'gemini-embedding-001',
       });
       const embedResult = await embeddingModel.embedContent({
         content: { parts: [{ text: message }] },
@@ -207,100 +208,82 @@ Leírás: ${g.description || "Nincs megadva"}`;
       if (embedResult?.embedding?.values) {
         queryEmbedding = embedResult.embedding.values;
         debugInfo.embedding_length = queryEmbedding.length;
-        console.log(
-          `Embedding sikeresen generálva: ${queryEmbedding.length} dimenzió.`,
-        );
+        console.log(`Embedding sikeresen generálva: ${queryEmbedding.length} dimenzió.`);
       } else {
-        console.warn("Az embedding generálás üres választ adott vissza.");
-        debugInfo.embed_error =
-          "Az embedding generálás üres választ adott vissza.";
+        console.warn('Az embedding generálás üres választ adott vissza.');
+        debugInfo.embed_error = 'Az embedding generálás üres választ adott vissza.';
       }
     } catch (embedErr: any) {
-      console.error("Hiba az embedding generálása során:", embedErr);
+      console.error('Hiba az embedding generálása során:', embedErr);
       debugInfo.embed_error = embedErr.message || String(embedErr);
     }
 
-    let ragContext = "";
+    let ragContext = '';
     let sourceTitles: string[] = [];
     if (queryEmbedding.length > 0) {
       try {
-        console.log(
-          "Szemantikai keresés indítása a Supabase-ben (match_grant_chunks RPC)...",
-        );
-        const { data: matchedChunks, error: rpcError } =
-          await supabaseClient.rpc("match_grant_chunks", {
+        console.log('Szemantikai keresés indítása a Supabase-ben (match_grant_chunks RPC)...');
+        const { data: matchedChunks, error: rpcError } = await supabaseClient.rpc(
+          'match_grant_chunks',
+          {
             query_embedding: queryEmbedding,
             match_threshold: 0.3,
             match_count: 5,
-          });
+          },
+        );
 
         if (rpcError) {
-          console.error(
-            "Hiba a match_grant_chunks RPC futtatásakor:",
-            rpcError,
-          );
+          console.error('Hiba a match_grant_chunks RPC futtatásakor:', rpcError);
           debugInfo.rpc_error = rpcError.message || JSON.stringify(rpcError);
         } else if (matchedChunks) {
           debugInfo.matched_chunks_count = matchedChunks.length;
         }
 
         if (!rpcError && matchedChunks && matchedChunks.length > 0) {
-          console.log(
-            `Talált releváns pályázati szövegrészletek száma: ${matchedChunks.length}`,
-          );
+          console.log(`Talált releváns pályázati szövegrészletek száma: ${matchedChunks.length}`);
 
           // Egyedi grant_id-k kinyerése a források megbízható visszakövetéséhez
           const uniqueGrantIds = Array.from(
-            new Set(
-              matchedChunks.map((chunk: any) => chunk.grant_id).filter(Boolean),
-            ),
+            new Set(matchedChunks.map((chunk: any) => chunk.grant_id).filter(Boolean)),
           );
 
           if (uniqueGrantIds.length > 0) {
             console.log(
               `Egyedi pályázat ID-k száma: ${uniqueGrantIds.length}. Címek lekérdezése...`,
             );
-            const { data: grantsList, error: grantsError } =
-              await supabaseClient
-                .from("grants")
-                .select("title")
-                .in("id", uniqueGrantIds);
+            const { data: grantsList, error: grantsError } = await supabaseClient
+              .from('grants')
+              .select('title')
+              .in('id', uniqueGrantIds);
 
             if (grantsError) {
-              console.error(
-                "Hiba a pályázati címek lekérdezésekor:",
-                grantsError,
-              );
+              console.error('Hiba a pályázati címek lekérdezésekor:', grantsError);
             } else if (grantsList) {
               sourceTitles = grantsList.map((g: any) => g.title);
               console.log(
-                "Megtalált pályázati források a grants táblából:",
+                'Megtalált pályázati források a grants táblából:',
                 JSON.stringify(sourceTitles),
               );
             }
           }
 
-          ragContext =
-            "RELEVÁNS PÁLYÁZATI CIKKEK ÉS RÉSZLETEK A TUDÁSBÁZISBÓL (RAG):\n";
+          ragContext = 'RELEVÁNS PÁLYÁZATI CIKKEK ÉS RÉSZLETEK A TUDÁSBÁZISBÓL (RAG):\n';
           matchedChunks.forEach((chunk: any) => {
             const similarityPercent = (chunk.similarity * 100).toFixed(1);
             ragContext += `\n- Pályázat címe: ${chunk.grant_title}\n  Tartalom: ${chunk.content}\n  [Egyezőség: ${similarityPercent}%]\n`;
           });
         } else {
           console.log(
-            "Nem találtunk releváns pályázati részt az adatbázisban a megadott küszöbérték felett.",
+            'Nem találtunk releváns pályázati részt az adatbázisban a megadott küszöbérték felett.',
           );
         }
       } catch (rpcErr: any) {
-        console.error(
-          "Hiba történt a vektoros adatbázis-lekérdezés során:",
-          rpcErr,
-        );
+        console.error('Hiba történt a vektoros adatbázis-lekérdezés során:', rpcErr);
         debugInfo.rpc_exception = rpcErr.message || String(rpcErr);
       }
     }
 
-    console.log("Rendszerprompt összeállítása...");
+    console.log('Rendszerprompt összeállítása...');
     // 6. Rendszerprompt felépítése dúsított kontextussal
     const systemPrompt = `Te egy Professzionális Pályázati és Digitalizációs Szakértő Copilot vagy, a P-Search AI asszisztense.
 Küldetésed, hogy támogasd a magyar kis- és középvállalkozásokat (KKV-kat) a digitális átállásban, különös tekintettel az AI integrációra, szoftverfejlesztésre és hardverbeszerzésre.
@@ -311,10 +294,10 @@ SZABÁLYOK A PÁLYÁZATOKKAL KAPCSOLATBAN:
 - Ha a felhasználó cégéről még nem áll rendelkezésre elegendő információ a pontos pályázati szűréshez, kérdezz vissza a kulcsfontosságú részletekre: cégforma, éves árbevétel, aktuális foglalkoztatotti létszám és székhely/telephely régió.
 - Képes vagy a beszélgetés alapján frissíteni a cég adatait vagy lezárni a teendőket az adatbázisban.
 
-${companyContext ? `Aktuális ügyfél (cég) adatai:\n${companyContext}\n` : ""}
-${grantContext ? `Aktuálisan tárgyalt pályázat adatai:\n${grantContext}\n` : ""}
-${ragContext ? `Tudásbázisból származó releváns adatok:\n${ragContext}\n` : ""}
-${tasksContext ? `Aktuális teendők listája az adatbázisban:\n${tasksContext}\n` : ""}
+${companyContext ? `Aktuális ügyfél (cég) adatai:\n${companyContext}\n` : ''}
+${grantContext ? `Aktuálisan tárgyalt pályázat adatai:\n${grantContext}\n` : ''}
+${ragContext ? `Tudásbázisból származó releváns adatok:\n${ragContext}\n` : ''}
+${tasksContext ? `Aktuális teendők listája az adatbázisban:\n${tasksContext}\n` : ''}
 
 KÖTELEZŐ FORMÁTUMI UTASÍTÁSOK:
 1. A válaszodat KIZÁRÓLAG egy érvényes JSON formátumban adhatod vissza az alábbi kulcsokkal:
@@ -333,15 +316,15 @@ Példa a kimenetre:
   }
 }`;
 
-    console.log("Beszélgetési előzmények leképezése a Gemini formátumára...");
+    console.log('Beszélgetési előzmények leképezése a Gemini formátumára...');
     // 7. Előzmények leképezése a Gemini API formátumára
     const geminiContents = [];
     if (history && Array.isArray(history)) {
       const recentHistory = history.slice(-10);
       for (const msg of recentHistory) {
-        if (msg.id === "welcome" || msg.id.startsWith("err-")) continue;
+        if (msg.id === 'welcome' || msg.id.startsWith('err-')) continue;
 
-        const role = msg.sender === "user" ? "user" : "model";
+        const role = msg.sender === 'user' ? 'user' : 'model';
         geminiContents.push({
           role: role,
           parts: [{ text: msg.text }],
@@ -350,19 +333,19 @@ Példa a kimenetre:
     }
 
     geminiContents.push({
-      role: "user",
+      role: 'user',
       parts: [{ text: message }],
     });
 
-    console.log("Gemini SDK model és config beállítása és hívás indítása...");
+    console.log('Gemini SDK model és config beállítása és hívás indítása...');
     // 8. Gemini API hívása a hivatalos GoogleGenerativeAI SDK-val
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: 'gemini-2.5-flash',
       systemInstruction: systemPrompt,
       generationConfig: {
         temperature: 0.2,
         maxOutputTokens: 1000,
-        responseMimeType: "application/json",
+        responseMimeType: 'application/json',
       },
     });
 
@@ -370,47 +353,44 @@ Példa a kimenetre:
       contents: geminiContents,
     });
 
-    console.log("Gemini hívás sikeresen lefutott.");
-    const replyJSONText = result.response.text() || "{}";
-    console.log("Gemini nyers JSON válasz:", replyJSONText);
+    console.log('Gemini hívás sikeresen lefutott.');
+    const replyJSONText = result.response.text() || '{}';
+    console.log('Gemini nyers JSON válasz:', replyJSONText);
 
-    let reply = "Sajnálom, nem sikerült választ generálnom.";
+    let reply = 'Sajnálom, nem sikerült választ generálnom.';
     let databaseUpdated = false;
 
     // 7. A kapott JSON feldolgozása és Supabase UPDATE műveletek végrehajtása
     try {
-      console.log("Gemini válasz JSON parsing indítása...");
+      console.log('Gemini válasz JSON parsing indítása...');
       const parsedReply = JSON.parse(replyJSONText.trim());
       reply = parsedReply.reply || reply;
 
       // 7.1. Cégprofil frissítése, ha van profile_updates
       if (parsedReply.profile_updates && business_profile_id) {
         const updates: Record<string, any> = {};
-        if (typeof parsedReply.profile_updates.revenue === "number") {
+        if (typeof parsedReply.profile_updates.revenue === 'number') {
           updates.yearly_revenue = parsedReply.profile_updates.revenue;
         }
-        if (typeof parsedReply.profile_updates.employee_count === "number") {
+        if (typeof parsedReply.profile_updates.employee_count === 'number') {
           updates.employee_count = parsedReply.profile_updates.employee_count;
         }
 
         if (Object.keys(updates).length > 0) {
           console.log(
-            "Cégprofil frissítése az adatbázisban a következő értékekkel:",
+            'Cégprofil frissítése az adatbázisban a következő értékekkel:',
             JSON.stringify(updates),
           );
           const { error: profileError } = await supabaseClient
-            .from("business_profiles")
+            .from('business_profiles')
             .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq("id", business_profile_id);
+            .eq('id', business_profile_id);
 
           if (!profileError) {
             databaseUpdated = true;
-            console.log("Cégprofil sikeresen frissítve az adatbázisban.");
+            console.log('Cégprofil sikeresen frissítve az adatbázisban.');
           } else {
-            console.error(
-              "Hiba a cégprofil frissítésekor az Edge Functionben:",
-              profileError,
-            );
+            console.error('Hiba a cégprofil frissítésekor az Edge Functionben:', profileError);
           }
         }
       }
@@ -426,31 +406,24 @@ Példa a kimenetre:
           JSON.stringify(parsedReply.task_updates.completed_task_ids),
         );
         const { error: taskError } = await supabaseClient
-          .from("action_tasks")
-          .update({ status: "done", updated_at: new Date().toISOString() })
-          .in("id", parsedReply.task_updates.completed_task_ids);
+          .from('action_tasks')
+          .update({ status: 'done', updated_at: new Date().toISOString() })
+          .in('id', parsedReply.task_updates.completed_task_ids);
 
         if (!taskError) {
           databaseUpdated = true;
-          console.log("Feladatok státusza sikeresen frissítve.");
+          console.log('Feladatok státusza sikeresen frissítve.');
         } else {
-          console.error(
-            "Hiba a feladatok frissítésekor az Edge Functionben:",
-            taskError,
-          );
+          console.error('Hiba a feladatok frissítésekor az Edge Functionben:', taskError);
         }
       }
     } catch (parseErr) {
-      console.error(
-        "Hiba a Gemini JSON válasz feldolgozásakor:",
-        parseErr,
-        replyJSONText,
-      );
+      console.error('Hiba a Gemini JSON válasz feldolgozásakor:', parseErr, replyJSONText);
       // Fallback: Ha mégsem JSON jött vissza, a teljes szöveget küldjük el válaszként
       reply = replyJSONText;
     }
 
-    console.log("Kérés kiszolgálása sikeres. Küldött válasz:", reply);
+    console.log('Kérés kiszolgálása sikeres. Küldött válasz:', reply);
     return new Response(
       JSON.stringify({
         reply: reply,
@@ -459,18 +432,18 @@ Példa a kimenetre:
         debug: debugInfo,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
     );
   } catch (err: any) {
-    console.error("Végzetes hiba az Edge Function futása során:", err);
+    console.error('Végzetes hiba az Edge Function futása során:', err);
     return new Response(
       JSON.stringify({
-        error: err.message || "Ismeretlen hiba történt a szerveren.",
+        error: err.message || 'Ismeretlen hiba történt a szerveren.',
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       },
     );
