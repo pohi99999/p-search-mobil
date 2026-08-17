@@ -65,6 +65,7 @@ jest.mock('react-native-paper', () => {
         Text: 'Text',
         Button: 'Button',
         FAB: 'FAB',
+        IconButton: 'IconButton',
         MD3Colors: { primary50: '#000000' }
     }
 });

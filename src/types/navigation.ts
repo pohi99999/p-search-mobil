@@ -7,6 +7,8 @@ export type RootStackParamList = {
   Auth: undefined;
   Onboarding: undefined;
   Paywall: undefined;
+  Settings: undefined;
+  DocumentUpload: undefined;
   ActionPlan: {
     matchId: string;
     businessProfileId?: string;
@@ -19,3 +21,5 @@ export type ActionPlanScreenRouteProp = RouteProp<RootStackParamList, 'ActionPla
 export type CopilotChatScreenRouteProp = RouteProp<RootStackParamList, 'CopilotChat'>;
 
 export type ActionPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'ActionPlan'>;
+export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+export type DocumentUploadScreenProps = NativeStackScreenProps<RootStackParamList, 'DocumentUpload'>;

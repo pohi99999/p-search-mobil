@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.3";
+import { generateEmbedding } from "../_shared/gemini.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -9,6 +9,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+/**
+ * Length-independent, constant-time string comparison. Prevents an attacker
+ * from recovering the shared webhook secret one character at a time by
+ * measuring how long a rejected request takes.
+ */
+function secureCompare(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+
+  // Fold the length difference into the result instead of returning early,
+  // so comparison cost does not depend on where the first mismatch is.
+  let mismatch = aBytes.length ^ bBytes.length;
+  const max = Math.max(aBytes.length, bBytes.length);
+  for (let i = 0; i < max; i++) {
+    mismatch |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
+  }
+  return mismatch === 0;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -19,12 +39,13 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const expectedKey = Deno.env.get("N8N_WEBHOOK_SECRET");
 
-    // We expect the authHeader to be either exactly the key, or 'Bearer <key>'
-    if (
-      !authHeader ||
-      !expectedKey ||
-      (authHeader !== expectedKey && authHeader !== `Bearer ${expectedKey}`)
-    ) {
+    // n8n may send the shared secret either bare, or prefixed with the
+    // standard HTTP authorization scheme keyword. Both forms are accepted,
+    // and compared in constant time so the secret cannot be recovered via
+    // response-timing differences.
+    const presentedKey = (authHeader ?? "").replace(/^Bearer\s+/i, "").trim();
+
+    if (!authHeader || !expectedKey || !secureCompare(presentedKey, expectedKey)) {
       return new Response(
         JSON.stringify({
           error: "Nincs hitelesítési fejléc vagy érvénytelen kulcs",
@@ -104,20 +125,11 @@ serve(async (req) => {
             "GEMINI_API_KEY hiányzik, az embedding generálás sikertelen lesz.",
           );
         } else {
-          const genAI = new GoogleGenerativeAI(geminiApiKey);
-          const model = genAI.getGenerativeModel({
-            model: "gemini-embedding-001",
-          });
-
           const chunksToInsert = [];
 
           for (const chunkText of paragraphs) {
             try {
-              const embedResult = await model.embedContent({
-                content: { parts: [{ text: chunkText }] },
-                outputDimensionality: 768,
-              });
-              const embedding = embedResult.embedding.values;
+              const embedding = await generateEmbedding(chunkText, geminiApiKey);
 
               chunksToInsert.push({
                 grant_id: grantId,
@@ -172,10 +184,15 @@ serve(async (req) => {
       },
     );
   } catch (err: any) {
+    // Logged server-side in full, but never returned to the caller: the
+    // message can contain Supabase/Gemini internals and connection strings.
     console.error("Végzetes hiba a webhook feldolgozása során:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: "Belső hiba történt a feldolgozás során." }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      },
+    );
   }
 });

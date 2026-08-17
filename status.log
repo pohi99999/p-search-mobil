@@ -84,3 +84,88 @@ Status: SUCCESS (100% GREEN) -- Android build LIVE on Play Store internal track
       name -- store listing / content rating / review submission still
       needs to be completed by the user before testers can actually
       install the build.
+================================================================================
+2026-08-17 -- FULL PROJECT AUDIT: the product's core loop did not exist
+================================================================================
+
+METHOD
+  Static review of the whole repo + LIVE inspection of the Supabase project
+  (icextvgecinmhrhjtfcm) via the PostgREST OpenAPI document and row counts,
+  plus a live check of the deployed web build.
+
+HEADLINE FINDING -- grant_matches contained 0 rows
+  HomeScreen renders its grant feed from grant_matches. That table was
+  empty and NOTHING in the entire codebase ever wrote to it. The n8n
+  pipeline only INGESTS grants (grants / grant_chunks); the profile-to-grant
+  MATCHING step was never implemented anywhere.
+  => Every user saw a permanently empty home screen regardless of how many
+     grants were ingested. The "Match Score ranked feed" (phase 1 of the
+     product vision) existed on paper only.
+  => 24/24 suites and 162/162 tests were green throughout. Code that was
+     never written cannot fail a test.
+
+OTHER LIVE FINDINGS
+  [CRITICAL] profiles.search_count did NOT exist in production, but
+             increment-search-count selects and updates it => the primary
+             call to action ("Uj AI Kereses") errored for EVERY free user.
+  [CRITICAL] ingest-n8n-grants auth check was corrupted by a secret-masking
+             layer into a literal ****** comparison. Reproduced live during
+             this session when a newly written comment was also masked.
+  [HIGH]     generate-document called the RETIRED gemini-1.5-flash model =>
+             the monetised document generation 404'd.
+  [HIGH]     chat-with-gemini / generate-action-plan / generate-document were
+             deployed at versions OLDER than the 2026-08-15/16 ownership
+             security fixes => those fixes protected nothing in production.
+  [MEDIUM]   search_frequency existed but nothing read it and no UI set it.
+  [MEDIUM]   process-master-document (Gemini OCR) deployed but zero UI called it.
+  [MEDIUM]   Several Edge Functions returned raw err.message to clients.
+
+WHY tsc AND jest MISSED IT
+  supabase/functions is excluded from tsconfig.json, so 	sc --noEmit never
+  looked at the Edge Functions, and Deno tests only covered 2 of them.
+  
+px deno check is now the required verification for Edge Functions.
+
+WHAT WAS BUILT / FIXED
+  supabase/functions/_shared/gemini.ts
+      Shared Gemini layer. Embeddings moved to the REST v1beta endpoint
+      because the @google/generative-ai SDK does not type
+      outputDimensionality -- it only worked by accident and failed
+      deno check. Verified empirically to return 768 dims. The helper
+      ENFORCES 768 because grant_chunks.embedding is vector(768).
+  supabase/functions/_shared/matching.ts
+      The matching engine. Two-stage funnel: pgvector similarity over
+      match_grant_chunks (widened with still-open grants as a fallback so a
+      young DB is not empty), then ONE batched Gemini scoring call (batched
+      deliberately: this runs per user on a schedule, on free-tier quota).
+  supabase/functions/match-grants/
+      User-initiated search. Two-client authorisation: user JWT proves
+      ownership, service-role does the writes.
+  supabase/functions/scheduled-grant-scan/
+      The recurring daily/weekly agent. SCHEDULER_SECRET protected with a
+      constant-time compare, FAILS CLOSED when the secret is unset.
+  migrations/20260817120000_scheduling_and_matching.sql
+      Restores search_count; adds last_scan_at / next_scan_at; UNIQUE index
+      on (business_id, grant_id) so repeated scans refresh instead of
+      duplicating; adds the missing grant_matches INSERT/DELETE policies;
+      trigger guaranteeing a profiles row for every auth user.
+  migrations/20260817130000_schedule_grant_scan_cron.sql
+      Hourly pg_cron tick. Secret is generated INSIDE the database and kept
+      in Supabase Vault, so it never enters git.
+  src/screens/SettingsScreen.tsx        daily / weekly / manual cadence
+  src/screens/DocumentUploadScreen.tsx  finally uses the OCR function
+  src/hooks/useHomeData.ts              search rewired from the n8n webhook
+                                        to the real match-grants engine
+  All 9 Edge Functions redeployed (the 3 stale security fixes are now live).
+
+VERIFICATION
+  npx tsc --noEmit ............. 0 errors
+  npx jest ..................... 26/26 suites, 167/167 tests green (was 162)
+  npm run lint ................. 0 errors, 123 warnings
+  npx deno check ............... all new/fixed Edge Functions clean
+  LIVE E2E: scheduled-grant-scan returned
+            users_processed: 5, matches_created: 3, failures: 0
+            grant_matches went 0 -> 3 rows; next_scan_at correctly +7 days.
+            Sample match: 70-point GINOP Plusz hit with a Hungarian
+            rationale citing the company's real data and flagging the
+            missing financial figures as a risk.

@@ -59,6 +59,7 @@
         "npm:eslint@^8.57.1",
         "npm:expo-build-properties@~56.0.19",
         "npm:expo-dev-client@~56.0.20",
+        "npm:expo-document-picker@~56.0.4",
         "npm:expo-print@~56.0.4",
         "npm:expo-secure-store@~56.0.4",
         "npm:expo-sharing@~56.0.18",

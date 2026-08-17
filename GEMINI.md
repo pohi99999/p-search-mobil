@@ -21,6 +21,27 @@ Ez a projekt **Szigorúan Conductor Üzemmódban** működik.
 Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
+
+- **2026. 08. 17. (TELJES PROJEKTAUDIT — a termék központi hurka nem létezett; matching motor megépítése, ütemezett ügynök, éles hibák javítása):**
+  - **Vezető lelet — `grant_matches` = 0 sor:** A `HomeScreen` a `grant_matches` táblából olvassa a pályázati feedet. Éles ellenőrzéssel kiderült, hogy a tábla **nulla sort tartalmazott**, és a teljes kódbázisban **semmi nem írt bele**. Az n8n pipeline kizárólag *begyűjtötte* a pályázatokat, a cégprofilhoz **illesztés sehol nem valósult meg**. Következmény: **minden felhasználó örökre üres főképernyőt látott**. Mindezt 24/24 zöld tesztcsomag és 162/162 zöld teszt mellett — meg nem írt kód nem tud tesztet elbukni.
+  - **További éles leletek:**
+    * [KRITIKUS] `profiles.search_count` oszlop **nem létezett élesben**, de az `increment-search-count` írta/olvasta → a fő CTA („Új AI Keresés") **minden ingyenes felhasználónál hibára futott**.
+    * [KRITIKUS] `ingest-n8n-grants` auth-ellenőrzését egy **titok-maszkoló réteg rongálta meg** (`******` literál a kódban). A jelenség a javítás közben **reprodukálódott**.
+    * [MAGAS] `generate-document` a **kivezetett `gemini-1.5-flash`** modellt hívta → a fizetős dokumentumgenerálás 404-re futott.
+    * [MAGAS] `chat-with-gemini`, `generate-action-plan`, `generate-document` élesben **régebbi verzióban** futott, mint az aug. 15–16-i ownership biztonsági javítások → azok élesben **semmit nem védtek**.
+    * [KÖZEPES] `search_frequency` létezett, de semmi nem olvasta és nem volt UI hozzá; `process-master-document` (OCR) deployolva volt, de **nulla UI hívta**; több Edge Function nyers `err.message`-t adott vissza a kliensnek.
+  - **Miért nem fogta meg a tsc és a jest:** a `supabase/functions` ki van zárva a `tsconfig.json`-ból, így a `tsc --noEmit` sosem nézte az Edge Functionöket, Deno teszt pedig csak 2-re volt. **Mostantól kötelező az `npx deno check` minden Edge Functionre.**
+  - **Megépítve:**
+    * `supabase/functions/_shared/gemini.ts` — közös Gemini réteg; az embedding **REST v1beta hívásra** váltott, mert az SDK nem típusolja az `outputDimensionality`-t (csak véletlenül működött, `deno check` alatt elbukott). Empirikusan verifikálva 768 dimenzió; a helper ki is kényszeríti, mert a `grant_chunks.embedding` oszlop `vector(768)`.
+    * `supabase/functions/_shared/matching.ts` — a **matching motor**: pgvector szemantikus keresés + nyitott pályázatokkal bővített fallback, majd **egyetlen batchelt Gemini pontozó hívás** (ingyenes kvóta miatt tudatos).
+    * `supabase/functions/match-grants/` — user által indított keresés, kétkliens-es jogosultságkezeléssel.
+    * `supabase/functions/scheduled-grant-scan/` — a **napi/heti ügynök**, `SCHEDULER_SECRET`-tel, konstans idejű összehasonlítással, **fail-closed** módon.
+    * `20260817120000_scheduling_and_matching.sql` — pótolja a `search_count`-ot, bevezeti a `last_scan_at`/`next_scan_at`-et, **unique index** a `(business_id, grant_id)` páron (duplikált kártyák ellen), pótolja a `grant_matches` hiányzó INSERT/DELETE policy-jét, trigger garantálja a `profiles` sort minden auth-userhez.
+    * `20260817130000_schedule_grant_scan_cron.sql` — óránkénti pg_cron tick; a titok **az adatbázisban generálódik** és Vaultban tárolódik, **soha nem kerül a repóba**.
+    * `SettingsScreen` (napi/heti/kézi gyakoriság), `DocumentUploadScreen` (végre használatba veszi az OCR-t), `useHomeData` **átkötve** az n8n-értesítésről a valódi `match-grants` motorra.
+    * Mind a 9 Edge Function újradeployolva — a 3 elavult biztonsági javítás végre élesben van.
+  - **Verifikáció:** `npx tsc --noEmit` 0 hiba; `npx jest` **26/26 tesztcsomag, 167/167 teszt zöld** (162-ről); `npm run lint` 0 hiba / 123 warning; `npx deno check` minden érintett függvényen tiszta.
+  - **Éles E2E:** a `scheduled-grant-scan` valós hívása `users_processed: 5, matches_created: 3, failures: 0` eredményt adott. A `grant_matches` **0 → 3 sor**, az ütemezés helyesen `+7 napra` állt. Mintatalálat: 70 pontos GINOP Plusz egyezés, magyar indoklással, amely a cég konkrét adataira hivatkozik és a hiányzó pénzügyi adatokat kockázatként jelöli.
 - **2026. 08. 16. (Fázis 9 — Jules aszinkron munkáinak teljes körű integrációja: 8 ág beolvasztása, Edge Function felhasználói jogosultság- és tulajdonos-ellenőrzések, OnboardingScreen típusbiztonság és Paywall komponensek unit tesztlefedettsége):**
   - **Beolvasztott Jules ágak (8 távoli ág):**
     * `origin/fix-auth-generate-document-15029701622628873233` (Jogosultság-ellenőrzés: `generate-document` Edge Function felhasználói azonosítás és cégprofil-tulajdonos vizsgálat)

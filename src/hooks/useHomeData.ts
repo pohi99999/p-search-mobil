@@ -8,14 +8,44 @@ import { RootStackNavigationProp } from '../types/navigation';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 
+export interface SearchRunResult {
+  matchesFound: number;
+}
 
-async function triggerSearchWebhook(action: 'new_search_pro' | 'new_search_free', businessId: string, userId: string) {
-  await supabase.functions.invoke('trigger-n8n-webhook', {
-    body: {
-      business_id: businessId,
-      action: action
-    }
-  }).catch(err => logger.warn('Edge function hívás hiba:', err));
+/**
+ * Runs the AI grant matching for a company and returns how many matches were
+ * produced.
+ *
+ * This calls `match-grants`, which is the only thing in the system that
+ * actually writes `grant_matches` rows. The previous implementation only
+ * notified an external n8n webhook, so pressing "Új AI Keresés" produced no
+ * matches at all and the home screen stayed empty forever.
+ */
+async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
+  const { data, error } = await supabase.functions.invoke('match-grants', {
+    body: { business_profile_id: businessId },
+  });
+
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+
+  return { matchesFound: Number(data?.matches_found ?? 0) };
+}
+
+/**
+ * Best-effort notification to the external n8n automation. Failures are
+ * swallowed because the user-visible search result must not depend on an
+ * external workflow engine being reachable.
+ */
+async function triggerSearchWebhook(action: 'new_search_pro' | 'new_search_free', businessId: string) {
+  await supabase.functions
+    .invoke('trigger-n8n-webhook', {
+      body: {
+        business_id: businessId,
+        action: action,
+      },
+    })
+    .catch((err) => logger.warn('Edge function hívás hiba:', err));
 }
 
 export function useHomeData(navigation: RootStackNavigationProp) {
@@ -89,18 +119,55 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     await supabase.auth.signOut();
   }
 
+  const [searching, setSearching] = useState(false);
+
+  /**
+   * Runs the matching pipeline, refreshes the list and reports the outcome.
+   * Shared by the Pro and free paths so both behave identically once the
+   * entitlement check has passed.
+   */
+  const executeSearch = async (
+    businessId: string,
+    action: 'new_search_pro' | 'new_search_free',
+  ) => {
+    setSearching(true);
+    try {
+      const { matchesFound } = await runGrantMatching(businessId);
+
+      // Fire-and-forget: the external automation is not on the critical path.
+      void triggerSearchWebhook(action, businessId);
+
+      // Pull the freshly written matches into the list.
+      await fetchData();
+
+      Alert.alert(
+        'AI keresés kész',
+        matchesFound > 0
+          ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
+          : 'Jelenleg nem találtunk új, a cégedhez illeszkedő pályázatot. Amint új kiírás jelenik meg, értesítünk.',
+      );
+    } catch (err) {
+      logger.error('Hiba az AI keresés során:', err);
+      Alert.alert('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const handleNewSearch = async () => {
     if (!userProfile || !userProfile.id) {
-      Alert.alert("Felhasználói profil nem található!");
+      Alert.alert('Felhasználói profil nem található!');
+      return;
+    }
+
+    if (!profile) {
+      Alert.alert('Nincs cégprofilod', 'Előbb töltsd ki a cégprofilodat!');
+      navigation.navigate('Onboarding');
       return;
     }
 
     if (isPro) {
-      if (profile) {
-        await triggerSearchWebhook('new_search_pro', profile.id, userProfile.id);
-        Alert.alert("Új Pro AI keresés elindítva!");
-      }
-      navigation.navigate('CopilotChat');
+      await executeSearch(profile.id, 'new_search_pro');
       return;
     }
 
@@ -108,18 +175,13 @@ export function useHomeData(navigation: RootStackNavigationProp) {
 
     if (invokeError) {
       logger.error(invokeError);
-      Alert.alert("Hiba történt a keresési limit ellenőrzésekor!");
+      Alert.alert('Hiba történt a keresési limit ellenőrzésekor!');
       return;
     }
 
     if (data?.allowed) {
       setUserProfile({ ...userProfile, search_count: data.newCount });
-
-      if (profile) {
-        await triggerSearchWebhook('new_search_free', profile.id, userProfile.id);
-      }
-      Alert.alert("Ingyenes AI keresés elindítva!");
-      navigation.navigate('CopilotChat');
+      await executeSearch(profile.id, 'new_search_free');
     } else {
       navigation.navigate('Paywall');
     }
@@ -127,6 +189,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
 
   return {
     loading,
+    searching,
     profile,
     matches,
     isPro,

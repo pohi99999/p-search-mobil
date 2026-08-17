@@ -207,6 +207,13 @@ describe('useHomeData', () => {
     it('handles Pro user search', async () => {
       (useBilling as jest.Mock).mockReturnValue({ isPro: true });
       setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
+        if (fn === 'match-grants') {
+          return Promise.resolve({ data: { success: true, matches_found: 3 }, error: null });
+        }
+        return Promise.resolve({ data: {}, error: null });
+      });
+
       const { result } = renderHook(() => useHomeData(mockNavigation));
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -215,16 +222,28 @@ describe('useHomeData', () => {
         await result.current.handleNewSearch();
       });
 
+      // The search must actually run the matching engine -- this is the only
+      // thing that creates grant_matches rows.
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('match-grants', {
+        body: { business_profile_id: mockBusinessProfile.id },
+      });
       expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
-      expect(Alert.alert).toHaveBeenCalledWith("Új Pro AI keresés elindítva!");
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'AI keresés kész',
+        expect.stringContaining('3'),
+      );
     });
 
     it('handles Free user with available search', async () => {
       setupSupabaseMocks();
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: { allowed: true, newCount: 1 },
-        error: null,
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
+        if (fn === 'increment-search-count') {
+          return Promise.resolve({ data: { allowed: true, newCount: 1 }, error: null });
+        }
+        if (fn === 'match-grants') {
+          return Promise.resolve({ data: { success: true, matches_found: 2 }, error: null });
+        }
+        return Promise.resolve({ data: {}, error: null });
       });
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
@@ -236,9 +255,40 @@ describe('useHomeData', () => {
       });
 
       expect(supabase.functions.invoke).toHaveBeenCalledWith('increment-search-count');
+      expect(supabase.functions.invoke).toHaveBeenCalledWith('match-grants', {
+        body: { business_profile_id: mockBusinessProfile.id },
+      });
       expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
-      expect(Alert.alert).toHaveBeenCalledWith("Ingyenes AI keresés elindítva!");
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('CopilotChat');
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'AI keresés kész',
+        expect.stringContaining('2'),
+      );
+    });
+
+    it('surfaces an error when the matching engine fails', async () => {
+      setupSupabaseMocks();
+      (useBilling as jest.Mock).mockReturnValue({ isPro: true });
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
+        if (fn === 'match-grants') {
+          return Promise.resolve({ data: null, error: new Error('boom') });
+        }
+        return Promise.resolve({ data: {}, error: null });
+      });
+
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await result.current.handleNewSearch();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Hiba',
+        expect.stringContaining('Nem sikerült lefuttatni a keresést'),
+      );
+      // The busy flag must be released even on the failure path.
+      expect(result.current.searching).toBe(false);
     });
 
     it('handles Free user exhausted search', async () => {

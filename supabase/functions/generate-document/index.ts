@@ -125,7 +125,7 @@ ${grantContext}`;
       );
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(geminiUrl, {
       method: "POST",
@@ -155,8 +155,11 @@ ${grantContext}`;
     });
 
     if (!apiResponse.ok) {
+      // The upstream body frequently echoes the request and key metadata, so
+      // it is logged server-side only and never surfaced to the client.
       const errorText = await apiResponse.text();
-      throw new Error(`Gemini API hiba (${apiResponse.status}): ${errorText}`);
+      console.error(`Gemini API hiba (${apiResponse.status}):`, errorText);
+      throw new Error(`Gemini API hiba (${apiResponse.status})`);
     }
 
     const responseData = await apiResponse.json();
@@ -306,9 +309,15 @@ ${grantContext}`;
       status: 200,
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    // Full detail stays in the server log; the client receives a generic
+    // message so internal identifiers and provider errors are not disclosed.
+    console.error("Hiba a dokumentum generálása során:", err);
+    return new Response(
+      JSON.stringify({ error: "Nem sikerült legenerálni a dokumentumot." }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      },
+    );
   }
 });

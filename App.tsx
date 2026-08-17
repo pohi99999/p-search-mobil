@@ -7,6 +7,7 @@ import mobileAds from 'react-native-google-mobile-ads';
 import * as Sentry from '@sentry/react-native';
 import { supabase } from './src/lib/supabase';
 import { SENTRY_DSN } from './src/config/env';
+import { logger } from './src/utils/logger';
 
 import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -14,6 +15,8 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { PaywallScreen } from './src/screens/PaywallScreen';
 import { ActionPlanScreen } from './src/screens/ActionPlanScreen';
 import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { DocumentUploadScreen } from './src/screens/DocumentUploadScreen';
 import { BillingProvider } from './src/context/BillingContext';
 import { ProfileProvider } from './src/context/ProfileContext';
 
@@ -49,10 +52,10 @@ export default function App() {
         .initialize()
         .catch(error => {
           // Csendben elkapjuk a hibát, hogy ne omoljon össze az app
-          console.warn('Failed to initialize Mobile Ads SDK:', error);
+          logger.warn('Failed to initialize Mobile Ads SDK:', error);
         });
     } catch (error) {
-      console.warn('Synchronous error during Mobile Ads SDK initialization:', error);
+      logger.warn('Synchronous error during Mobile Ads SDK initialization:', error);
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -75,6 +78,8 @@ export default function App() {
                 <Stack.Screen name="Home" component={HomeScreen} />
                 <Stack.Screen name="Onboarding" component={OnboardingScreen} />
                 <Stack.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal' }} />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
                 <Stack.Screen name="ActionPlan" component={ActionPlanScreen} />
                 <Stack.Screen name="CopilotChat" component={CopilotChatScreen} />
               </>

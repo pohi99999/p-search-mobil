@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, Button, FAB, MD3Colors } from 'react-native-paper';
+import { Text, Button, FAB, MD3Colors, IconButton } from 'react-native-paper';
 import { logger } from '../utils/logger';
 
 import { AdBanner } from '../components/AdBanner';
@@ -19,6 +19,7 @@ const isAdItem = (item: FlatListItem): item is AdItem =>
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const {
     loading,
+    searching,
     profile,
     matches,
     isPro,
@@ -42,7 +43,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={MD3Colors.primary50} />
-        <Text style={{ marginTop: 16 }}>Adataid betöltése...</Text>
+        <Text style={styles.loadingText}>Adataid betöltése...</Text>
       </View>
     );
   }
@@ -71,12 +72,28 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="titleMedium" style={{ flex: 1 }}>
+        <Text variant="titleMedium" style={styles.headerTitle}>
           Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
-        <Button mode="text" onPress={signOut} compact>
-          Kijelentkezés
-        </Button>
+        <View style={styles.headerActions}>
+          <IconButton
+            icon="file-document-plus"
+            size={22}
+            onPress={() => navigation.navigate('DocumentUpload')}
+            accessibilityLabel="Pénzügyi dokumentum feltöltése"
+            testID="home-document-upload-button"
+          />
+          <IconButton
+            icon="cog"
+            size={22}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityLabel="Beállítások megnyitása"
+            testID="home-settings-button"
+          />
+          <Button mode="text" onPress={signOut} compact accessibilityLabel="Kijelentkezés">
+            Kijelentkezés
+          </Button>
+        </View>
       </View>
       
       <TesterProgress />
@@ -90,17 +107,20 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           data={listData}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={styles.listContent}
           refreshing={loading}
           onRefresh={fetchData}
         />
       )}
       
       <FAB
-        icon="magnify"
+        icon={searching ? 'progress-clock' : 'magnify'}
         style={[styles.fab, { bottom: isPro ? 20 : 80 }]}
-        label="Új AI Keresés"
+        label={searching ? 'Keresés folyamatban...' : 'Új AI Keresés'}
         onPress={handleNewSearch}
+        disabled={searching}
+        loading={searching}
+        accessibilityLabel="Új AI keresés indítása"
       />
       
       <AdBanner />
@@ -120,6 +140,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
   },
+  loadingText: {
+    marginTop: 16,
+  },
   emptyContainer: {
     flex: 1,
     padding: 20,
@@ -132,6 +155,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     elevation: 2,
     marginBottom: 8,
+  },
+  headerTitle: {
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listContent: {
+    paddingBottom: 80,
   },
   fab: {
     position: 'absolute',
