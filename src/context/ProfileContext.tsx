@@ -41,7 +41,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (forceRefresh = false) => {
+  const fetchProfile = async (forceRefresh = false, userId?: string) => {
     if (hasFetched && !forceRefresh) {
       setProfileState(cachedProfile);
       setLoading(false);
@@ -60,8 +60,13 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     fetchPromise = (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
+        let currentUserId = userId;
+        if (!currentUserId) {
+          const { data: { session } } = await supabase.auth.getSession();
+          currentUserId = session?.user?.id;
+        }
+
+        if (!currentUserId) {
           cachedProfile = null;
           return;
         }
@@ -69,7 +74,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         const { data, error } = await supabase
           .from('business_profiles')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', currentUserId)
           .single();
 
         if (error && error.code !== 'PGRST116') {
@@ -95,15 +100,26 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   useEffect(() => {
-    fetchProfile();
+    // In production with Supabase JS v2, INITIAL_SESSION fires immediately inside this call.
+    let listenerFired = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      listenerFired = true;
       if (session?.user) {
-        fetchProfile(true);
+        // Only force refresh if it's an actual state change, not the initial session load,
+        // to avoid duplicate fetches if we already fetched.
+        fetchProfile(event !== 'INITIAL_SESSION', session.user.id);
       } else {
         setProfile(null);
+        setLoading(false);
       }
     });
+
+    // In tests where the mock doesn't fire synchronously, we might need a fallback.
+    // We only trigger it if the listener didn't fire synchronously.
+    if (!listenerFired) {
+      fetchProfile();
+    }
 
     return () => {
       subscription.unsubscribe();
