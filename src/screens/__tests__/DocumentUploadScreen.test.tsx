@@ -171,4 +171,37 @@ describe('DocumentUploadScreen', () => {
       'Edge function failed'
     );
   });
+
+  it('shows snackbar for unsupported mime types', async () => {
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file://document.txt',
+          name: 'document.txt',
+          mimeType: 'text/plain',
+          base64: 'base-64',
+        },
+      ],
+    });
+
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = renderDocumentUploadScreen();
+    });
+
+    const uploadButton = component!.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Dokumentum kiválasztása');
+
+    await act(async () => {
+      await uploadButton!.props.onPress();
+    });
+
+    const tree = JSON.stringify(component!.toJSON());
+    expect(tree).toContain(
+      'Nem támogatott fájltípus. PDF, JPEG, PNG vagy WebP dokumentumot tölts fel.'
+    );
+    expect(supabase.functions.invoke).not.toHaveBeenCalled();
+  });
 });
