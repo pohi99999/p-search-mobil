@@ -145,6 +145,32 @@ describe('DocumentUploadScreen', () => {
     expect(tree).toContain('Magas');
   });
 
+
+  it('shows snackbar and prevents upload when profile is missing', async () => {
+    (useProfile as jest.Mock).mockReturnValue({
+      profile: null,
+      loading: false,
+      refreshProfile,
+    });
+
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = renderDocumentUploadScreen();
+    });
+
+    const uploadButton = component!.root.findAllByType(Button).find(
+      (button) => button.props.children === 'Dokumentum kiválasztása'
+    );
+
+    await act(async () => {
+      await uploadButton!.props.onPress();
+    });
+
+    expect(DocumentPicker.getDocumentAsync).not.toHaveBeenCalled();
+    const tree = JSON.stringify(component!.toJSON());
+    expect(tree).toContain('A dokumentum feltöltéséhez először töltsd ki a cégprofilt.');
+  });
+
   it('shows generic feedback and logs details when upload fails', async () => {
     (supabase.functions.invoke as jest.Mock).mockResolvedValue({
       data: null,
