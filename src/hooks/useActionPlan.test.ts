@@ -232,6 +232,57 @@ describe('useActionPlan', () => {
 
       expect(result.current.error).toBeNull();
     });
+
+    it('should refetch plans and update state successfully after generating a plan', async () => {
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      let callCount = 0;
+      const mockFrom = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        then: jest.fn().mockImplementation((resolve) => {
+          callCount++;
+          if (callCount === 1) {
+            return resolve({ data: [], error: null });
+          }
+          return resolve({
+            data: [
+              {
+                id: 'plan-99',
+                business_profile_id: 'test-business-id',
+                title: 'New Plan',
+                action_tasks: [{ id: 'task-99', status: 'TODO' }]
+              }
+            ],
+            error: null
+          });
+        })
+      };
+      (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+      const { result } = renderHook(() => useActionPlan('test-business-id'));
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.plans).toEqual([]);
+      expect(result.current.tasks).toEqual({});
+
+      await act(async () => {
+        await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+      });
+
+      expect(result.current.plans).toEqual([
+        { id: 'plan-99', business_profile_id: 'test-business-id', title: 'New Plan' }
+      ]);
+      expect(result.current.tasks).toEqual({
+        'plan-99': [{ id: 'task-99', status: 'TODO' }]
+      });
+      expect(result.current.error).toBeNull();
+    });
   });
 
   it('should parse plans and build a tasks map when fetch returns data', async () => {
