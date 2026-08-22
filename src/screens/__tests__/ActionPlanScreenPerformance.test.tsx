@@ -85,7 +85,6 @@ describe('ActionPlanScreen Performance', () => {
     });
 
     const initialCalls = mockSingle.mock.calls.length;
-    console.log(`Initial DB calls: ${initialCalls}`);
 
     // Navigate to Chat Screen
     await renderer.act(async () => {
@@ -133,7 +132,6 @@ describe('ActionPlanScreen Performance', () => {
     });
 
     const finalCalls = mockSingle.mock.calls.length;
-    console.log(`Final DB calls: ${finalCalls}`);
 
     // Expected improvement: The call count should remain the same after remounting the screen
     // We expect 1 call for provider, and currently +2 for each mount. We want to remove the ones on mount.
