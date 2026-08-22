@@ -92,3 +92,78 @@ Status: SUCCESS (100% GREEN) -- 27/27 Test Suites / 171/171 Tests Passed
      (see GEMINI.md Phase 10 entry for full breakdown)
 
 ===============================================================================
+PHASE 11 - FULL PRODUCTION AUDIT (VERCEL / SUPABASE / EAS)
+Timestamp: 2026-08-22T14:45:00+02:00
+Target Commit: dd88776 (fix(supabase): close profiles data leak, tighten RLS, fix perf lint findings)
+Status: SECURITY FIX APPLIED AND VERIFIED LIVE; MONETIZATION GAP IDENTIFIED (NOT CODE-FIXABLE)
+===============================================================================
+
+1. VERCEL:
+   - Build config OK: vercel.json's explicit buildCommand/outputDirectory
+     overrides the dashboard's stale "differs from project settings" warning
+     (false alarm, no fix needed).
+   - One failed preview build (fix/optimize-action-plan-batching, npm
+     ERESOLVE on @testing-library/react-hooks vs @types/react@19) -- verified
+     during Phase 10 branch triage that the merged version of this branch
+     does not carry the offending dependency.
+
+2. SUPABASE - LIVE DATA LEAK CLOSED AND VERIFIED:
+   - Applied supabase/migrations/20260822090000_security_and_performance_hardening.sql
+     directly to the live project via MCP (approved by user after disclosure):
+     * CRITICAL: profiles table had a public-role SELECT policy (qual=true)
+       exposing every user's subscription_tier/search_count/full_name to
+       anyone with the anon key, unauthenticated. Restricted to
+       auth.uid() = id.
+     * RLS initplan fix on profiles insert/update policies.
+     * Dropped a duplicate SELECT policy on grants.
+     * Revoked RPC-callable EXECUTE on handle_new_user()/rls_auto_enable()
+       (had to REVOKE FROM PUBLIC, not just anon/authenticated -- Postgres
+       grants EXECUTE to PUBLIC by default).
+     * Pinned search_path on 2 functions, dropped 2 duplicate indexes,
+       added missing FK index on action_plans.match_id.
+   - LIVE VERIFICATION: ran an actual signup against
+     https://p-search-mobil.vercel.app, confirmed via SQL that auth.users
+     insert -> handle_new_user trigger -> profiles row creation all still
+     work correctly under the new RLS/grant rules. Test account deleted
+     after verification.
+   - Left open (risk/benefit): vector extension still in public schema
+     (moving it risks breaking the just-built embeddings feature); Leaked
+     Password Protection is Supabase Pro-plan-only (user's call).
+   - Technical debt noted, not fixed: profiles->auth.users,
+     business_profiles->profiles, grant_matches->business_profiles FKs are
+     ON DELETE NO ACTION, not CASCADE -- account deletion would fail today.
+     Not urgent: no account-deletion feature exists yet in the app.
+
+3. GITHUB DEPENDABOT: 3 open alerts (image-size x2 high, uuid x1 moderate).
+   Both are deep transitive build-tool-only deps (Metro bundler / xcode
+   config-plugins for native prebuild), not shipped in the client bundle.
+   image-size has no patched upstream version at all (tried an override to
+   2.0.2, reverted -- advisory covers all versions, override added risk with
+   zero benefit). uuid fix needs a major bump with no safe way to verify EAS
+   native build compatibility from here. Documented, not forced.
+
+4. EAS/EXPO (expo.dev/accounts/pohi9999/projects/p-search):
+   - One historical failed Android Play Store submission root-caused: Google
+     Play service account lacked permission ("The caller does not have
+     permission"). Retry succeeded -- already resolved, no action needed.
+   - iOS intentionally excluded from app.json platforms (commit 58b0f9c:
+     "no Apple credentials, no iOS build planned") -- confirmed deliberate,
+     not a regression.
+   - CRITICAL MONETIZATION GAP: zero environment variables configured in
+     EAS. app.json's react-native-google-mobile-ads plugin still uses
+     Google's official TEST AdMob App ID; src/config/env.ts falls back to
+     Google's TEST ad unit IDs because EXPO_PUBLIC_INTERSTITIAL_AD_UNIT_ID /
+     EXPO_PUBLIC_BANNER_AD_UNIT_ID are unset anywhere (not in EAS, not in the
+     local .env). EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID/IOS are likewise
+     unset; BillingContext.tsx correctly no-ops instead of crashing, but the
+     practical effect is the paywall/subscription flow cannot process real
+     payments today. Net: the shipped app currently earns $0 from both ads
+     and subscriptions. Fixing this requires the user's own AdMob/RevenueCat/
+     Play Console account setup -- not something achievable via code change
+     alone.
+   - The shared local .env's EXPO_PUBLIC_N8N_WEBHOOK_URL points at an
+     Android-emulator-only address (10.0.2.2) -- irrelevant outside a local
+     emulator since the server-side trigger-n8n-webhook Edge Function uses
+     its own Supabase-secrets-stored URL.
+
+===============================================================================
