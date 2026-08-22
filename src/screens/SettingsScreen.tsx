@@ -24,11 +24,11 @@ type ProfileSchedule = {
   next_scan_at: string | null;
 };
 
-const frequencyOptions: Array<{
+const frequencyOptions: {
   value: SearchFrequency;
   label: string;
   description: string;
-}> = [
+}[] = [
   {
     value: 'daily',
     label: 'Naponta',

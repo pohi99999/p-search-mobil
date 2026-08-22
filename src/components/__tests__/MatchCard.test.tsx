@@ -68,7 +68,6 @@ describe('MatchCard', () => {
     expect(reasoningInstances.length).toBeGreaterThan(0);
 
     // Test amount
-    const amountText = 'Összeg: 1\u00A0000\u00A0000 Ft - 5\u00A0000\u00A0000 Ft';
     const amountInstances = root!.root.findAll(
       (node) => {
         if (node.type !== 'Text' || !node.props.children) return false;
@@ -201,14 +200,6 @@ describe('MatchCard', () => {
     act(() => {
       root = renderer.create(<MatchCard item={baseMatch} onPress={onPressMock} />);
     });
-
-    const buttonInstance = root!.root.findByProps({ children: 'Részletek' });
-    // In react-native-paper, Button wraps content. We need to find the Touchable or Button itself
-    // Or we can just find any component with onPress that has 'Részletek' as child.
-
-    const touchables = root!.root.findAll(
-      (node) => typeof node.props.onPress === 'function'
-    );
 
     // To safely trigger, we can just find the button that is supposed to be pressed
     // react-native-paper Button forwards onPress to TouchableRipple or similar.

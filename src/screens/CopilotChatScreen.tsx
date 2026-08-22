@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,6 +74,7 @@ const MessageItem = React.memo(({ item }: { item: Message }) => {
     </View>
   );
 });
+MessageItem.displayName = 'MessageItem';
 
 
 export function CopilotChatScreen({ route, navigation }: Props) {

@@ -171,7 +171,7 @@ describe('useActionPlan', () => {
       await act(async () => {
         try {
           await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
-        } catch (e) {
+        } catch {
           // Ignored expected throw
         }
       });
@@ -200,7 +200,7 @@ describe('useActionPlan', () => {
       await act(async () => {
         try {
           await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
-        } catch (e) {
+        } catch {
           // Ignored expected throw
         }
       });

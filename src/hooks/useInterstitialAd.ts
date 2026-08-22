@@ -65,6 +65,11 @@ export const useInterstitialAd = () => {
       unsubscribesRef.current = [];
       adInstanceRef.current = null;
     };
+    // loadAd szándékosan nincs a dependency array-ben: minden render újradefiniálja,
+    // és a belső CLOSED listener önmagát rekurzívan hívja (előtöltés) — useCallback-ba
+    // csomagolva ez "accessed before declared" lint hibát okozna a rekurzív self-call miatt,
+    // ténylegesen viselkedésbeli különbség nélkül.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPro]);
 
   const showAdIfAvailable = (onAdFinished: () => void) => {

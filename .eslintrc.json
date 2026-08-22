@@ -10,5 +10,14 @@
     "react-hooks/set-state-in-effect": "warn",
     "react-hooks/immutability": "warn"
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist/", "node_modules/", ".expo/", "supabase/functions/**"]
 }

@@ -1,7 +1,6 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 import { CopilotChatScreen } from '../CopilotChatScreen';
-import { supabase } from '../../lib/supabase';
 import { ProfileProvider } from '../../context/ProfileContext';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({

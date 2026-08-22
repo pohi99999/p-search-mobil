@@ -49,7 +49,9 @@ export const BYPASS_AUTH = false; // Set to true for local testing
 export const supabase = new Proxy(rawSupabase, {
   get(target, prop) {
     if (BYPASS_AUTH && __DEV__) {
-      // Csak fejlesztési és tesztelési módban töltjük be a mock adatokat (dynamic require)
+      // Csak fejlesztési és tesztelési módban töltjük be a mock adatokat (dynamic require).
+      // A Proxy get-trapnek szinkron kell maradnia, ezért itt nem használható ES dynamic import().
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mockData = require('./supabase.mock');
 
       if (prop === 'auth') {

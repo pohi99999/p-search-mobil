@@ -41,7 +41,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
 
     try {
       await updateTaskStatus(task.id, task.plan_id, newStatus);
-    } catch (err) {
+    } catch {
       Alert.alert('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
     }
   }, [updateTaskStatus]);

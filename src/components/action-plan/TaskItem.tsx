@@ -23,7 +23,7 @@ export const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onSt
           />
         </View>
       )}
-      right={props => (
+      right={() => (
         <Button
           mode={task.status === 'in_progress' ? 'contained' : 'outlined'}
           onPress={() => onStatusChange(task, task.status)}
@@ -42,6 +42,7 @@ export const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onSt
     />
   );
 });
+TaskItem.displayName = 'TaskItem';
 
 const styles = StyleSheet.create({
   listItem: {

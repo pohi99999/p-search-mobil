@@ -1,7 +1,6 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 import { ActionPlanScreen } from '../ActionPlanScreen';
-import { supabase } from '../../lib/supabase';
 import { ProfileProvider } from '../../context/ProfileContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 

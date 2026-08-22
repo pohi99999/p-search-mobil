@@ -30,6 +30,19 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(true);
   const [configured, setConfigured] = useState(false);
 
+  const checkProStatus = (customerInfo: CustomerInfo) => {
+    if (__DEV__) {
+      setIsPro(true);
+      return;
+    }
+    // Check if the user has an active entitlement called 'pro'
+    if (typeof customerInfo.entitlements.active['pro'] !== 'undefined') {
+      setIsPro(true);
+    } else {
+      setIsPro(false);
+    }
+  };
+
   useEffect(() => {
     const setup = async () => {
       try {
@@ -86,19 +99,6 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       Purchases.removeCustomerInfoUpdateListener(customerInfoUpdateListener);
     };
   }, [configured]);
-
-  const checkProStatus = (customerInfo: CustomerInfo) => {
-    if (__DEV__) {
-      setIsPro(true);
-      return;
-    }
-    // Check if the user has an active entitlement called 'pro'
-    if (typeof customerInfo.entitlements.active['pro'] !== 'undefined') {
-      setIsPro(true);
-    } else {
-      setIsPro(false);
-    }
-  };
 
   const purchasePackage = async (pack: PurchasesPackage) => {
     if (!configured) {

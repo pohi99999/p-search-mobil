@@ -32,17 +32,14 @@ describe('ProfileContext Performance Baseline', () => {
     mockFrom.mockReturnValue({ select: mockSelect });
 
     // Simulate standard initial mount behavior
-    let authCallback: any;
     mockOnAuthStateChange.mockImplementation((cb) => {
-      authCallback = cb;
       // Normally Supabase calls this synchronously with INITIAL_SESSION
       cb('INITIAL_SESSION', { user: { id: '123' } });
       return { data: { subscription: { unsubscribe: jest.fn() } } };
     });
 
-    let root;
     await act(async () => {
-      root = renderer.create(<ProfileProvider><div>Test</div></ProfileProvider>);
+      renderer.create(<ProfileProvider><div>Test</div></ProfileProvider>);
     });
 
     console.log("Number of getSession calls:", mockGetSession.mock.calls.length);

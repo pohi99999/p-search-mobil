@@ -141,7 +141,7 @@ describe('ProfileContext', () => {
     });
     mockSingle.mockReturnValue(mockSinglePromise);
 
-    const { root, getContext } = await renderProvider(); // This starts the first fetch
+    const { getContext } = await renderProvider(); // This starts the first fetch
 
     mockGetSession.mockClear();
     mockFrom.mockClear();
@@ -156,9 +156,8 @@ describe('ProfileContext', () => {
       return null;
     };
 
-    let rootSecond: renderer.ReactTestRenderer;
     await act(async () => {
-      rootSecond = renderer.create(
+      renderer.create(
         <ProfileProvider>
           <TestComponent />
         </ProfileProvider>
@@ -207,7 +206,7 @@ describe('ProfileContext', () => {
     });
     mockSingle.mockRejectedValue(unexpectedError);
 
-    const { getContext } = await renderProvider();
+    await renderProvider();
 
     expect(logger.error).toHaveBeenCalledWith('Unexpected error fetching profile in ProfileContext:', unexpectedError);
   });

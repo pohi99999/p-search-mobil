@@ -2,7 +2,7 @@ import { RootStackNavigationProp } from "../types/navigation";
 import React, { useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
-import { Text, Button, useTheme, ActivityIndicator, IconButton, Banner, Snackbar } from 'react-native-paper';
+import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation } from '@react-navigation/native';
 import { getErrorMessage } from '../utils/error';
@@ -17,7 +17,6 @@ import {
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
-  const theme = useTheme();
   const navigation = useNavigation<RootStackNavigationProp>();
   const [purchasing, setPurchasing] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
