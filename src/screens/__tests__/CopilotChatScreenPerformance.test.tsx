@@ -71,7 +71,6 @@ describe('CopilotChatScreen Performance', () => {
     });
 
     const initialCalls = mockSingle.mock.calls.length;
-    console.log(`Initial DB calls: ${initialCalls}`);
 
     // Navigate to Chat Screen
     await renderer.act(async () => {
@@ -113,7 +112,6 @@ describe('CopilotChatScreen Performance', () => {
     });
 
     const finalCalls = mockSingle.mock.calls.length;
-    console.log(`Final DB calls: ${finalCalls}`);
 
     // Expected improvement: The call count should remain the same after remounting the screen
     expect(finalCalls).toEqual(initialCalls);
