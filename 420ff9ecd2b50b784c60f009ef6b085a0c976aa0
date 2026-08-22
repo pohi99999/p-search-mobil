@@ -1,0 +1,26 @@
+[CONDUCTOR NOTE] Phase 11 - Full production audit (Vercel/Supabase/EAS) - 2026-08-22
+
+- Supabase: closed a live data leak (profiles table publicly readable by
+  anon role, exposing subscription_tier/search_count/full_name), plus RLS
+  perf fixes, RPC surface lockdown on 2 trigger functions, duplicate index
+  cleanup, missing FK index. Applied live via migration
+  20260822090000_security_and_performance_hardening.sql, verified with a
+  real signup against production and a DB-level check that the trigger and
+  new RLS rules still work together; test account removed after.
+- Vercel: build config confirmed correct via vercel.json; one historical
+  failed preview build root-caused and confirmed irrelevant to the merged
+  code.
+- GitHub Dependabot: 3 remaining alerts are transitive build-tool-only deps
+  (image-size has no upstream fix at all; uuid needs an unverifiable native
+  build major bump) - documented, not force-overridden.
+- EAS/Expo: identified that the app currently has zero real ad/subscription
+  revenue capability - AdMob is on Google's test App ID and test ad unit
+  IDs, RevenueCat keys are unset - because no EAS environment variables are
+  configured. This needs the project owner's own AdMob/RevenueCat/Play
+  Console setup; it isn't fixable by code change alone. iOS's absence from
+  platforms was confirmed as an intentional prior decision (commit 58b0f9c),
+  not a gap.
+- Also found (documented, not fixed - no active feature depends on it yet):
+  profiles/business_profiles/grant_matches FKs use ON DELETE NO ACTION
+  instead of CASCADE, which would block account deletion once that feature
+  exists.
