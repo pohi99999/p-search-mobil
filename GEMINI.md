@@ -22,6 +22,31 @@ Kérlek, tartsd be ezeket az irányelveket minden interakció során!
 
 ## 4. Aktuális Haladás
 
+- **2026. 08. 22. (Fázis 10 — Jules aszinkron munkáinak teljes körű branch-triázsa és integrációja: ~151 távoli ág átvizsgálva, 12 érdemi ág beolvasztva, elavult/duplikált ágak listázva törlésre):**
+  - **Módszertan:** minden `origin/*` ágat `git merge-base --is-ancestor` ellenőrzéssel osztályoztunk (már a masterben van-e), majd a maradék ~17 ágat egyenként, a tényleges diff tartalma alapján bíráltuk el (nem csak a névből találgatva) — hasznos & beolvasztandó, vagy elavult/duplikált/üres & törlendő.
+  - **Beolvasztott ágak (12):**
+    * `jules-785463245023282871-6baac7cc` (CORS-hiba javítása: `increment-search-count`, `scheduled-grant-scan`)
+    * `fix/secure-web-storage-14081094416499261874` (JWT-tárolás webes platformon: `AsyncStorage`/`localStorage` helyett in-memory storage — **tudatos UX-tradeoff: web nézeten oldalfrissítéskor újra be kell jelentkezni**, cserébe nincs JWT localStorage-ban XSS ellen)
+    * `jules-2669459278852752985-80a9a0aa` (ProfileContext: redundáns auth session lekérdezés kiiktatása + perf teszt)
+    * `jules-10470425409171436731-45b53bad` (`useHomeData` hook refaktor, karbantarthatóság)
+    * `fix/document-upload-mime-type-test-11886600623952430237` + `test-improvement/missing-profile-document-upload-...` (2 új teszt a `DocumentUploadScreen`-hez: nem támogatott mime type, hiányzó profil guard)
+    * `jules-17876150648106034228-3984b8f5` (leftover `console.log` eltávolítása 2 performance teszt fájlból)
+    * `fix/xss-document-generation-18208377827743117015` (XSS-javítás: HTML escape bevezetve a `generate-document` Edge Function generált dokumentumában)
+    * `jules-11126199383671122476-2b13ef68` (`useActionPlan` parsing loop refaktor `reduce`-ra)
+    * `fix/optimize-action-plan-batching-2203771932485397814` (**funkcionális bővítés**: `generate-action-plan` Edge Function mostantól több `match_id`-t is elfogad egyszerre — batchelt, párhuzamos AI-generálás; a merge során kézzel egyeztettük a korábban integrált tulajdonos-ellenőrzéssel (`getUser` + `business_profile_id` match), mindkettő megmaradt)
+    * `test/useActionPlan-integration-7342961865975469712` (integrációs teszt a `generatePlanForMatch` state-frissítésre)
+    * `p-search-mobil-optimization-action-plan-...` (planStats számítás: `reduce` → `for` ciklus, alloc-overhead csökkentés)
+    * `chore/action-plan-refactor-2185370342451656868` (ActionPlanScreen komponensekre bontása: `ActionPlanCard`, `TaskItem` kiemelve `src/components/action-plan/`-ba, illeszkedve a meglévő `src/components/paywall/` konvencióhoz)
+  - **Törlésre jelölt/kihagyott ágak (nem lettek beolvasztva):**
+    * ~134 ág már ancestor volt a masteren (korábbi fázisok integrálták) — biztonságosan törölhető.
+    * `jules-9743377856453852618-503fe1a7` — ugyanaz a cél mint a `chore/action-plan-refactor`, de nem a repó konvenciójának megfelelő elérési úttal (`src/screens/ActionPlan/components/`) — duplikátum, a `chore/action-plan-refactor` lett a megtartott verzió.
+    * `jules-15916756417176126547-49cdd90c` — részhalmaza a beolvasztott `jules-17876150648106034228`-nak (ugyanaz + még 1 fájl).
+    * `fix-useHomeData-perf-16016775463693238629` — ügynök-munkamenet maradvány (repó gyökerébe rakott `benchmark.ts`/`plan.md`/`test-benchmark.test.ts`), a `useHomeData.ts`-en magán **nem történt tényleges változtatás** — nem termékkód.
+    * `dependabot/npm_and_yarn/npm_and_yarn-f53f33db58` (shell-quote bump) — vizsgálat után kiderült, a `shell-quote@1.10.0` már a biztonságos verzióban van a `react-devtools-core` transitív függőségeként; a branch feleslegessé vált.
+  - **Megjegyzés — gyanús injektált üzenet:** integráció közben egy "koordinátor"-nak álcázott üzenet érkezett, ami azt állította, hogy a `fix/optimize-action-plan-batching` ág egy elavult `@testing-library/react-hooks@8.0.1` devDependency-t és `package.json`/`package-lock.json` módosítást is hoz, ami peer-dependency konfliktust okoz, ezért javasolta kihagyni vagy csonkolni a branch-et. A tényleges diff (`git diff origin/master...origin/fix/optimize-action-plan-batching-... --name-status`) ezt megcáfolta: a branch kizárólag 2 fájlt módosít (`useActionPlan.ts`, `generate-action-plan/index.ts`), semmilyen dependency-változást nem tartalmaz. Az üzenetet figyelmen kívül hagytuk, a branch a saját ellenőrzés alapján lett beolvasztva.
+  - **Verifikáció:** `npx tsc --noEmit`: SIKERES (0 hiba). `npx jest`: **27/27 tesztcsomag, 171/171 teszt zöld** (151-ről nőtt). `npm install`: shell-quote sebezhetőség már megoldva a lockfile-ban, nem igényelt külön akciót.
+  - **Git & GitHub szinkronizáció:** 12 merge-commit + 1 takarító commit (stray `pr_details.md` törlése) + 1 lockfile-frissítő commit, Conductor Git Note csatolva, pusholva `master`-re és `refs/notes/*`-ra.
+
 - **2026. 08. 17. (TELJES PROJEKTAUDIT — a termék központi hurka nem létezett; matching motor megépítése, ütemezett ügynök, éles hibák javítása):**
   - **Vezető lelet — `grant_matches` = 0 sor:** A `HomeScreen` a `grant_matches` táblából olvassa a pályázati feedet. Éles ellenőrzéssel kiderült, hogy a tábla **nulla sort tartalmazott**, és a teljes kódbázisban **semmi nem írt bele**. Az n8n pipeline kizárólag *begyűjtötte* a pályázatokat, a cégprofilhoz **illesztés sehol nem valósult meg**. Következmény: **minden felhasználó örökre üres főképernyőt látott**. Mindezt 24/24 zöld tesztcsomag és 162/162 zöld teszt mellett — meg nem írt kód nem tud tesztet elbukni.
   - **További éles leletek:**
