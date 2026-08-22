@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
 import { useBilling } from '../context/BillingContext';
@@ -15,11 +15,6 @@ export interface SearchRunResult {
 /**
  * Runs the AI grant matching for a company and returns how many matches were
  * produced.
- *
- * This calls `match-grants`, which is the only thing in the system that
- * actually writes `grant_matches` rows. The previous implementation only
- * notified an external n8n webhook, so pressing "Új AI Keresés" produced no
- * matches at all and the home screen stayed empty forever.
  */
 async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
   const { data, error } = await supabase.functions.invoke('match-grants', {
@@ -48,18 +43,13 @@ async function triggerSearchWebhook(action: 'new_search_pro' | 'new_search_free'
     .catch((err) => logger.warn('Edge function hívás hiba:', err));
 }
 
-export function useHomeData(navigation: RootStackNavigationProp) {
+function useHomeDataFetch(navigation: RootStackNavigationProp) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [matches, setMatches] = useState<MatchWithGrant[]>([]);
-  const { isPro } = useBilling();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -101,11 +91,9 @@ export function useHomeData(navigation: RootStackNavigationProp) {
         if (matchesError) {
           logger.error(matchesError);
         } else if (matchesData) {
-          // Cast the result to our compound type
           setMatches(matchesData as unknown as MatchWithGrant[]);
         }
       } else {
-        // No profile found, redirect to Onboarding
         navigation.replace('Onboarding');
       }
     } catch (err) {
@@ -113,19 +101,34 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [navigation]);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
+  return { loading, profile, userProfile, setUserProfile, matches, fetchData };
+}
+
+interface UseGrantSearchProps {
+  navigation: RootStackNavigationProp;
+  profile: BusinessProfile | null;
+  userProfile: UserProfile | null;
+  setUserProfile: (profile: UserProfile) => void;
+  isPro: boolean;
+  onSearchSuccess: () => Promise<void>;
+}
+
+function useGrantSearch({
+  navigation,
+  profile,
+  userProfile,
+  setUserProfile,
+  isPro,
+  onSearchSuccess
+}: UseGrantSearchProps) {
   const [searching, setSearching] = useState(false);
 
-  /**
-   * Runs the matching pipeline, refreshes the list and reports the outcome.
-   * Shared by the Pro and free paths so both behave identically once the
-   * entitlement check has passed.
-   */
   const executeSearch = async (
     businessId: string,
     action: 'new_search_pro' | 'new_search_free',
@@ -133,12 +136,8 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     setSearching(true);
     try {
       const { matchesFound } = await runGrantMatching(businessId);
-
-      // Fire-and-forget: the external automation is not on the critical path.
       void triggerSearchWebhook(action, businessId);
-
-      // Pull the freshly written matches into the list.
-      await fetchData();
+      await onSearchSuccess();
 
       Alert.alert(
         'AI keresés kész',
@@ -186,6 +185,34 @@ export function useHomeData(navigation: RootStackNavigationProp) {
       navigation.navigate('Paywall');
     }
   };
+
+  return { searching, handleNewSearch };
+}
+
+export function useHomeData(navigation: RootStackNavigationProp) {
+  const { isPro } = useBilling();
+
+  const {
+    loading,
+    profile,
+    userProfile,
+    setUserProfile,
+    matches,
+    fetchData
+  } = useHomeDataFetch(navigation);
+
+  const { searching, handleNewSearch } = useGrantSearch({
+    navigation,
+    profile,
+    userProfile,
+    setUserProfile,
+    isPro,
+    onSearchSuccess: fetchData
+  });
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
 
   return {
     loading,
