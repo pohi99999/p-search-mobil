@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, List, Surface, ProgressBar, Divider, Snackbar, Checkbox, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
-import { supabase } from '../lib/supabase';
+import { Text, Button, Surface, Snackbar, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
 import { useActionPlan } from '../hooks/useActionPlan';
-import { BusinessProfile, ActionTask, ActionTaskStatus } from '../types/database';
-import { generateAndSharePDF } from '../utils/documentGenerator';
+import { ActionTask, ActionTaskStatus } from '../types/database';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
 import type { ActionPlanScreenProps } from "../types/navigation";
 import { logger } from '../utils/logger';
+import { ActionPlanCard } from '../components/action-plan/ActionPlanCard';
 
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const matchId = route?.params?.matchId;
@@ -19,8 +18,6 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
 
   const { showAdIfAvailable } = useInterstitialAd();
 
@@ -48,22 +45,6 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
       Alert.alert('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
     }
   }, [updateTaskStatus]);
-
-  const getStatusIcon = (status: ActionTaskStatus) => {
-    switch (status) {
-      case 'done': return 'check-circle';
-      case 'in_progress': return 'play-circle';
-      default: return 'circle-outline';
-    }
-  };
-
-  const getStatusColor = (status: ActionTaskStatus) => {
-    switch (status) {
-      case 'done': return '#4CAF50'; // Zöld
-      case 'in_progress': return '#1976D2'; // Kék
-      default: return '#9E9E9E'; // Szürke
-    }
-  };
 
 
   const planStats = useMemo(() => {
@@ -201,113 +182,19 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {visiblePlans.map((plan) => {
             const planTasks = tasks[plan.id] || [];
-            const { totalTasks, completedTasks, progress, percentage } = planStats[plan.id] || { totalTasks: 0, completedTasks: 0, progress: 0, percentage: 0 };
-
             return (
-              <Card key={plan.id} style={styles.card} mode="elevated">
-                <Card.Content style={styles.cardHeader}>
-                  <Text variant="titleMedium" style={styles.cardTitle}>{plan.title}</Text>
-                  <Text variant="bodySmall" style={styles.cardSubtitle}>
-                    Létrehozva: {new Date(plan.created_at).toLocaleDateString('hu-HU')}
-                  </Text>
-                  
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressLabelRow}>
-                      <Text variant="labelMedium" style={styles.progressLabel}>Felkészültség állapota</Text>
-                      <Text variant="labelMedium" style={styles.progressValue}>{completedTasks}/{totalTasks} ({percentage}%)</Text>
-                    </View>
-                    <ProgressBar 
-                      progress={progress} 
-                      color={progress === 1 ? '#4CAF50' : '#1976D2'} 
-                      style={styles.progressBar} 
-                    />
-                  </View>
-                </Card.Content>
-                
-                <Divider />
-
-                <Card.Content style={styles.cardBody}>
-                  <List.Section style={styles.listSection}>
-                    {planTasks.map((task, index) => (
-                      <React.Fragment key={task.id}>
-                        <TaskItem task={task} onStatusChange={handleStatusChange} />
-                        {index < planTasks.length - 1 && <Divider style={styles.taskDivider} />}
-                      </React.Fragment>
-                    ))}
-                    {planTasks.length === 0 && (
-                      <Text style={styles.noTasksText}>
-                        Nincsenek feladatok ehhez az akciótervhez.
-                      </Text>
-                    )}
-                  </List.Section>
-                </Card.Content>
-                
-                <Divider />
-                <Card.Actions style={styles.cardActions}>
-                  {plan.ai_context?.generated_document_html && (
-                    <Button
-                      mode="outlined"
-                      icon="file-download"
-                      onPress={async () => {
-                        try {
-                          await generateAndSharePDF(
-                            plan.ai_context.generated_document_html!,
-                            `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
-                          );
-                        } catch (err: unknown) {
-                          logger.error('PDF opening error:', err);
-                          Alert.alert('Hiba', 'Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.');
-                        }
-                      }}
-                      style={[styles.pdfButton, { marginRight: 8 }]}
-                    >
-                      Mentett PDF
-                    </Button>
-                  )}
-                  
-                  <Button 
-                    mode="contained-tonal"
-                    icon="file-pdf-box"
-                    loading={pdfLoading}
-                    disabled={pdfLoading}
-                    onPress={() => {
-                      if (!profile || !plan.match_id) {
-                        Alert.alert('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
-                        return;
-                      }
-                      showAdIfAvailable(async () => {
-                        setPdfLoading(true);
-                        try {
-                          // Supabase Edge Function meghívása a generált HTML tartalomért
-                          const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
-                            body: {
-                              business_profile_id: profile.id,
-                              match_id: plan.match_id
-                            }
-                          });
-
-                          if (generateError) throw generateError;
-                          if (data?.error) throw new Error(data.error);
-
-                          // PDF generálása és natív megosztása a visszakapott HTML stringből
-                          await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
-                          
-                          // Újratöltjük a terveket, hogy láthatóvá váljon a letöltés gomb
-                          refetch();
-                        } catch (err: unknown) {
-                          logger.error('PDF generation error:', err);
-                          Alert.alert('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
-                        } finally {
-                          setPdfLoading(false);
-                        }
-                      });
-                    }}
-                    style={styles.pdfButton}
-                  >
-                    {pdfLoading ? 'Generálás...' : plan.ai_context?.generated_document_html ? 'Újragenerálás' : 'PDF Generálása'}
-                  </Button>
-                </Card.Actions>
-              </Card>
+              <ActionPlanCard
+                key={plan.id}
+                plan={plan}
+                planTasks={planTasks}
+                planStats={planStats}
+                handleStatusChange={handleStatusChange}
+                profile={profile}
+                pdfLoading={pdfLoading}
+                setPdfLoading={setPdfLoading}
+                showAdIfAvailable={showAdIfAvailable}
+                refetch={refetch}
+              />
             );
           })}
         </ScrollView>
@@ -323,46 +210,6 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   );
 }
 
-
-const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void }) => {
-  return (
-    <List.Item
-      title={task.title}
-      titleStyle={[
-        styles.taskTitle,
-        task.status === 'done' && styles.doneTaskTitle
-      ]}
-      description={task.description || undefined}
-      descriptionStyle={styles.taskDescription}
-      left={props => (
-        <View style={[props.style, styles.checkboxContainer]}>
-          <Checkbox
-            status={task.status === 'done' ? 'checked' : task.status === 'in_progress' ? 'indeterminate' : 'unchecked'}
-            onPress={() => onStatusChange(task, task.status)}
-            color="#4CAF50"
-            uncheckedColor="#9E9E9E"
-          />
-        </View>
-      )}
-      right={props => (
-        <Button 
-          mode={task.status === 'in_progress' ? 'contained' : 'outlined'} 
-          onPress={() => onStatusChange(task, task.status)}
-          compact
-          style={[
-            styles.statusButton,
-            task.status === 'in_progress' && styles.inProgressButton,
-            task.status === 'done' && styles.doneButton
-          ]}
-          labelStyle={styles.statusButtonLabel}
-        >
-          {task.status === 'todo' ? 'Elkezd' : task.status === 'in_progress' ? 'Kész' : 'Újra'}
-        </Button>
-      )}
-      style={styles.listItem}
-    />
-  );
-});
 
 const styles = StyleSheet.create({
   container: {
@@ -403,123 +250,9 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingTop: 8,
   },
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 10,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  cardTitle: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    color: '#1A237E',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    color: '#757575',
-    marginBottom: 12,
-  },
-  progressContainer: {
-    marginTop: 8,
-  },
-  progressLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  progressLabel: {
-    color: '#5C6BC0',
-    fontWeight: '500',
-  },
-  progressValue: {
-    fontWeight: 'bold',
-    color: '#1A237E',
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E8EAF6',
-  },
-  cardBody: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  listSection: {
-    marginVertical: 0,
-  },
-  listItem: {
-    paddingVertical: 8,
-  },
-  taskTitle: {
-    fontWeight: '600',
-    fontSize: 15,
-    color: '#212121',
-  },
-  doneTaskTitle: {
-    textDecorationLine: 'line-through',
-    color: '#9E9E9E',
-  },
-  taskDescription: {
-    fontSize: 13,
-    color: '#757575',
-    marginTop: 2,
-  },
-  taskIcon: {
-    margin: 0,
-  },
-  checkboxContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  taskDivider: {
-    backgroundColor: '#F5F5F5',
-  },
-  statusButton: {
-    alignSelf: 'center',
-    marginRight: 8,
-    borderRadius: 8,
-    borderWidth: 1.2,
-  },
-  inProgressButton: {
-    backgroundColor: '#1976D2',
-    borderWidth: 0,
-  },
-  doneButton: {
-    borderColor: '#4CAF50',
-  },
-  statusButtonLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  noTasksText: {
-    fontStyle: 'italic',
-    color: '#9E9E9E',
-    padding: 16,
-    textAlign: 'center',
-  },
   primaryButton: {
     backgroundColor: '#1A237E',
     borderRadius: 8,
     paddingHorizontal: 8,
   },
-  cardActions: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    justifyContent: 'flex-end',
-    backgroundColor: '#FAFBFD',
-  },
-  pdfButton: {
-    borderRadius: 8,
-  }
 });
