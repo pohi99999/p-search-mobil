@@ -79,11 +79,11 @@ export const useActionPlan = (businessProfileId?: string) => {
     fetchPlansAndTasks();
   }, [fetchPlansAndTasks]);
 
-  const generatePlanForMatch = useCallback(async (businessProfileId: string, matchId: string) => {
+  const generatePlanForMatch = useCallback(async (businessProfileId: string, matchId: string | string[]) => {
     setError(null);
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('generate-action-plan', {
-        body: { business_profile_id: businessProfileId, match_id: matchId }
+        body: { business_profile_id: businessProfileId, match_ids: Array.isArray(matchId) ? matchId : [matchId], match_id: Array.isArray(matchId) ? matchId[0] : matchId }
       });
 
       if (invokeError) throw invokeError;
