@@ -9,6 +9,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+
+function escapeHtml(unsafe: string): string {
+  if (!unsafe) return "";
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 serve(async (req) => {
   // CORS preflight kérések kezelése
   if (req.method === "OPTIONS") {
@@ -244,26 +255,26 @@ ${grantContext}`;
   <table class="meta-table">
     <tr>
       <td class="meta-label">Pályázó Szervezet:</td>
-      <td><strong>${companyName}</strong></td>
+      <td><strong>${escapeHtml(companyName)}</strong></td>
     </tr>
     <tr>
       <td class="meta-label">Célzott Pályázat:</td>
-      <td>${grantTitle}</td>
+      <td>${escapeHtml(grantTitle)}</td>
     </tr>
     <tr>
       <td class="meta-label">Dátum:</td>
-      <td>${new Date().toLocaleDateString("hu-HU")}</td>
+      <td>${escapeHtml(String(new Date().toLocaleDateString("hu-HU")))}</td>
     </tr>
   </table>
 
   <h2>1. Vezetői Összefoglaló (Executive Summary)</h2>
-  <p>${executiveSummary}</p>
+  <p>${escapeHtml(executiveSummary)}</p>
 
   <h2>2. Piacelemzés és Versenyelőny (Market Analysis)</h2>
-  <p>${marketAnalysis}</p>
+  <p>${escapeHtml(marketAnalysis)}</p>
 
   <h2>3. Pénzügyi Terv és Megtérülés (Financial Plan)</h2>
-  <p>${financialPlan}</p>
+  <p>${escapeHtml(financialPlan)}</p>
 
   <div class="footer">
     Ez a dokumentum a P-Search Mobil Alkalmazás és a Gemini AI segítségével készült.<br/>
