@@ -1,5 +1,4 @@
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
@@ -19,7 +18,21 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const storage = Platform.OS === 'web' ? AsyncStorage : ExpoSecureStoreAdapter;
+class InMemoryWebStorage {
+  private storage = new Map<string, string>();
+
+  async getItem(key: string): Promise<string | null> {
+    return this.storage.get(key) || null;
+  }
+  async setItem(key: string, value: string): Promise<void> {
+    this.storage.set(key, value);
+  }
+  async removeItem(key: string): Promise<void> {
+    this.storage.delete(key);
+  }
+}
+
+const storage = Platform.OS === 'web' ? new InMemoryWebStorage() : ExpoSecureStoreAdapter;
 
 const rawSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
