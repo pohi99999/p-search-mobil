@@ -25,16 +25,15 @@ export const useActionPlan = (businessProfileId?: string) => {
       if (plansError) throw plansError;
 
       if (plansData && plansData.length > 0) {
-        const parsedPlans: ActionPlan[] = [];
-        const tasksMap: Record<string, ActionTask[]> = {};
-
-        for (const planRow of plansData) {
-          const { action_tasks, ...plan } = planRow as ActionPlan & { action_tasks: ActionTask[] | null };
-          parsedPlans.push(plan);
-
-          const tasks = action_tasks || [];
-          tasksMap[plan.id] = tasks;
-        }
+        const { parsedPlans, tasksMap } = plansData.reduce(
+          (acc, planRow) => {
+            const { action_tasks, ...plan } = planRow as ActionPlan & { action_tasks: ActionTask[] | null };
+            acc.parsedPlans.push(plan);
+            acc.tasksMap[plan.id] = action_tasks || [];
+            return acc;
+          },
+          { parsedPlans: [] as ActionPlan[], tasksMap: {} as Record<string, ActionTask[]> }
+        );
 
         setPlans(parsedPlans);
         setTasks(tasksMap);
