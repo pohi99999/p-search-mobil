@@ -7,6 +7,23 @@ import { PurchasesPackage, PACKAGE_TYPE } from 'react-native-purchases';
 // Mock Alert
 Alert.alert = jest.fn();
 
+/**
+ * Collects every rendered string in the tree, so a regression test can assert on
+ * what the user actually sees rather than on a specific node we remembered to check.
+ */
+const collectText = (node: renderer.ReactTestRendererJSON | string | null): string => {
+  if (node === null) return '';
+  if (typeof node === 'string') return node;
+  const children = node.children ?? [];
+  return children.map(collectText).join(' ');
+};
+
+const renderedText = (root: renderer.ReactTestRenderer): string => {
+  const json = root.toJSON();
+  const nodes = Array.isArray(json) ? json : [json];
+  return nodes.map(collectText).join(' ');
+};
+
 describe('PaywallPackages', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -50,159 +67,146 @@ describe('PaywallPackages', () => {
     } as any,
   ];
 
-  it('renders fallback mock package when packages array is empty', () => {
+  const renderEmpty = (purchasing = false) => {
     let root: renderer.ReactTestRenderer | undefined;
-
     act(() => {
       root = renderer.create(
         <PaywallPackages
           packages={[]}
-          purchasing={false}
+          purchasing={purchasing}
           handlePurchase={mockHandlePurchase}
         />
       );
     });
+    return root!;
+  };
 
-    // Verify fallback content is rendered
-    const titleInstances = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === 'Pro Havi Tagság'
-    );
-    expect(titleInstances.length).toBeGreaterThan(0);
+  describe('when there is no real store product', () => {
+    it('says the subscription is unavailable instead of advertising a package', () => {
+      const text = renderedText(renderEmpty());
 
-    const priceInstances = root!.root.findAll(
-      (node) => {
-        if (node.type !== 'Text') return false;
-        const children = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
-        return children.includes('1 990 Ft');
-      }
-    );
-    expect(priceInstances.length).toBeGreaterThan(0);
+      expect(text).toContain('Az előfizetés jelenleg nem elérhető');
+      expect(text).toContain('Amint elérhetővé válik');
+    });
+
+    // Regression guard. The empty branch used to render a hardcoded
+    // "Pro Havi Tagság / 1 990 Ft / hó / 7 napos ingyenes próba" card with a
+    // purchase button that only showed an Alert -- a concrete price and free
+    // trial advertised for a product nobody could buy. That is deceptive and a
+    // Play policy risk, and it shipped all the way into the live web bundle.
+    // This test fails if any price or trial promise creeps back in.
+    it('never shows a price, a package name or a free trial', () => {
+      const text = renderedText(renderEmpty());
+
+      expect(text).not.toMatch(/1\s*990/);
+      expect(text).not.toMatch(/Ft/);
+      expect(text).not.toMatch(/próba/i);
+      expect(text).not.toMatch(/ingyenes/i);
+      expect(text).not.toMatch(/Pro Havi Tagság/);
+      expect(text).not.toMatch(/LEGNÉPSZERŰBB/);
+      expect(text).not.toMatch(/\/\s*hó/);
+    });
+
+    it('offers no purchase button at all', () => {
+      const root = renderEmpty();
+
+      const buttons = root.root.findAll(
+        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
+      );
+
+      expect(buttons).toHaveLength(0);
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(mockHandlePurchase).not.toHaveBeenCalled();
+    });
+
+    it('renders the same way while a purchase is in flight', () => {
+      // Nothing is purchasable here, so `purchasing` must not change the output.
+      expect(renderedText(renderEmpty(true))).toBe(renderedText(renderEmpty(false)));
+    });
   });
 
-  it('shows an alert when fallback purchase button is pressed', () => {
-    let root: renderer.ReactTestRenderer | undefined;
+  describe('when real packages are available', () => {
+    it('renders provided packages correctly', () => {
+      let root: renderer.ReactTestRenderer | undefined;
 
-    act(() => {
-      root = renderer.create(
-        <PaywallPackages
-          packages={[]}
-          purchasing={false}
-          handlePurchase={mockHandlePurchase}
-        />
+      act(() => {
+        root = renderer.create(
+          <PaywallPackages
+            packages={mockPackages}
+            purchasing={false}
+            handlePurchase={mockHandlePurchase}
+          />
+        );
+      });
+
+      // Check first package
+      const title1 = root!.root.findAll(
+        (node) => node.type === 'Text' && node.props.children === 'Pro Monthly'
       );
-    });
+      expect(title1.length).toBeGreaterThan(0);
 
-    const buttons = root!.root.findAll(
-      (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
-    );
-
-    act(() => {
-      buttons[0].props.onPress();
-    });
-
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Figyelem',
-      'Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.'
-    );
-    expect(mockHandlePurchase).not.toHaveBeenCalled();
-  });
-
-  it('renders provided packages correctly', () => {
-    let root: renderer.ReactTestRenderer | undefined;
-
-    act(() => {
-      root = renderer.create(
-        <PaywallPackages
-          packages={mockPackages}
-          purchasing={false}
-          handlePurchase={mockHandlePurchase}
-        />
+      const price1 = root!.root.findAll(
+        (node) => node.type === 'Text' && node.props.children === '$4.99'
       );
-    });
+      expect(price1.length).toBeGreaterThan(0);
 
-    // Check first package
-    const title1 = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === 'Pro Monthly'
-    );
-    expect(title1.length).toBeGreaterThan(0);
-
-    const price1 = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === '$4.99'
-    );
-    expect(price1.length).toBeGreaterThan(0);
-
-    // Check second package
-    const title2 = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === 'Pro Yearly'
-    );
-    expect(title2.length).toBeGreaterThan(0);
-
-    const price2 = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === '$49.99'
-    );
-    expect(price2.length).toBeGreaterThan(0);
-  });
-
-  it('calls handlePurchase with correct package when button is pressed', () => {
-    let root: renderer.ReactTestRenderer | undefined;
-
-    act(() => {
-      root = renderer.create(
-        <PaywallPackages
-          packages={mockPackages}
-          purchasing={false}
-          handlePurchase={mockHandlePurchase}
-        />
+      // Check second package
+      const title2 = root!.root.findAll(
+        (node) => node.type === 'Text' && node.props.children === 'Pro Yearly'
       );
+      expect(title2.length).toBeGreaterThan(0);
+
+      const price2 = root!.root.findAll(
+        (node) => node.type === 'Text' && node.props.children === '$49.99'
+      );
+      expect(price2.length).toBeGreaterThan(0);
     });
 
-    const buttons = root!.root.findAll(
-      (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
-    );
+    it('calls handlePurchase with correct package when button is pressed', () => {
+      let root: renderer.ReactTestRenderer | undefined;
 
-    expect(buttons.length).toBe(2);
+      act(() => {
+        root = renderer.create(
+          <PaywallPackages
+            packages={mockPackages}
+            purchasing={false}
+            handlePurchase={mockHandlePurchase}
+          />
+        );
+      });
 
-    act(() => {
-      buttons[1].props.onPress();
-    });
-
-    expect(mockHandlePurchase).toHaveBeenCalledTimes(1);
-    expect(mockHandlePurchase).toHaveBeenCalledWith(mockPackages[1]);
-  });
-
-  it('disables buttons when purchasing is true', () => {
-    let rootFallback: renderer.ReactTestRenderer | undefined;
-    let rootList: renderer.ReactTestRenderer | undefined;
-
-    act(() => {
-      // Test fallback
-      rootFallback = renderer.create(
-        <PaywallPackages
-          packages={[]}
-          purchasing={true}
-          handlePurchase={mockHandlePurchase}
-        />
+      const buttons = root!.root.findAll(
+        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
       );
 
-      // Test list
-      rootList = renderer.create(
-        <PaywallPackages
-          packages={mockPackages}
-          purchasing={true}
-          handlePurchase={mockHandlePurchase}
-        />
-      );
+      expect(buttons.length).toBe(2);
+
+      act(() => {
+        buttons[1].props.onPress();
+      });
+
+      expect(mockHandlePurchase).toHaveBeenCalledTimes(1);
+      expect(mockHandlePurchase).toHaveBeenCalledWith(mockPackages[1]);
     });
 
-    const fallbackButtons = rootFallback!.root.findAll(
-      (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
-    );
-    expect(fallbackButtons[0].props.disabled).toBe(true);
+    it('disables buttons when purchasing is true', () => {
+      let rootList: renderer.ReactTestRenderer | undefined;
 
-    const listButtons = rootList!.root.findAll(
-      (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
-    );
-    expect(listButtons[0].props.disabled).toBe(true);
-    expect(listButtons[1].props.disabled).toBe(true);
+      act(() => {
+        rootList = renderer.create(
+          <PaywallPackages
+            packages={mockPackages}
+            purchasing={true}
+            handlePurchase={mockHandlePurchase}
+          />
+        );
+      });
+
+      const listButtons = rootList!.root.findAll(
+        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
+      );
+      expect(listButtons[0].props.disabled).toBe(true);
+      expect(listButtons[1].props.disabled).toBe(true);
+    });
   });
 });

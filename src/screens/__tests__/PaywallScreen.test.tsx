@@ -186,7 +186,12 @@ describe('PaywallScreen', () => {
     expect(logger.error).toHaveBeenCalledWith('Vásárlási hiba:', 'Test purchase error');
   });
 
-  it('renders fallback mock package when packages is empty and handles mock purchase', async () => {
+  // The empty branch used to render a hardcoded "Pro Havi Tagság / 1 990 Ft /
+  // 7 napos ingyenes próba" card whose purchase button only showed an Alert.
+  // Advertising a concrete price and a free trial for a product nobody can buy
+  // is deceptive and a Play policy risk, so the empty state must stay silent
+  // about price and offer no way to start a purchase.
+  it('shows an honest empty state, with no price and no purchase button, when packages is empty', async () => {
     (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [] });
 
     let component: renderer.ReactTestRenderer;
@@ -195,19 +200,16 @@ describe('PaywallScreen', () => {
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Pro Havi Tagság');
-    expect(treeStr).toContain('1 990 Ft');
+    expect(treeStr).toContain('Az előfizetés jelenleg nem elérhető');
+    expect(treeStr).not.toContain('Pro Havi Tagság');
+    expect(treeStr).not.toContain('1 990');
+    expect(treeStr).not.toContain('ingyenes próba');
 
     const purchaseButton = component!.root.findAllByType(Button).find(
       (b) => b.props.children === 'Előfizetés indítása'
     );
-    expect(purchaseButton).toBeDefined();
-
-    await act(async () => {
-      await purchaseButton!.props.onPress();
-    });
-
-    expect(Alert.alert).toHaveBeenCalledWith('Figyelem', 'Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.');
+    expect(purchaseButton).toBeUndefined();
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   it('handles successful restore purchases', async () => {

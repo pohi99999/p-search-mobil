@@ -3,7 +3,6 @@ import { View, StyleSheet } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import { PurchasesPackage } from 'react-native-purchases';
 
-import { Alert } from 'react-native';
 interface PaywallPackagesProps {
   packages: PurchasesPackage[];
   purchasing: boolean;
@@ -14,30 +13,20 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
   return (
     <View style={styles.packagesContainer}>
       {packages.length === 0 ? (
-        // Fallback mock package ha a RevenueCat sandbox még nem szinkronizált
+        // Nincs valós bolti termék (a RevenueCat még nincs konfigurálva, vagy az
+        // ajánlat nem szinkronizált). Ilyenkor NEM hirdetünk árat, csomagnevet vagy
+        // próbaidőt: az megvehetetlen termékre tett konkrét ígéret lenne. Ez egy
+        // normál, átmeneti állapot, nem hibaüzenet.
         <Card style={styles.packageCard} mode="elevated">
           <Card.Content style={styles.packageContent}>
-            <Text variant="labelMedium" style={styles.popularBadge}>⭐ LEGNÉPSZERŰBB</Text>
-            <Text variant="titleLarge" style={styles.packageName}>Pro Havi Tagság</Text>
-            <Text variant="bodyMedium" style={styles.packageDesc}>Minden prémium funkció elérése</Text>
-            <Text variant="headlineMedium" style={styles.packagePrice}>
-              1 990 Ft <Text variant="bodySmall" style={styles.pricePeriod}>/ hó</Text>
+            <Text variant="titleMedium" style={styles.unavailableTitle}>
+              Az előfizetés jelenleg nem elérhető
             </Text>
-            <Text variant="bodySmall" style={styles.trialNote}>7 napos ingyenes próba</Text>
+            <Text variant="bodyMedium" style={styles.unavailableDesc}>
+              A Pro csomag megvásárlása egyelőre nincs bekapcsolva ebben a verzióban.
+              Amint elérhetővé válik, itt fogod látni a részleteket.
+            </Text>
           </Card.Content>
-          <Card.Actions style={styles.cardActions}>
-            <Button
-              mode="contained"
-              style={styles.purchaseButton}
-              contentStyle={styles.purchaseButtonContent}
-              disabled={purchasing}
-              onPress={async () => {
-                Alert.alert('Figyelem', 'Hálózati teszt üzemmód. Valós vásárlás a Google Play Sandbox segítségével történik.');
-              }}
-            >
-              Előfizetés indítása
-            </Button>
-          </Card.Actions>
         </Card>
       ) : (
         packages.map((pkg) => (
@@ -117,15 +106,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2E7D32',
   },
-  pricePeriod: {
-    color: '#757575',
-    fontSize: 14,
+  unavailableTitle: {
+    fontWeight: 'bold',
+    color: '#1A237E',
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  trialNote: {
-    color: '#2E7D32',
-    fontWeight: '600',
-    marginTop: 4,
-    fontSize: 12,
+  unavailableDesc: {
+    color: '#757575',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 19,
   },
   cardActions: {
     justifyContent: 'center',
