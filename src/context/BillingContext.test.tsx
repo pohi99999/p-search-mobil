@@ -12,8 +12,12 @@ let mockEnv = {
 };
 
 jest.mock('../config/env', () => ({
-  get API_KEY_ANDROID() { return mockEnv.API_KEY_ANDROID; },
-  get API_KEY_IOS() { return mockEnv.API_KEY_IOS; },
+  get API_KEY_ANDROID() {
+    return mockEnv.API_KEY_ANDROID;
+  },
+  get API_KEY_IOS() {
+    return mockEnv.API_KEY_IOS;
+  },
 }));
 
 jest.mock('../utils/error', () => {
@@ -76,17 +80,16 @@ describe('BillingContext', () => {
       root = renderer.create(
         <BillingProvider>
           <TestComponent />
-        </BillingProvider>
+        </BillingProvider>,
       );
     });
     return {
       getContext: () => contextValue,
-      root
+      root,
     };
   };
 
   describe('Initialization', () => {
-
     it('cleans up customer info update listener on unmount', async () => {
       const { root } = await renderProvider();
       expect(Purchases.addCustomerInfoUpdateListener).toHaveBeenCalled();
@@ -100,7 +103,7 @@ describe('BillingContext', () => {
     it('configures for iOS and fetches customer info and offerings', async () => {
       Platform.OS = 'ios';
       (Purchases.getOfferings as jest.Mock).mockResolvedValueOnce({
-        current: { availablePackages: [{ identifier: 'pro_monthly' }] }
+        current: { availablePackages: [{ identifier: 'pro_monthly' }] },
       });
       const { getContext } = await renderProvider();
 
@@ -124,7 +127,9 @@ describe('BillingContext', () => {
       mockEnv.API_KEY_IOS = 'placeholder-key';
       const { getContext } = await renderProvider();
 
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('RevenueCat iOS API key is missing or placeholder'));
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('RevenueCat iOS API key is missing or placeholder'),
+      );
       expect(Purchases.configure).not.toHaveBeenCalled();
       expect(getContext().isLoading).toBe(false);
     });
@@ -134,7 +139,9 @@ describe('BillingContext', () => {
       mockEnv.API_KEY_ANDROID = 'PLACEHOLDER_KEY';
       const { getContext } = await renderProvider();
 
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('RevenueCat Android API key is missing or placeholder'));
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('RevenueCat Android API key is missing or placeholder'),
+      );
       expect(Purchases.configure).not.toHaveBeenCalled();
       expect(getContext().isLoading).toBe(false);
     });
@@ -143,7 +150,10 @@ describe('BillingContext', () => {
       (Purchases.configure as jest.Mock).mockRejectedValueOnce(new Error('Setup failed'));
       const { getContext } = await renderProvider();
 
-      expect(logger.warn).toHaveBeenCalledWith('Error setting up RevenueCat (prevented crash):', 'Setup failed');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Error setting up RevenueCat (prevented crash):',
+        'Setup failed',
+      );
       expect(getContext().isLoading).toBe(false);
     });
   });
@@ -151,7 +161,9 @@ describe('BillingContext', () => {
   describe('Pro Status (__DEV__ vs Prod)', () => {
     it('sets isPro to true automatically in __DEV__', async () => {
       global.__DEV__ = true;
-      (Purchases.getCustomerInfo as jest.Mock).mockResolvedValueOnce({ entitlements: { active: {} } });
+      (Purchases.getCustomerInfo as jest.Mock).mockResolvedValueOnce({
+        entitlements: { active: {} },
+      });
       const { getContext } = await renderProvider();
 
       expect(getContext().isPro).toBe(true);
@@ -160,7 +172,7 @@ describe('BillingContext', () => {
     it('sets isPro to true if customer has pro entitlement in prod', async () => {
       global.__DEV__ = false;
       (Purchases.getCustomerInfo as jest.Mock).mockResolvedValueOnce({
-        entitlements: { active: { pro: {} } }
+        entitlements: { active: { pro: {} } },
       });
       const { getContext } = await renderProvider();
 
@@ -170,7 +182,7 @@ describe('BillingContext', () => {
     it('sets isPro to false if customer lacks pro entitlement in prod', async () => {
       global.__DEV__ = false;
       (Purchases.getCustomerInfo as jest.Mock).mockResolvedValueOnce({
-        entitlements: { active: {} }
+        entitlements: { active: {} },
       });
       const { getContext } = await renderProvider();
 
@@ -197,7 +209,6 @@ describe('BillingContext', () => {
   });
 
   describe('purchasePackage', () => {
-
     it('handles userCancelled error true without logging as error', async () => {
       const { getContext } = await renderProvider();
       const cancelError = new Error('User Cancelled');
@@ -238,14 +249,16 @@ describe('BillingContext', () => {
         await getContext().purchasePackage({ identifier: 'pro' });
       });
 
-      expect(logger.warn).toHaveBeenCalledWith('Cannot purchase package: RevenueCat is not configured.');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Cannot purchase package: RevenueCat is not configured.',
+      );
       expect(Purchases.purchasePackage).not.toHaveBeenCalled();
     });
 
     it('purchases a package successfully and updates pro status', async () => {
       const { getContext } = await renderProvider();
       (Purchases.purchasePackage as jest.Mock).mockResolvedValueOnce({
-        customerInfo: { entitlements: { active: { pro: {} } } }
+        customerInfo: { entitlements: { active: { pro: {} } } },
       });
 
       await act(async () => {
@@ -311,14 +324,16 @@ describe('BillingContext', () => {
         await getContext().restorePurchases();
       });
 
-      expect(logger.warn).toHaveBeenCalledWith('Cannot restore purchases: RevenueCat is not configured.');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Cannot restore purchases: RevenueCat is not configured.',
+      );
       expect(Purchases.restorePurchases).not.toHaveBeenCalled();
     });
 
     it('restores purchases successfully and updates pro status', async () => {
       const { getContext } = await renderProvider();
       (Purchases.restorePurchases as jest.Mock).mockResolvedValueOnce({
-        entitlements: { active: { pro: {} } }
+        entitlements: { active: { pro: {} } },
       });
 
       await act(async () => {

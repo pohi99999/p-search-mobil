@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 
@@ -9,7 +10,6 @@ import { formatChatErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-
 
 interface Message {
   id: string;
@@ -33,20 +33,22 @@ const MessageItem = React.memo(({ item }: { item: Message }) => {
   const isError = item.id.startsWith('err-');
 
   return (
-    <View style={[
-      styles.messageRow,
-      isUser ? styles.userRow : styles.aiRow
-    ]}>
-      <Surface style={[
-        styles.bubble,
-        isUser ? styles.userBubble : styles.aiBubble,
-        isError && styles.errorBubble
-      ]} elevation={1}>
-        <Text style={[
-          styles.messageText,
-          isUser ? styles.userText : styles.aiText,
-          isError && styles.errorText
-        ]}>
+    <View style={[styles.messageRow, isUser ? styles.userRow : styles.aiRow]}>
+      <Surface
+        style={[
+          styles.bubble,
+          isUser ? styles.userBubble : styles.aiBubble,
+          isError && styles.errorBubble,
+        ]}
+        elevation={1}
+      >
+        <Text
+          style={[
+            styles.messageText,
+            isUser ? styles.userText : styles.aiText,
+            isError && styles.errorText,
+          ]}
+        >
           {item.text}
         </Text>
 
@@ -64,11 +66,11 @@ const MessageItem = React.memo(({ item }: { item: Message }) => {
           </View>
         )}
 
-        <Text style={[
-          styles.timestampText,
-          isUser ? styles.userTimestamp : styles.aiTimestamp
-        ]}>
-          {new Date(item.created_at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}
+        <Text style={[styles.timestampText, isUser ? styles.userTimestamp : styles.aiTimestamp]}>
+          {new Date(item.created_at).toLocaleTimeString('hu-HU', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </Text>
       </Surface>
     </View>
@@ -76,6 +78,20 @@ const MessageItem = React.memo(({ item }: { item: Message }) => {
 });
 MessageItem.displayName = 'MessageItem';
 
+const getSecureItemAsync = async (key: string) => {
+  if (Platform.OS === 'web') {
+    return await AsyncStorage.getItem(key);
+  }
+  return await SecureStore.getItemAsync(key);
+};
+
+const setSecureItemAsync = async (key: string, value: string) => {
+  if (Platform.OS === 'web') {
+    await AsyncStorage.setItem(key, value);
+  } else {
+    await SecureStore.setItemAsync(key, value);
+  }
+};
 
 export function CopilotChatScreen({ route, navigation }: Props) {
   const { profile } = useProfile();
@@ -84,8 +100,8 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       id: 'welcome',
       text: 'Szia! Én vagyok a P-Search AI asszisztense. Miben segíthetek a pályázati felkészülésed során?',
       sender: 'ai',
-      created_at: new Date().toISOString()
-    }
+      created_at: new Date().toISOString(),
+    },
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -99,13 +115,14 @@ export function CopilotChatScreen({ route, navigation }: Props) {
   // felhasználónként elkülönüljön (elkerülve a kijelentkezés utáni "átszivárgást")
   useEffect(() => {
     let isMounted = true;
-    supabase.auth.getSession()
+    supabase.auth
+      .getSession()
       .then(({ data }) => {
         if (isMounted) {
           setUserId(data?.session?.user?.id ?? null);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         logger.error('Failed to resolve authenticated user for chat history:', err);
         if (isMounted) {
           setUserId(null);
@@ -124,7 +141,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
     if (!userId) return;
     const loadHistory = async () => {
       try {
-        const stored = await AsyncStorage.getItem(getChatHistoryStorageKey(userId, matchId));
+        const stored = await getSecureItemAsync(getChatHistoryStorageKey(userId, matchId));
         if (stored) {
           const parsed: unknown = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -144,7 +161,10 @@ export function CopilotChatScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!hasLoadedHistoryRef.current || !userId) return;
     const cappedMessages = messages.slice(-MAX_HISTORY_MESSAGES);
-    AsyncStorage.setItem(getChatHistoryStorageKey(userId, matchId), JSON.stringify(cappedMessages)).catch(err => {
+    setSecureItemAsync(
+      getChatHistoryStorageKey(userId, matchId),
+      JSON.stringify(cappedMessages),
+    ).catch((err) => {
       logger.error('Failed to persist chat history:', err);
     });
   }, [messages, matchId, userId]);
@@ -166,10 +186,10 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       id: crypto.randomUUID(),
       text: userText,
       sender: 'user',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
 
@@ -180,8 +200,8 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           message: userText,
           history: messages.slice(-MAX_HISTORY_MESSAGES),
           business_profile_id: profile?.id || null,
-          match_id: matchId
-        }
+          match_id: matchId,
+        },
       });
 
       if (invokeError) throw invokeError;
@@ -190,7 +210,9 @@ export function CopilotChatScreen({ route, navigation }: Props) {
       const replyText = data?.reply || data?.text || data?.response || '';
 
       if (!replyText) {
-        throw new Error('Sajnálom, hiba történt az AI válasz generálása során. Kérlek, próbáld újra!');
+        throw new Error(
+          'Sajnálom, hiba történt az AI válasz generálása során. Kérlek, próbáld újra!',
+        );
       }
 
       const sources = Array.isArray(data?.sources) ? data.sources : undefined;
@@ -200,10 +222,10 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         text: replyText,
         sender: 'ai',
         created_at: new Date().toISOString(),
-        sources: sources
+        sources: sources,
       };
-      
-      setMessages(prev => [...prev, aiResponse]);
+
+      setMessages((prev) => [...prev, aiResponse]);
     } catch (err: unknown) {
       logger.error('Chat error details:', err);
       const errorMessageText = formatChatErrorMessage(err);
@@ -212,17 +234,17 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         id: `err-${crypto.randomUUID()}`,
         text: errorMessageText,
         sender: 'ai',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
   };
 
-    return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
@@ -230,19 +252,25 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+          onPress={() =>
+            navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')
+          }
           testID="copilot-chat-back-button"
         />
         <View style={styles.headerTextContainer}>
-          <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
-          <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+          <Text variant="titleMedium" style={styles.headerTitle}>
+            AI Pályázati Copilot
+          </Text>
+          <Text variant="bodySmall" style={styles.headerSubtitle}>
+            Aktív és intelligens segítség
+          </Text>
         </View>
       </View>
 
       <FlatList
         ref={flatListRef}
         data={messages}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => <MessageItem item={item} />}
         contentContainerStyle={styles.listContent}
         ListFooterComponent={
@@ -431,5 +459,5 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#455A64',
     fontWeight: '600',
-  }
+  },
 });

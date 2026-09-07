@@ -15,7 +15,9 @@ function reportToSentry(level: 'warning' | 'error', args: unknown[]) {
   if (errorArg) {
     Sentry.captureException(errorArg);
   } else {
-    const message = args.map(arg => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' ');
+    const message = args
+      .map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg)))
+      .join(' ');
     Sentry.captureMessage(message, level);
   }
 }
@@ -42,5 +44,5 @@ export const logger = {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.debug(...args);
     }
-  }
+  },
 };

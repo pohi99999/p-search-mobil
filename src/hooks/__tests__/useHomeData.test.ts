@@ -15,7 +15,7 @@ jest.mock('../../lib/supabase', () => ({
     from: jest.fn(),
     functions: {
       invoke: jest.fn(),
-    }
+    },
   },
 }));
 
@@ -46,7 +46,9 @@ describe('useHomeData', () => {
     (useBilling as jest.Mock).mockReturnValue({ isPro: false });
 
     Alert.alert = jest.fn();
-    supabase.functions.invoke = jest.fn().mockResolvedValue({ data: { success: true }, error: null });
+    supabase.functions.invoke = jest
+      .fn()
+      .mockResolvedValue({ data: { success: true }, error: null });
 
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: mockSession },
@@ -59,7 +61,7 @@ describe('useHomeData', () => {
     userData: any = mockUserProfile,
     matchesError = null,
     matchesData: any = mockMatches,
-    updateError = null
+    updateError = null,
   ) => {
     const mockFrom = jest.fn((table: string) => {
       if (table === 'business_profiles') {
@@ -74,10 +76,10 @@ describe('useHomeData', () => {
           select: jest.fn().mockReturnThis(),
           update: jest.fn().mockReturnThis(),
           eq: jest.fn().mockImplementation(() => {
-              if (chain.update.mock.calls.length > 0) {
-                  return Promise.resolve({ error: updateError });
-              }
-              return chain;
+            if (chain.update.mock.calls.length > 0) {
+              return Promise.resolve({ error: updateError });
+            }
+            return chain;
           }),
           single: jest.fn().mockResolvedValue({ data: userData }),
         };
@@ -163,15 +165,15 @@ describe('useHomeData', () => {
     });
 
     it('handles catch block in fetchData', async () => {
-       const unexpectedErr = new Error('Session error');
-       (supabase.auth.getSession as jest.Mock).mockRejectedValue(unexpectedErr);
+      const unexpectedErr = new Error('Session error');
+      (supabase.auth.getSession as jest.Mock).mockRejectedValue(unexpectedErr);
 
-       const { result } = renderHook(() => useHomeData(mockNavigation));
+      const { result } = renderHook(() => useHomeData(mockNavigation));
 
-       await waitFor(() => expect(result.current.loading).toBe(false));
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
-       expect(logger.error).toHaveBeenCalledWith(unexpectedErr);
-       expect(result.current.loading).toBe(false);
+      expect(logger.error).toHaveBeenCalledWith(unexpectedErr);
+      expect(result.current.loading).toBe(false);
     });
   });
 
@@ -201,7 +203,7 @@ describe('useHomeData', () => {
         await result.current.handleNewSearch();
       });
 
-      expect(Alert.alert).toHaveBeenCalledWith("Felhasználói profil nem található!");
+      expect(Alert.alert).toHaveBeenCalledWith('Felhasználói profil nem található!');
     });
 
     it('handles Pro user search', async () => {
@@ -227,11 +229,11 @@ describe('useHomeData', () => {
       expect(supabase.functions.invoke).toHaveBeenCalledWith('match-grants', {
         body: { business_profile_id: mockBusinessProfile.id },
       });
-      expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'AI keresés kész',
-        expect.stringContaining('3'),
+      expect(supabase.functions.invoke).toHaveBeenCalledWith(
+        'trigger-n8n-webhook',
+        expect.any(Object),
       );
+      expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.stringContaining('3'));
     });
 
     it('handles Free user with available search', async () => {
@@ -258,11 +260,11 @@ describe('useHomeData', () => {
       expect(supabase.functions.invoke).toHaveBeenCalledWith('match-grants', {
         body: { business_profile_id: mockBusinessProfile.id },
       });
-      expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'AI keresés kész',
-        expect.stringContaining('2'),
+      expect(supabase.functions.invoke).toHaveBeenCalledWith(
+        'trigger-n8n-webhook',
+        expect.any(Object),
       );
+      expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.stringContaining('2'));
     });
 
     it('surfaces an error when the matching engine fails', async () => {
@@ -308,7 +310,10 @@ describe('useHomeData', () => {
 
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall');
       expect(supabase.functions.invoke).toHaveBeenCalledWith('increment-search-count');
-      expect(supabase.functions.invoke).not.toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
+      expect(supabase.functions.invoke).not.toHaveBeenCalledWith(
+        'trigger-n8n-webhook',
+        expect.any(Object),
+      );
     });
 
     it('handles Free user update error', async () => {
@@ -328,7 +333,7 @@ describe('useHomeData', () => {
       });
 
       expect(logger.error).toHaveBeenCalledWith(updateError);
-      expect(Alert.alert).toHaveBeenCalledWith("Hiba történt a keresési limit ellenőrzésekor!");
+      expect(Alert.alert).toHaveBeenCalledWith('Hiba történt a keresési limit ellenőrzésekor!');
     });
   });
 });

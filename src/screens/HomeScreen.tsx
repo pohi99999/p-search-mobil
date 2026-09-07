@@ -17,24 +17,12 @@ type FlatListItem = MatchWithGrant | AdItem;
 const isAdItem = (item: FlatListItem): item is AdItem =>
   'type' in item && (item as AdItem).type === 'ad';
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
-  const {
-    loading,
-    searching,
-    profile,
-    matches,
-    isPro,
-    fetchData,
-    signOut,
-    handleNewSearch
-  } = useHomeData(navigation);
+  const { loading, searching, profile, matches, isPro, fetchData, signOut, handleNewSearch } =
+    useHomeData(navigation);
 
   const listData = useMemo<FlatListItem[]>(() => {
     if (!isPro && matches.length > 1) {
-      return [
-        matches[0],
-        { type: 'ad' as const, id: 'inline-banner' },
-        ...matches.slice(1),
-      ];
+      return [matches[0], { type: 'ad' as const, id: 'inline-banner' }, ...matches.slice(1)];
     }
     return matches;
   }, [matches, isPro]);
@@ -95,9 +83,9 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           </Button>
         </View>
       </View>
-      
+
       <TesterProgress />
-      
+
       {matches.length === 0 ? (
         <View style={styles.emptyContainer}>
           <HomeEmptyState industryCode={profile?.industry_code} onRefresh={fetchData} />
@@ -112,7 +100,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           onRefresh={fetchData}
         />
       )}
-      
+
       <FAB
         icon={searching ? 'progress-clock' : 'magnify'}
         style={[styles.fab, { bottom: isPro ? 20 : 80 }]}
@@ -122,7 +110,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         loading={searching}
         accessibilityLabel="Új AI keresés indítása"
       />
-      
+
       <AdBanner />
     </View>
   );

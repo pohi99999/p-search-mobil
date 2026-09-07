@@ -21,11 +21,11 @@ jest.mock('react-native-google-mobile-ads', () => {
           }
           mockAdListeners[event].push(callback);
           return () => {
-            mockAdListeners[event] = mockAdListeners[event].filter(cb => cb !== callback);
+            mockAdListeners[event] = mockAdListeners[event].filter((cb) => cb !== callback);
           };
         }),
         load: jest.fn(),
-        show: mockShow
+        show: mockShow,
       })),
     },
     AdEventType: {
@@ -38,11 +38,11 @@ jest.mock('react-native-google-mobile-ads', () => {
 
 const fireAdEvent = (event: string, payload?: any) => {
   if (mockAdListeners[event]) {
-    mockAdListeners[event].forEach(cb => cb(payload));
+    mockAdListeners[event].forEach((cb) => cb(payload));
   }
 };
 
-function HookTester({ isPro, onHookResult }: { isPro: boolean, onHookResult: (res: any) => void }) {
+function HookTester({ isPro, onHookResult }: { isPro: boolean; onHookResult: (res: any) => void }) {
   (useBilling as jest.Mock).mockReturnValue({ isPro });
   const result = useInterstitialAd();
 
@@ -79,8 +79,10 @@ describe('useInterstitialAd', () => {
       renderer.create(
         <HookTester
           isPro={true}
-          onHookResult={(res) => { hookResult = res; }}
-        />
+          onHookResult={(res) => {
+            hookResult = res;
+          }}
+        />,
       );
     });
 
@@ -100,7 +102,14 @@ describe('useInterstitialAd', () => {
   it('updates isLoaded to true when ad is loaded', () => {
     let hookResult: any;
     act(() => {
-      renderer.create(<HookTester isPro={false} onHookResult={(res) => { hookResult = res; }} />);
+      renderer.create(
+        <HookTester
+          isPro={false}
+          onHookResult={(res) => {
+            hookResult = res;
+          }}
+        />,
+      );
     });
 
     expect(hookResult.isLoaded).toBe(false);
@@ -115,7 +124,14 @@ describe('useInterstitialAd', () => {
   it('calls show when ad is loaded and showAdIfAvailable is called', () => {
     let hookResult: any;
     act(() => {
-      renderer.create(<HookTester isPro={false} onHookResult={(res) => { hookResult = res; }} />);
+      renderer.create(
+        <HookTester
+          isPro={false}
+          onHookResult={(res) => {
+            hookResult = res;
+          }}
+        />,
+      );
     });
 
     act(() => {
@@ -132,7 +148,14 @@ describe('useInterstitialAd', () => {
   it('calls onAdFinished and reloads when ad is closed', () => {
     let hookResult: any;
     act(() => {
-      renderer.create(<HookTester isPro={false} onHookResult={(res) => { hookResult = res; }} />);
+      renderer.create(
+        <HookTester
+          isPro={false}
+          onHookResult={(res) => {
+            hookResult = res;
+          }}
+        />,
+      );
     });
 
     act(() => {
@@ -151,13 +174,22 @@ describe('useInterstitialAd', () => {
     expect(onAdFinished).toHaveBeenCalled();
     expect(hookResult.isLoaded).toBe(false);
     // Should have called load again
-    expect((InterstitialAd.createForAdRequest as jest.Mock).mock.calls.length).toBe(initialLoadCalls + 1);
+    expect((InterstitialAd.createForAdRequest as jest.Mock).mock.calls.length).toBe(
+      initialLoadCalls + 1,
+    );
   });
 
   it('calls onAdFinished and resets when ad encounters error', () => {
     let hookResult: any;
     act(() => {
-      renderer.create(<HookTester isPro={false} onHookResult={(res) => { hookResult = res; }} />);
+      renderer.create(
+        <HookTester
+          isPro={false}
+          onHookResult={(res) => {
+            hookResult = res;
+          }}
+        />,
+      );
     });
 
     act(() => {
@@ -180,7 +212,14 @@ describe('useInterstitialAd', () => {
 
     let hookResult: any;
     act(() => {
-      renderer.create(<HookTester isPro={false} onHookResult={(res) => { hookResult = res; }} />);
+      renderer.create(
+        <HookTester
+          isPro={false}
+          onHookResult={(res) => {
+            hookResult = res;
+          }}
+        />,
+      );
     });
 
     act(() => {
@@ -191,7 +230,7 @@ describe('useInterstitialAd', () => {
     await act(async () => {
       hookResult.showAdIfAvailable(onAdFinished);
       // Let promises resolve
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(onAdFinished).toHaveBeenCalled();

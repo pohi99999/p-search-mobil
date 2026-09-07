@@ -69,7 +69,7 @@ const renderDocumentUploadScreen = () =>
         navigation={createNavigationMock()}
         route={{ key: 'document-upload', name: 'DocumentUpload' }}
       />
-    </SafeAreaProvider>
+    </SafeAreaProvider>,
   );
 
 describe('DocumentUploadScreen', () => {
@@ -119,9 +119,9 @@ describe('DocumentUploadScreen', () => {
       component = renderDocumentUploadScreen();
     });
 
-    const uploadButton = component!.root.findAllByType(Button).find(
-      (button) => button.props.children === 'Dokumentum kiválasztása'
-    );
+    const uploadButton = component!.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Dokumentum kiválasztása');
 
     await act(async () => {
       await uploadButton!.props.onPress();
@@ -145,7 +145,6 @@ describe('DocumentUploadScreen', () => {
     expect(tree).toContain('Magas');
   });
 
-
   it('shows snackbar and prevents upload when profile is missing', async () => {
     (useProfile as jest.Mock).mockReturnValue({
       profile: null,
@@ -158,9 +157,9 @@ describe('DocumentUploadScreen', () => {
       component = renderDocumentUploadScreen();
     });
 
-    const uploadButton = component!.root.findAllByType(Button).find(
-      (button) => button.props.children === 'Dokumentum kiválasztása'
-    );
+    const uploadButton = component!.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Dokumentum kiválasztása');
 
     await act(async () => {
       await uploadButton!.props.onPress();
@@ -182,9 +181,9 @@ describe('DocumentUploadScreen', () => {
       component = renderDocumentUploadScreen();
     });
 
-    const uploadButton = component!.root.findAllByType(Button).find(
-      (button) => button.props.children === 'Dokumentum kiválasztása'
-    );
+    const uploadButton = component!.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Dokumentum kiválasztása');
 
     await act(async () => {
       await uploadButton!.props.onPress();
@@ -194,7 +193,7 @@ describe('DocumentUploadScreen', () => {
     expect(tree).toContain('Nem sikerült feldolgozni a dokumentumot');
     expect(logger.error).toHaveBeenCalledWith(
       'DocumentUploadScreen feltöltési hiba:',
-      'Edge function failed'
+      'Edge function failed',
     );
   });
 
@@ -226,7 +225,7 @@ describe('DocumentUploadScreen', () => {
 
     const tree = JSON.stringify(component!.toJSON());
     expect(tree).toContain(
-      'Nem támogatott fájltípus. PDF, JPEG, PNG vagy WebP dokumentumot tölts fel.'
+      'Nem támogatott fájltípus. PDF, JPEG, PNG vagy WebP dokumentumot tölts fel.',
     );
     expect(supabase.functions.invoke).not.toHaveBeenCalled();
   });

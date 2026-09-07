@@ -3,45 +3,56 @@ import { View, StyleSheet } from 'react-native';
 import { List, Checkbox, Button } from 'react-native-paper';
 import { ActionTask, ActionTaskStatus } from '../../types/database';
 
-export const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void }) => {
-  return (
-    <List.Item
-      title={task.title}
-      titleStyle={[
-        styles.taskTitle,
-        task.status === 'done' && styles.doneTaskTitle
-      ]}
-      description={task.description || undefined}
-      descriptionStyle={styles.taskDescription}
-      left={props => (
-        <View style={[props.style, styles.checkboxContainer]}>
-          <Checkbox
-            status={task.status === 'done' ? 'checked' : task.status === 'in_progress' ? 'indeterminate' : 'unchecked'}
+export const TaskItem = memo(
+  ({
+    task,
+    onStatusChange,
+  }: {
+    task: ActionTask;
+    onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void;
+  }) => {
+    return (
+      <List.Item
+        title={task.title}
+        titleStyle={[styles.taskTitle, task.status === 'done' && styles.doneTaskTitle]}
+        description={task.description || undefined}
+        descriptionStyle={styles.taskDescription}
+        left={(props) => (
+          <View style={[props.style, styles.checkboxContainer]}>
+            <Checkbox
+              status={
+                task.status === 'done'
+                  ? 'checked'
+                  : task.status === 'in_progress'
+                    ? 'indeterminate'
+                    : 'unchecked'
+              }
+              onPress={() => onStatusChange(task, task.status)}
+              color="#4CAF50"
+              uncheckedColor="#9E9E9E"
+            />
+          </View>
+        )}
+        right={() => (
+          <Button
+            mode={task.status === 'in_progress' ? 'contained' : 'outlined'}
             onPress={() => onStatusChange(task, task.status)}
-            color="#4CAF50"
-            uncheckedColor="#9E9E9E"
-          />
-        </View>
-      )}
-      right={() => (
-        <Button
-          mode={task.status === 'in_progress' ? 'contained' : 'outlined'}
-          onPress={() => onStatusChange(task, task.status)}
-          compact
-          style={[
-            styles.statusButton,
-            task.status === 'in_progress' && styles.inProgressButton,
-            task.status === 'done' && styles.doneButton
-          ]}
-          labelStyle={styles.statusButtonLabel}
-        >
-          {task.status === 'todo' ? 'Elkezd' : task.status === 'in_progress' ? 'Kész' : 'Újra'}
-        </Button>
-      )}
-      style={styles.listItem}
-    />
-  );
-});
+            compact
+            style={[
+              styles.statusButton,
+              task.status === 'in_progress' && styles.inProgressButton,
+              task.status === 'done' && styles.doneButton,
+            ]}
+            labelStyle={styles.statusButtonLabel}
+          >
+            {task.status === 'todo' ? 'Elkezd' : task.status === 'in_progress' ? 'Kész' : 'Újra'}
+          </Button>
+        )}
+        style={styles.listItem}
+      />
+    );
+  },
+);
 TaskItem.displayName = 'TaskItem';
 
 const styles = StyleSheet.create({

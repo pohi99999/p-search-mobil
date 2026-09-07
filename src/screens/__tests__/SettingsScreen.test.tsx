@@ -53,7 +53,7 @@ const renderSettingsScreen = async () => {
         }}
       >
         <SettingsScreen navigation={navigation} route={{ key: 'settings', name: 'Settings' }} />
-      </SafeAreaProvider>
+      </SafeAreaProvider>,
     );
     await Promise.resolve();
   });
@@ -94,18 +94,18 @@ describe('SettingsScreen', () => {
     expect(tree).toContain('Hetente');
     expect(tree).toContain('Csak kézzel indítom');
 
-    const dailyOption = component.root.findAllByType(List.Item).find(
-      (item) => item.props.title === 'Naponta'
-    );
+    const dailyOption = component.root
+      .findAllByType(List.Item)
+      .find((item) => item.props.title === 'Naponta');
     expect(dailyOption).toBeDefined();
 
     await act(async () => {
       dailyOption!.props.onPress();
     });
 
-    const saveButton = component.root.findAllByType(Button).find(
-      (button) => button.props.children === 'Mentés'
-    );
+    const saveButton = component.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Mentés');
     expect(saveButton).toBeDefined();
 
     await act(async () => {
@@ -142,9 +142,9 @@ describe('SettingsScreen', () => {
     (supabase.from as jest.Mock).mockReturnValue(chain);
 
     const component = await renderSettingsScreen();
-    const saveButton = component.root.findAllByType(Button).find(
-      (button) => button.props.children === 'Mentés'
-    );
+    const saveButton = component.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Mentés');
 
     await act(async () => {
       await saveButton!.props.onPress();

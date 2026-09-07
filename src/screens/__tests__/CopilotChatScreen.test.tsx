@@ -1,6 +1,7 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { CopilotChatScreen } from '../CopilotChatScreen';
 import { supabase } from '../../lib/supabase';
 import { TextInput } from 'react-native-paper';
@@ -15,24 +16,24 @@ jest.mock('../../lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: jest.fn().mockResolvedValue({
-        data: { session: { user: { id: 'test-user-id' } } }
-      })
+        data: { session: { user: { id: 'test-user-id' } } },
+      }),
     },
     from: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           single: jest.fn().mockResolvedValue({
-            data: { id: 'test-business-id' }
-          })
-        })
-      })
+            data: { id: 'test-business-id' },
+          }),
+        }),
+      }),
     }),
     functions: {
       invoke: jest.fn().mockResolvedValue({
-        data: { text: 'Test AI response' }
-      })
-    }
-  }
+        data: { text: 'Test AI response' },
+      }),
+    },
+  },
 }));
 
 // Provide timers mock to resolve tearing down issues with setTimeout used inside React Native Paper and FlatList components
@@ -42,7 +43,10 @@ describe('CopilotChatScreen Error Handling', () => {
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     // For error handling tests, mock session as null to test fallback
-    (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: null });
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -83,11 +87,15 @@ describe('CopilotChatScreen Error Handling', () => {
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Network error');
+    expect(treeStr).toContain(
+      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Network error',
+    );
   });
 
   it('should display the exact error message if it already contains "Sajnálom"', async () => {
-    (supabase.functions.invoke as jest.Mock).mockRejectedValue(new Error('Sajnálom, egyedi hiba történt'));
+    (supabase.functions.invoke as jest.Mock).mockRejectedValue(
+      new Error('Sajnálom, egyedi hiba történt'),
+    );
 
     const route = { params: { matchId: null } } as any;
     const navigation = {} as any;
@@ -133,14 +141,14 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
   const mockRoute: any = {
     params: {
       matchId: 'test-match-id',
-    }
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     // For these tests, mock active session
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-      data: { session: { user: { id: 'test-user-id' } } }
+      data: { session: { user: { id: 'test-user-id' } } },
     });
   });
 
@@ -153,7 +161,7 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
 
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -189,7 +197,7 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
 
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -226,8 +234,8 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { user: { id: 'test-user-id' } } },
     });
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
-    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -236,15 +244,20 @@ describe('CopilotChatScreen Chat History Persistence', () => {
 
   it('loads persisted chat history from AsyncStorage on mount', async () => {
     const storedMessages = [
-      { id: 'm1', text: 'Korábbi kérdésem', sender: 'user', created_at: '2026-08-01T10:00:00.000Z' },
+      {
+        id: 'm1',
+        text: 'Korábbi kérdésem',
+        sender: 'user',
+        created_at: '2026-08-01T10:00:00.000Z',
+      },
       { id: 'm2', text: 'Korábbi AI válasz', sender: 'ai', created_at: '2026-08-01T10:00:05.000Z' },
     ];
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedMessages));
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedMessages));
 
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -252,7 +265,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     expect(treeStr).toContain('Korábbi kérdésem');
     expect(treeStr).toContain('Korábbi AI válasz');
     expect(treeStr).not.toContain('Szia! Én vagyok a P-Search AI asszisztense');
-    expect(AsyncStorage.getItem).toHaveBeenCalledWith(expect.stringContaining('test-match-id'));
+    expect(SecureStore.getItemAsync).toHaveBeenCalledWith(expect.stringContaining('test-match-id'));
 
     await renderer.act(async () => {
       component.unmount();
@@ -260,19 +273,17 @@ describe('CopilotChatScreen Chat History Persistence', () => {
   });
 
   it('scopes the storage key by the authenticated user id so different accounts never collide', async () => {
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
 
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
-    expect(AsyncStorage.getItem).toHaveBeenCalledWith(
-      expect.stringContaining('test-user-id')
-    );
-    const key = (AsyncStorage.getItem as jest.Mock).mock.calls[0][0];
+    expect(SecureStore.getItemAsync).toHaveBeenCalledWith(expect.stringContaining('test-user-id'));
+    const key = (SecureStore.getItemAsync as jest.Mock).mock.calls[0][0];
     expect(key).toBe('@copilot_chat_history_test-user-id_test-match-id');
 
     await renderer.act(async () => {
@@ -286,12 +297,12 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
-    expect(AsyncStorage.getItem).not.toHaveBeenCalled();
-    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
 
     await renderer.act(async () => {
       component.unmount();
@@ -299,12 +310,12 @@ describe('CopilotChatScreen Chat History Persistence', () => {
   });
 
   it('ignores a malformed (non-array) cache entry and falls back to the welcome message', async () => {
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify({ not: 'an array' }));
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify({ not: 'an array' }));
 
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -317,12 +328,12 @@ describe('CopilotChatScreen Chat History Persistence', () => {
   });
 
   it('falls back to the default welcome message when no persisted history exists', async () => {
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
 
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -342,7 +353,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -361,8 +372,8 @@ describe('CopilotChatScreen Chat History Persistence', () => {
       jest.runAllTimers();
     });
 
-    expect(AsyncStorage.setItem).toHaveBeenCalled();
-    const lastCall = (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1);
+    expect(SecureStore.setItemAsync).toHaveBeenCalled();
+    const lastCall = (SecureStore.setItemAsync as jest.Mock).mock.calls.at(-1);
     expect(lastCall[0]).toContain('test-match-id');
     const persisted = JSON.parse(lastCall[1]);
     expect(persisted.some((m: any) => m.text === 'Új kérdésem')).toBe(true);
@@ -381,7 +392,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
       sender: i % 2 === 0 ? 'user' : 'ai',
       created_at: new Date(2026, 0, 1, 0, i).toISOString(),
     }));
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedMessages));
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedMessages));
     (supabase.functions.invoke as jest.Mock).mockResolvedValue({
       data: { reply: 'Új AI válasz' },
     });
@@ -389,13 +400,13 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
     // A betöltés után a cache-be visszaírt másolatnak már csak az utolsó
     // HISTORY_CAP elemet szabad tartalmaznia.
-    const loadPersistCall = (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1);
+    const loadPersistCall = (SecureStore.setItemAsync as jest.Mock).mock.calls.at(-1);
     const persistedAfterLoad = JSON.parse(loadPersistCall[1]);
     expect(persistedAfterLoad.length).toBe(HISTORY_CAP);
     expect(persistedAfterLoad.some((m: any) => m.text === 'Üzenet 0')).toBe(false);
@@ -423,7 +434,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
 
     // A frissen mentett cache-nek is csak az utolsó HISTORY_CAP üzenetet kell tartalmaznia,
     // az új üzenetekkel együtt.
-    const finalPersistCall = (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1);
+    const finalPersistCall = (SecureStore.setItemAsync as jest.Mock).mock.calls.at(-1);
     const finalPersisted = JSON.parse(finalPersistCall[1]);
     expect(finalPersisted.length).toBe(HISTORY_CAP);
     expect(finalPersisted.some((m: any) => m.text === 'Legújabb kérdés')).toBe(true);

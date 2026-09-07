@@ -15,7 +15,8 @@ export function HomeEmptyState({ industryCode, onRefresh }: HomeEmptyStateProps)
         Keresés folyamatban...
       </Text>
       <Text variant="bodyMedium" style={{ textAlign: 'center', marginBottom: 24, color: '#666' }}>
-        Az AI rendszerünk jelenleg elemzi a megadott TEÁOR kódot ({industryCode || 'Ismeretlen'}) és célokat. Kérjük, várj türelemmel, hamarosan megjelennek a számodra releváns pályázatok!
+        Az AI rendszerünk jelenleg elemzi a megadott TEÁOR kódot ({industryCode || 'Ismeretlen'}) és
+        célokat. Kérjük, várj türelemmel, hamarosan megjelennek a számodra releváns pályázatok!
       </Text>
       <Button mode="contained" onPress={onRefresh}>
         Frissítés

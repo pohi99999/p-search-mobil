@@ -23,7 +23,9 @@ describe('useActionPlan', () => {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
-      then: jest.fn().mockImplementation((resolve) => resolve({ data: null, error: new Error(errorMessage) }))
+      then: jest
+        .fn()
+        .mockImplementation((resolve) => resolve({ data: null, error: new Error(errorMessage) })),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -47,7 +49,9 @@ describe('useActionPlan', () => {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
-      then: jest.fn().mockImplementation((resolve) => resolve({ data: null, error: 'A string error' }))
+      then: jest
+        .fn()
+        .mockImplementation((resolve) => resolve({ data: null, error: 'A string error' })),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -66,7 +70,7 @@ describe('useActionPlan', () => {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
-      then: jest.fn().mockImplementation((resolve, reject) => reject(''))
+      then: jest.fn().mockImplementation((resolve, reject) => reject('')),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -80,7 +84,6 @@ describe('useActionPlan', () => {
     expect(result.current.loading).toBe(false);
   });
 
-
   it('should handle errors during updateTaskStatus', async () => {
     const errorMessage = 'Update Error';
 
@@ -93,11 +96,11 @@ describe('useActionPlan', () => {
     (supabase.from as jest.Mock).mockImplementation((table) => {
       if (table === 'action_tasks') {
         return {
-          update: jest.fn().mockReturnValue({ eq: mockUpdateEq })
+          update: jest.fn().mockReturnValue({ eq: mockUpdateEq }),
         };
       }
       return {
-        select: mockSelect
+        select: mockSelect,
       };
     });
 
@@ -107,7 +110,7 @@ describe('useActionPlan', () => {
 
     await act(async () => {
       await expect(
-        result.current.updateTaskStatus('task-1', 'plan-1', 'IN_PROGRESS' as any)
+        result.current.updateTaskStatus('task-1', 'plan-1', 'IN_PROGRESS' as any),
       ).rejects.toThrow(errorMessage);
     });
 
@@ -127,7 +130,7 @@ describe('useActionPlan', () => {
           return resolve({ data: null, error: new Error(errorMessage) });
         }
         return resolve({ data: [], error: null });
-      })
+      }),
     };
     (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -148,19 +151,20 @@ describe('useActionPlan', () => {
     expect(result.current.error).toBeNull();
   });
 
-
   describe('generatePlanForMatch', () => {
     it('should set error state when invokeError is present', async () => {
       const errorMessage = 'Function Invoke Error';
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
         data: null,
-        error: new Error(errorMessage)
+        error: new Error(errorMessage),
       });
 
       const mockFrom = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+        order: jest
+          .fn()
+          .mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -183,13 +187,15 @@ describe('useActionPlan', () => {
       const errorMessage = 'Data Payload Error';
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
         data: { error: errorMessage },
-        error: null
+        error: null,
       });
 
       const mockFrom = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+        order: jest
+          .fn()
+          .mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -211,13 +217,15 @@ describe('useActionPlan', () => {
     it('should successfully generate plan and clear error', async () => {
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
         data: { success: true },
-        error: null
+        error: null,
       });
 
       const mockFrom = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+        order: jest
+          .fn()
+          .mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -226,7 +234,10 @@ describe('useActionPlan', () => {
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       await act(async () => {
-        const response = await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+        const response = await result.current.generatePlanForMatch(
+          'test-business-id',
+          'test-match-id',
+        );
         expect(response).toEqual({ success: true });
       });
 
@@ -236,7 +247,7 @@ describe('useActionPlan', () => {
     it('should refetch plans and update state successfully after generating a plan', async () => {
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
         data: { success: true },
-        error: null
+        error: null,
       });
 
       let callCount = 0;
@@ -255,12 +266,12 @@ describe('useActionPlan', () => {
                 id: 'plan-99',
                 business_profile_id: 'test-business-id',
                 title: 'New Plan',
-                action_tasks: [{ id: 'task-99', status: 'TODO' }]
-              }
+                action_tasks: [{ id: 'task-99', status: 'TODO' }],
+              },
             ],
-            error: null
+            error: null,
           });
-        })
+        }),
       };
       (supabase.from as jest.Mock).mockReturnValue(mockFrom);
 
@@ -276,10 +287,10 @@ describe('useActionPlan', () => {
       });
 
       expect(result.current.plans).toEqual([
-        { id: 'plan-99', business_profile_id: 'test-business-id', title: 'New Plan' }
+        { id: 'plan-99', business_profile_id: 'test-business-id', title: 'New Plan' },
       ]);
       expect(result.current.tasks).toEqual({
-        'plan-99': [{ id: 'task-99', status: 'TODO' }]
+        'plan-99': [{ id: 'task-99', status: 'TODO' }],
       });
       expect(result.current.error).toBeNull();
     });
@@ -340,7 +351,9 @@ describe('useActionPlan', () => {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
-      then: jest.fn().mockImplementation((resolve) => resolve({ data: [initialPlanRow], error: null })),
+      then: jest
+        .fn()
+        .mockImplementation((resolve) => resolve({ data: [initialPlanRow], error: null })),
     };
 
     (supabase.from as jest.Mock).mockImplementation((table: string) => {

@@ -10,7 +10,10 @@ import { TaskItem } from './TaskItem';
 interface ActionPlanCardProps {
   plan: ActionPlan;
   planTasks: ActionTask[];
-  planStats: Record<string, { totalTasks: number; completedTasks: number; progress: number; percentage: number }>;
+  planStats: Record<
+    string,
+    { totalTasks: number; completedTasks: number; progress: number; percentage: number }
+  >;
   handleStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void;
   profile: BusinessProfile | null;
   pdfLoading: boolean;
@@ -28,22 +31,33 @@ export function ActionPlanCard({
   pdfLoading,
   setPdfLoading,
   showAdIfAvailable,
-  refetch
+  refetch,
 }: ActionPlanCardProps) {
-  const { totalTasks, completedTasks, progress, percentage } = planStats[plan.id] || { totalTasks: 0, completedTasks: 0, progress: 0, percentage: 0 };
+  const { totalTasks, completedTasks, progress, percentage } = planStats[plan.id] || {
+    totalTasks: 0,
+    completedTasks: 0,
+    progress: 0,
+    percentage: 0,
+  };
 
   return (
     <Card style={styles.card} mode="elevated">
       <Card.Content style={styles.cardHeader}>
-        <Text variant="titleMedium" style={styles.cardTitle}>{plan.title}</Text>
+        <Text variant="titleMedium" style={styles.cardTitle}>
+          {plan.title}
+        </Text>
         <Text variant="bodySmall" style={styles.cardSubtitle}>
           Létrehozva: {new Date(plan.created_at).toLocaleDateString('hu-HU')}
         </Text>
 
         <View style={styles.progressContainer}>
           <View style={styles.progressLabelRow}>
-            <Text variant="labelMedium" style={styles.progressLabel}>Felkészültség állapota</Text>
-            <Text variant="labelMedium" style={styles.progressValue}>{completedTasks}/{totalTasks} ({percentage}%)</Text>
+            <Text variant="labelMedium" style={styles.progressLabel}>
+              Felkészültség állapota
+            </Text>
+            <Text variant="labelMedium" style={styles.progressValue}>
+              {completedTasks}/{totalTasks} ({percentage}%)
+            </Text>
           </View>
           <ProgressBar
             progress={progress}
@@ -64,9 +78,7 @@ export function ActionPlanCard({
             </React.Fragment>
           ))}
           {planTasks.length === 0 && (
-            <Text style={styles.noTasksText}>
-              Nincsenek feladatok ehhez az akciótervhez.
-            </Text>
+            <Text style={styles.noTasksText}>Nincsenek feladatok ehhez az akciótervhez.</Text>
           )}
         </List.Section>
       </Card.Content>
@@ -81,11 +93,14 @@ export function ActionPlanCard({
               try {
                 await generateAndSharePDF(
                   plan.ai_context.generated_document_html!,
-                  `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`
+                  `${plan.title.replace(/\s+/g, '_')}_mentett.pdf`,
                 );
               } catch (err: unknown) {
                 logger.error('PDF opening error:', err);
-                Alert.alert('Hiba', 'Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.');
+                Alert.alert(
+                  'Hiba',
+                  'Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.',
+                );
               }
             }}
             style={[styles.pdfButton, { marginRight: 8 }]}
@@ -101,28 +116,40 @@ export function ActionPlanCard({
           disabled={pdfLoading}
           onPress={() => {
             if (!profile || !plan.match_id) {
-              Alert.alert('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
+              Alert.alert(
+                'Hiba',
+                'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.',
+              );
               return;
             }
             showAdIfAvailable(async () => {
               setPdfLoading(true);
               try {
-                const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
-                  body: {
-                    business_profile_id: profile.id,
-                    match_id: plan.match_id
-                  }
-                });
+                const { data, error: generateError } = await supabase.functions.invoke(
+                  'generate-document',
+                  {
+                    body: {
+                      business_profile_id: profile.id,
+                      match_id: plan.match_id,
+                    },
+                  },
+                );
 
                 if (generateError) throw generateError;
                 if (data?.error) throw new Error(data.error);
 
-                await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
+                await generateAndSharePDF(
+                  data.html,
+                  `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`,
+                );
 
                 refetch();
               } catch (err: unknown) {
                 logger.error('PDF generation error:', err);
-                Alert.alert('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+                Alert.alert(
+                  'Hiba',
+                  'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.',
+                );
               } finally {
                 setPdfLoading(false);
               }
@@ -130,7 +157,11 @@ export function ActionPlanCard({
           }}
           style={styles.pdfButton}
         >
-          {pdfLoading ? 'Generálás...' : plan.ai_context?.generated_document_html ? 'Újragenerálás' : 'PDF Generálása'}
+          {pdfLoading
+            ? 'Generálás...'
+            : plan.ai_context?.generated_document_html
+              ? 'Újragenerálás'
+              : 'PDF Generálása'}
         </Button>
       </Card.Actions>
     </Card>
@@ -209,5 +240,5 @@ const styles = StyleSheet.create({
   },
   pdfButton: {
     borderRadius: 8,
-  }
+  },
 });

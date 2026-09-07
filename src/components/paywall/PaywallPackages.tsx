@@ -23,8 +23,8 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
               Az előfizetés jelenleg nem elérhető
             </Text>
             <Text variant="bodyMedium" style={styles.unavailableDesc}>
-              A Pro csomag megvásárlása egyelőre nincs bekapcsolva ebben a verzióban.
-              Amint elérhetővé válik, itt fogod látni a részleteket.
+              A Pro csomag megvásárlása egyelőre nincs bekapcsolva ebben a verzióban. Amint
+              elérhetővé válik, itt fogod látni a részleteket.
             </Text>
           </Card.Content>
         </Card>
@@ -32,7 +32,9 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
         packages.map((pkg) => (
           <Card key={pkg.identifier} style={styles.packageCard} mode="elevated">
             <Card.Content style={styles.packageContent}>
-              <Text variant="labelMedium" style={styles.popularBadge}>⭐ LEGNÉPSZERŰBB</Text>
+              <Text variant="labelMedium" style={styles.popularBadge}>
+                ⭐ LEGNÉPSZERŰBB
+              </Text>
               <Text variant="titleLarge" style={styles.packageName}>
                 {pkg.product.title || 'P-Search Pro előfizetés'}
               </Text>

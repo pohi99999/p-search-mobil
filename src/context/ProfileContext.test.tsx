@@ -36,7 +36,7 @@ describe('ProfileContext', () => {
 
     mockOnAuthStateChange = supabase.auth.onAuthStateChange as jest.Mock;
     mockOnAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: mockUnsubscribe } }
+      data: { subscription: { unsubscribe: mockUnsubscribe } },
     });
 
     mockGetSession = supabase.auth.getSession as jest.Mock;
@@ -60,7 +60,7 @@ describe('ProfileContext', () => {
       root = renderer.create(
         <ProfileProvider>
           <TestComponent />
-        </ProfileProvider>
+        </ProfileProvider>,
       );
     });
 
@@ -80,7 +80,7 @@ describe('ProfileContext', () => {
   it('fetches profile successfully if session exists', async () => {
     const mockProfile = { id: 'profile-123', company_name: 'Test Co' };
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-123' } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
     mockSingle.mockResolvedValue({ data: mockProfile, error: null });
 
@@ -97,7 +97,7 @@ describe('ProfileContext', () => {
 
   it('sets profile to null if no profile exists for user', async () => {
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-123' } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
     // PGRST116 is the error code when single() finds no rows
     mockSingle.mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
@@ -108,10 +108,10 @@ describe('ProfileContext', () => {
     expect(getContext().loading).toBe(false);
     expect(logger.error).not.toHaveBeenCalled();
   });
-  it("returns cached profile if already fetched", async () => {
-    const mockProfile = { id: "profile-cached", company_name: "Cached Co" };
+  it('returns cached profile if already fetched', async () => {
+    const mockProfile = { id: 'profile-cached', company_name: 'Cached Co' };
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: "user-123" } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
     mockSingle.mockResolvedValue({ data: mockProfile, error: null });
 
@@ -129,10 +129,10 @@ describe('ProfileContext', () => {
     expect(getContextSecond().profile).toEqual(mockProfile);
     expect(getContextSecond().loading).toBe(false);
   });
-  it("awaits existing fetch promise if concurrent fetch requested", async () => {
-    const mockProfile = { id: "profile-concurrent", company_name: "Concurrent Co" };
+  it('awaits existing fetch promise if concurrent fetch requested', async () => {
+    const mockProfile = { id: 'profile-concurrent', company_name: 'Concurrent Co' };
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: "user-123" } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
 
     let resolveMockSingle: any;
@@ -160,7 +160,7 @@ describe('ProfileContext', () => {
       renderer.create(
         <ProfileProvider>
           <TestComponent />
-        </ProfileProvider>
+        </ProfileProvider>,
       );
     });
 
@@ -183,12 +183,10 @@ describe('ProfileContext', () => {
     expect(getContextSecond.loading).toBe(false);
   });
 
-
-
   it('logs error if fetching profile fails with a non-PGRST116 error', async () => {
     const dbError = { code: 'OTHER_ERR', message: 'DB Error' };
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-123' } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
     mockSingle.mockResolvedValue({ data: null, error: dbError });
 
@@ -202,13 +200,16 @@ describe('ProfileContext', () => {
   it('logs error if the database query throws an exception', async () => {
     const unexpectedError = new Error('Database exception');
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-123' } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
     mockSingle.mockRejectedValue(unexpectedError);
 
     await renderProvider();
 
-    expect(logger.error).toHaveBeenCalledWith('Unexpected error fetching profile in ProfileContext:', unexpectedError);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Unexpected error fetching profile in ProfileContext:',
+      unexpectedError,
+    );
   });
 
   it('logs unexpected errors', async () => {
@@ -217,7 +218,10 @@ describe('ProfileContext', () => {
 
     const { getContext } = await renderProvider();
 
-    expect(logger.error).toHaveBeenCalledWith('Unexpected error fetching profile in ProfileContext:', unexpectedError);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Unexpected error fetching profile in ProfileContext:',
+      unexpectedError,
+    );
     expect(getContext().profile).toBeNull();
     expect(getContext().loading).toBe(false);
   });
@@ -263,7 +267,7 @@ describe('ProfileContext', () => {
 
   it('refreshProfile function correctly fetches data again', async () => {
     mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-123' } } }
+      data: { session: { user: { id: 'user-123' } } },
     });
 
     // First fetch returns one profile

@@ -32,7 +32,10 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
  * swallowed because the user-visible search result must not depend on an
  * external workflow engine being reachable.
  */
-async function triggerSearchWebhook(action: 'new_search_pro' | 'new_search_free', businessId: string) {
+async function triggerSearchWebhook(
+  action: 'new_search_pro' | 'new_search_free',
+  businessId: string,
+) {
   await supabase.functions
     .invoke('trigger-n8n-webhook', {
       body: {
@@ -52,23 +55,14 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      const [
-        { data: profileData, error: profileError },
-        { data: userData }
-      ] = await Promise.all([
-        supabase
-          .from('business_profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single(),
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
+      const [{ data: profileData, error: profileError }, { data: userData }] = await Promise.all([
+        supabase.from('business_profiles').select('*').eq('user_id', session.user.id).single(),
+        supabase.from('profiles').select('*').eq('id', session.user.id).single(),
       ]);
 
       if (userData) {
@@ -125,7 +119,7 @@ function useGrantSearch({
   userProfile,
   setUserProfile,
   isPro,
-  onSearchSuccess
+  onSearchSuccess,
 }: UseGrantSearchProps) {
   const [searching, setSearching] = useState(false);
 
@@ -192,14 +186,8 @@ function useGrantSearch({
 export function useHomeData(navigation: RootStackNavigationProp) {
   const { isPro } = useBilling();
 
-  const {
-    loading,
-    profile,
-    userProfile,
-    setUserProfile,
-    matches,
-    fetchData
-  } = useHomeDataFetch(navigation);
+  const { loading, profile, userProfile, setUserProfile, matches, fetchData } =
+    useHomeDataFetch(navigation);
 
   const { searching, handleNewSearch } = useGrantSearch({
     navigation,
@@ -207,7 +195,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     userProfile,
     setUserProfile,
     isPro,
-    onSearchSuccess: fetchData
+    onSearchSuccess: fetchData,
   });
 
   async function signOut() {
@@ -222,6 +210,6 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     isPro,
     fetchData,
     signOut,
-    handleNewSearch
+    handleNewSearch,
   };
 }

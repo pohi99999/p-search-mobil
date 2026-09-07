@@ -4,8 +4,6 @@ import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/env';
 
-
-
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => {
     return SecureStore.getItemAsync(key);
@@ -65,11 +63,17 @@ export const supabase = new Proxy(rawSupabase, {
           signOut: async () => {
             return { error: null };
           },
-          signInWithPassword: async () => ({ data: { session: mockData.fakeSession, user: mockData.fakeUser }, error: null }),
-          signUp: async () => ({ data: { session: mockData.fakeSession, user: mockData.fakeUser }, error: null }),
+          signInWithPassword: async () => ({
+            data: { session: mockData.fakeSession, user: mockData.fakeUser },
+            error: null,
+          }),
+          signUp: async () => ({
+            data: { session: mockData.fakeSession, user: mockData.fakeUser },
+            error: null,
+          }),
         };
       }
-      
+
       if (prop === 'from') {
         return (table: string) => {
           switch (table) {
@@ -97,17 +101,20 @@ export const supabase = new Proxy(rawSupabase, {
               return rawSupabase.functions.invoke(name, options);
             }
             if (name === 'generate-document') {
-              return { data: { html: '<h1>Mock Üzleti Terv</h1><p>Ez a generált PDF tartalma.</p>' }, error: null };
+              return {
+                data: { html: '<h1>Mock Üzleti Terv</h1><p>Ez a generált PDF tartalma.</p>' },
+                error: null,
+              };
             }
             if (name === 'generate-action-plan') {
               return { data: { success: true }, error: null };
             }
             return { data: {}, error: null };
-          }
+          },
         };
       }
     }
-    
+
     return (target as unknown as Record<string, unknown>)[prop as unknown as string];
-  }
+  },
 });

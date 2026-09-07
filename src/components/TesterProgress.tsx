@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { Surface, Text, ProgressBar } from "react-native-paper";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { logger } from "../utils/logger";
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Surface, Text, ProgressBar } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '../utils/logger';
 
-const STORAGE_KEY = "@beta_testing_days";
+const STORAGE_KEY = '@beta_testing_days';
 const REQUIRED_DAYS = 14;
 
 export const TesterProgress: React.FC = () => {
@@ -18,7 +18,7 @@ export const TesterProgress: React.FC = () => {
         const daysList: string[] = stored ? JSON.parse(stored) : [];
 
         // Ma dátuma YYYY-MM-DD formátumban
-        const today = new Date().toISOString().split("T")[0];
+        const today = new Date().toISOString().split('T')[0];
 
         // Ha a mai nap még nem szerepel a listában, hozzáadjuk
         if (!daysList.includes(today)) {
@@ -58,13 +58,13 @@ export const TesterProgress: React.FC = () => {
 
       <ProgressBar
         progress={progress}
-        color={isCompleted ? "#4CAF50" : "#1976D2"}
+        color={isCompleted ? '#4CAF50' : '#1976D2'}
         style={styles.progressBar}
       />
 
       <Text variant="bodySmall" style={styles.description}>
         {isCompleted
-          ? "Köszönjük! Teljesítetted a 14 napos kötelező tesztelési fázist. 🎉"
+          ? 'Köszönjük! Teljesítetted a 14 napos kötelező tesztelési fázist. 🎉'
           : `Segíts publikálni az appot! Lépj be mindennap. Hátralévő napok száma: ${REQUIRED_DAYS - daysCount} nap.`}
       </Text>
     </Surface>
@@ -78,32 +78,32 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
     borderRadius: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: "#E8EAF6",
+    borderColor: '#E8EAF6',
   },
   headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
   badge: {
-    fontWeight: "bold",
-    color: "#1A237E",
+    fontWeight: 'bold',
+    color: '#1A237E',
   },
   daysText: {
-    fontWeight: "bold",
-    color: "#5C6BC0",
+    fontWeight: 'bold',
+    color: '#5C6BC0',
   },
   progressBar: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#E8EAF6",
+    backgroundColor: '#E8EAF6',
     marginBottom: 6,
   },
   description: {
     fontSize: 11,
-    color: "#757575",
+    color: '#757575',
   },
 });

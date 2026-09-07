@@ -5,7 +5,7 @@ import { useHomeData } from '../../hooks/useHomeData';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
 // We need to properly mock react-native using a full mock, not requireActual, to avoid TurboModule errors in React 19 testing
@@ -20,69 +20,69 @@ jest.mock('react-native', () => {
       flatten: jest.fn(),
     },
     Platform: {
-        OS: 'ios',
-        select: jest.fn((objs) => objs.ios || objs.default),
-        isTesting: true,
+      OS: 'ios',
+      select: jest.fn((objs) => objs.ios || objs.default),
+      isTesting: true,
     },
     NativeModules: {
-        PlatformConstants: {
-            forceTouchAvailable: false,
-        },
-        DevMenu: {}
+      PlatformConstants: {
+        forceTouchAvailable: false,
+      },
+      DevMenu: {},
     },
     TurboModuleRegistry: {
-        get: jest.fn(),
-        getEnforcing: jest.fn(),
+      get: jest.fn(),
+      getEnforcing: jest.fn(),
     },
     Animated: {
-        timing: jest.fn(() => ({ start: jest.fn() })),
-        Value: jest.fn(() => ({ interpolate: jest.fn() })),
-        createAnimatedComponent: jest.fn((c) => c)
+      timing: jest.fn(() => ({ start: jest.fn() })),
+      Value: jest.fn(() => ({ interpolate: jest.fn() })),
+      createAnimatedComponent: jest.fn((c) => c),
     },
     Easing: {
-        bezier: jest.fn(),
-        out: jest.fn(),
-        ease: jest.fn(),
-        in: jest.fn(),
+      bezier: jest.fn(),
+      out: jest.fn(),
+      ease: jest.fn(),
+      in: jest.fn(),
     },
     Dimensions: {
-        get: jest.fn().mockReturnValue({ width: 0, height: 0 }),
+      get: jest.fn().mockReturnValue({ width: 0, height: 0 }),
     },
     InteractionManager: {
-        runAfterInteractions: jest.fn((cb) => cb()),
+      runAfterInteractions: jest.fn((cb) => cb()),
     },
     Keyboard: {
-        dismiss: jest.fn(),
+      dismiss: jest.fn(),
     },
     UIManager: {
-        getViewManagerConfig: jest.fn(),
-    }
+      getViewManagerConfig: jest.fn(),
+    },
   };
 });
 
 jest.mock('react-native-paper', () => {
-    return {
-        Text: 'Text',
-        Button: 'Button',
-        FAB: 'FAB',
-        IconButton: 'IconButton',
-        MD3Colors: { primary50: '#000000' }
-    }
+  return {
+    Text: 'Text',
+    Button: 'Button',
+    FAB: 'FAB',
+    IconButton: 'IconButton',
+    MD3Colors: { primary50: '#000000' },
+  };
 });
 
 jest.mock('react-native-purchases', () => {
-    return {
-        default: {
-            configure: jest.fn(),
-            getCustomerInfo: jest.fn(),
-            getOfferings: jest.fn(),
-            purchasePackage: jest.fn(),
-            restorePurchases: jest.fn(),
-        },
-        PURCHASES_ERROR_CODE: {
-            PURCHASE_CANCELLED_ERROR: 'PURCHASE_CANCELLED_ERROR'
-        }
-    };
+  return {
+    default: {
+      configure: jest.fn(),
+      getCustomerInfo: jest.fn(),
+      getOfferings: jest.fn(),
+      purchasePackage: jest.fn(),
+      restorePurchases: jest.fn(),
+    },
+    PURCHASES_ERROR_CODE: {
+      PURCHASE_CANCELLED_ERROR: 'PURCHASE_CANCELLED_ERROR',
+    },
+  };
 });
 
 jest.mock('react-native-safe-area-context', () => {
@@ -118,7 +118,7 @@ jest.mock('../../utils/logger', () => ({
   },
 }));
 jest.mock('../../lib/supabase', () => ({
-    supabase: {}
+  supabase: {},
 }));
 
 describe('HomeScreen', () => {
@@ -139,14 +139,19 @@ describe('HomeScreen', () => {
   const renderScreen = () => {
     let root: any;
     act(() => {
-        root = renderer.create(
-            <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
-                <HomeScreen navigation={mockNavigation} />
-            </SafeAreaProvider>
-        );
+      root = renderer.create(
+        <SafeAreaProvider
+          initialMetrics={{
+            frame: { x: 0, y: 0, width: 0, height: 0 },
+            insets: { top: 0, left: 0, right: 0, bottom: 0 },
+          }}
+        >
+          <HomeScreen navigation={mockNavigation} />
+        </SafeAreaProvider>,
+      );
     });
     return root;
-  }
+  };
 
   it('renders loading state correctly', () => {
     (useHomeData as jest.Mock).mockReturnValue({
