@@ -7,7 +7,7 @@ import { logger } from '../../utils/logger';
 
 jest.mock('react-native-google-mobile-ads', () => ({
   BannerAd: jest.fn(() => null),
-  BannerAdSize: { ANCHORED_ADAPTIVE_BANNER: 'ANCHORED_ADAPTIVE_BANNER' }
+  BannerAdSize: { ANCHORED_ADAPTIVE_BANNER: 'ANCHORED_ADAPTIVE_BANNER' },
 }));
 
 jest.mock('../../utils/logger', () => ({
@@ -16,7 +16,7 @@ jest.mock('../../utils/logger', () => ({
     error: jest.fn(),
     info: jest.fn(),
     debug: jest.fn(),
-  }
+  },
 }));
 
 describe('AdBanner', () => {

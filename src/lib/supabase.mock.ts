@@ -48,39 +48,43 @@ export const mockMatches = [
     business_id: '11111111-1111-1111-1111-111111111111',
     grant_id: '33333333-3333-3333-3333-333333333333',
     match_score: 95,
-    match_reasoning: 'A cég szoftverfejlesztési tevékenysége és létszáma tökéletesen illeszkedik a digitális megújulást támogató pályázati kiíráshoz.',
+    match_reasoning:
+      'A cég szoftverfejlesztési tevékenysége és létszáma tökéletesen illeszkedik a digitális megújulást támogató pályázati kiíráshoz.',
     status: 'new',
     grants: {
       id: '33333333-3333-3333-3333-333333333333',
       title: 'KKV Digitalizációs Támogatás (GINOP-Plusz)',
-      description: 'Vállalkozások digitális transzformációjának, felhőszolgáltatások bevezetésének és IT eszközbeszerzésének támogatása.',
+      description:
+        'Vállalkozások digitális transzformációjának, felhőszolgáltatások bevezetésének és IT eszközbeszerzésének támogatása.',
       provider: 'Európai Unió / Magyar Állam',
       grant_type: 'támogatás',
       amount_min: 5000000,
       amount_max: 25000000,
       deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       source_url: 'https://palyazat.gov.hu',
-    }
+    },
   },
   {
     id: '44444444-4444-4444-4444-444444444444',
     business_id: '11111111-1111-1111-1111-111111111111',
     grant_id: '55555555-5555-5555-5555-555555555555',
     match_score: 80,
-    match_reasoning: 'Az energetikai korszerűsítési hitel kiváló lehetőséget biztosít a telephely zöldítésére és fenntarthatóbbá tételére.',
+    match_reasoning:
+      'Az energetikai korszerűsítési hitel kiváló lehetőséget biztosít a telephely zöldítésére és fenntarthatóbbá tételére.',
     status: 'interested',
     grants: {
       id: '55555555-5555-5555-5555-555555555555',
       title: 'Zöld Energia Hitelprogram',
-      description: 'Kedvezményes, kamattámogatott hitel vállalkozások részére napelem rendszerek és energiahatékony berendezések telepítésére.',
+      description:
+        'Kedvezményes, kamattámogatott hitel vállalkozások részére napelem rendszerek és energiahatékony berendezések telepítésére.',
       provider: 'MNB / Kereskedelmi Bankok',
       grant_type: 'hitel',
       amount_min: 10000000,
       amount_max: 100000000,
       deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
       source_url: 'https://mnb.hu',
-    }
-  }
+    },
+  },
 ];
 
 export const mockActionPlans = [
@@ -90,11 +94,12 @@ export const mockActionPlans = [
     match_id: '22222222-2222-2222-2222-222222222222',
     title: 'Digitális Felkészülési Terv - GINOP-Plusz',
     ai_context: {
-      generated_document_html: '<h1>Üzleti és Digitalizációs Terv</h1><p>Ez egy automatikusan generált teszt dokumentum.</p>'
+      generated_document_html:
+        '<h1>Üzleti és Digitalizációs Terv</h1><p>Ez egy automatikusan generált teszt dokumentum.</p>',
     },
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
+    updated_at: new Date().toISOString(),
+  },
 ];
 
 export const mockActionTasks = [
@@ -106,17 +111,18 @@ export const mockActionTasks = [
     status: 'done',
     order_index: 0,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   },
   {
     id: 'task-2',
     plan_id: 'plan-111',
     title: 'Felhőszolgáltató kiválasztása',
-    description: 'AWS, Azure vagy Google Cloud árajánlatok összehasonlítása és a döntés előkészítése.',
+    description:
+      'AWS, Azure vagy Google Cloud árajánlatok összehasonlítása és a döntés előkészítése.',
     status: 'in_progress',
     order_index: 1,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   },
   {
     id: 'task-3',
@@ -126,8 +132,8 @@ export const mockActionTasks = [
     status: 'todo',
     order_index: 2,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
+    updated_at: new Date().toISOString(),
+  },
 ];
 
 export const createMockChain = (mockData: unknown, mockError: unknown = null) => {

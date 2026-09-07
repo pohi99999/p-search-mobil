@@ -7,16 +7,17 @@ jest.mock('react-native-paper', () => {
 
   const MockCard = (props: any) => {
     return React.createElement('View', props, props.children);
-  }
+  };
 
   const MockCardContent = (props: any) => {
     return React.createElement('View', props, props.children);
-  }
+  };
 
   MockCard.Content = MockCardContent;
 
   const List = {
-    Item: (props: any) => React.createElement('View', { "data-testID": "list-item", ...props }, props.children)
+    Item: (props: any) =>
+      React.createElement('View', { 'data-testID': 'list-item', ...props }, props.children),
   };
 
   return { Card: MockCard, List };

@@ -27,9 +27,10 @@ export async function generateAndSharePDF(htmlContent: string, fileName: string)
       dialogTitle: fileName,
       UTI: 'com.adobe.pdf', // iOS UTI (Uniform Type Identifier) kompatibilitásért
     });
-
   } catch (error: unknown) {
     logger.error('Hiba történt a PDF generálása vagy megosztása során:', error);
-    throw new Error((getErrorMessage(error)) || 'Nem sikerült előállítani vagy megosztani a PDF dokumentumot.');
+    throw new Error(
+      getErrorMessage(error) || 'Nem sikerült előállítani vagy megosztani a PDF dokumentumot.',
+    );
   }
 }

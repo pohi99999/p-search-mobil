@@ -48,8 +48,8 @@ describe('PaywallPackages', () => {
         priceString: '$4.99',
         currencyCode: 'USD',
         introPrice: null,
-        discounts: []
-      }
+        discounts: [],
+      },
     } as any,
     {
       identifier: 'yearly_pro',
@@ -62,8 +62,8 @@ describe('PaywallPackages', () => {
         priceString: '$49.99',
         currencyCode: 'USD',
         introPrice: null,
-        discounts: []
-      }
+        discounts: [],
+      },
     } as any,
   ];
 
@@ -75,7 +75,7 @@ describe('PaywallPackages', () => {
           packages={[]}
           purchasing={purchasing}
           handlePurchase={mockHandlePurchase}
-        />
+        />,
       );
     });
     return root!;
@@ -111,7 +111,7 @@ describe('PaywallPackages', () => {
       const root = renderEmpty();
 
       const buttons = root.root.findAll(
-        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
+        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained',
       );
 
       expect(buttons).toHaveLength(0);
@@ -135,29 +135,29 @@ describe('PaywallPackages', () => {
             packages={mockPackages}
             purchasing={false}
             handlePurchase={mockHandlePurchase}
-          />
+          />,
         );
       });
 
       // Check first package
       const title1 = root!.root.findAll(
-        (node) => node.type === 'Text' && node.props.children === 'Pro Monthly'
+        (node) => node.type === 'Text' && node.props.children === 'Pro Monthly',
       );
       expect(title1.length).toBeGreaterThan(0);
 
       const price1 = root!.root.findAll(
-        (node) => node.type === 'Text' && node.props.children === '$4.99'
+        (node) => node.type === 'Text' && node.props.children === '$4.99',
       );
       expect(price1.length).toBeGreaterThan(0);
 
       // Check second package
       const title2 = root!.root.findAll(
-        (node) => node.type === 'Text' && node.props.children === 'Pro Yearly'
+        (node) => node.type === 'Text' && node.props.children === 'Pro Yearly',
       );
       expect(title2.length).toBeGreaterThan(0);
 
       const price2 = root!.root.findAll(
-        (node) => node.type === 'Text' && node.props.children === '$49.99'
+        (node) => node.type === 'Text' && node.props.children === '$49.99',
       );
       expect(price2.length).toBeGreaterThan(0);
     });
@@ -171,12 +171,12 @@ describe('PaywallPackages', () => {
             packages={mockPackages}
             purchasing={false}
             handlePurchase={mockHandlePurchase}
-          />
+          />,
         );
       });
 
       const buttons = root!.root.findAll(
-        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
+        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained',
       );
 
       expect(buttons.length).toBe(2);
@@ -198,12 +198,12 @@ describe('PaywallPackages', () => {
             packages={mockPackages}
             purchasing={true}
             handlePurchase={mockHandlePurchase}
-          />
+          />,
         );
       });
 
       const listButtons = rootList!.root.findAll(
-        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained'
+        (node) => typeof node.props.onPress === 'function' && node.props.mode === 'contained',
       );
       expect(listButtons[0].props.disabled).toBe(true);
       expect(listButtons[1].props.disabled).toBe(true);

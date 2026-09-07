@@ -1,14 +1,23 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Button, Surface, Snackbar, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
+import {
+  Text,
+  Button,
+  Surface,
+  Snackbar,
+  ActivityIndicator,
+  Banner,
+  IconButton,
+} from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { ActionTask, ActionTaskStatus } from '../types/database';
 import { useInterstitialAd } from '../hooks/useInterstitialAd';
 
-import type { ActionPlanScreenProps } from "../types/navigation";
-import { logger } from '../utils/logger';
+import type { ActionPlanScreenProps } from '../types/navigation';
 import { ActionPlanCard } from '../components/action-plan/ActionPlanCard';
+import { ActionPlanEmptyState } from '../components/action-plan/ActionPlanEmptyState';
+import { usePlanStats } from '../hooks/usePlanStats';
 
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const matchId = route?.params?.matchId;
@@ -21,56 +30,41 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
 
   const { showAdIfAvailable } = useInterstitialAd();
 
-
-
   // Egyedi hook meghívása a cégprofil azonosítóval
-  const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus, generatePlanForMatch } = useActionPlan(profile?.id);
+  const {
+    plans,
+    tasks,
+    loading: plansLoading,
+    error,
+    refetch,
+    updateTaskStatus,
+    generatePlanForMatch,
+  } = useActionPlan(profile?.id);
 
-  const visiblePlans = matchId ? plans.filter(p => p.match_id === matchId) : plans;
+  const visiblePlans = matchId ? plans.filter((p) => p.match_id === matchId) : plans;
 
-  const handleStatusChange = useCallback(async (task: ActionTask, currentStatus: ActionTaskStatus) => {
-    // Váltogatás: todo -> in_progress -> done -> todo
-    let newStatus: ActionTaskStatus = 'todo';
-    if (currentStatus === 'todo') {
-      newStatus = 'in_progress';
-    } else if (currentStatus === 'in_progress') {
-      newStatus = 'done';
-    } else {
-      newStatus = 'todo';
-    }
-
-    try {
-      await updateTaskStatus(task.id, task.plan_id, newStatus);
-    } catch {
-      Alert.alert('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
-    }
-  }, [updateTaskStatus]);
-
-
-  const planStats = useMemo(() => {
-    const stats: Record<string, { totalTasks: number; completedTasks: number; progress: number; percentage: number }> = {};
-    for (let i = 0; i < visiblePlans.length; i++) {
-      const plan = visiblePlans[i];
-      const planTasks = tasks[plan.id];
-      let totalTasks = 0;
-      let completedTasks = 0;
-
-      if (planTasks) {
-        totalTasks = planTasks.length;
-        for (let j = 0; j < totalTasks; j++) {
-          if (planTasks[j].status === 'done') {
-            completedTasks++;
-          }
-        }
+  const handleStatusChange = useCallback(
+    async (task: ActionTask, currentStatus: ActionTaskStatus) => {
+      // Váltogatás: todo -> in_progress -> done -> todo
+      let newStatus: ActionTaskStatus = 'todo';
+      if (currentStatus === 'todo') {
+        newStatus = 'in_progress';
+      } else if (currentStatus === 'in_progress') {
+        newStatus = 'done';
+      } else {
+        newStatus = 'todo';
       }
 
-      const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
-      const percentage = Math.round(progress * 100);
+      try {
+        await updateTaskStatus(task.id, task.plan_id, newStatus);
+      } catch {
+        Alert.alert('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
+      }
+    },
+    [updateTaskStatus],
+  );
 
-      stats[plan.id] = { totalTasks, completedTasks, progress, percentage };
-    }
-    return stats;
-  }, [visiblePlans, tasks]);
+  const planStats = usePlanStats(visiblePlans, tasks);
 
   const isLoading = profileLoading || plansLoading;
 
@@ -86,7 +80,9 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   if (!profile) {
     return (
       <View style={styles.centerContainer}>
-        <Text variant="bodyLarge" style={{ marginBottom: 16 }}>Nincs kitöltött cégprofilod.</Text>
+        <Text variant="bodyLarge" style={{ marginBottom: 16 }}>
+          Nincs kitöltött cégprofilod.
+        </Text>
         <Button mode="contained" onPress={() => navigation.replace('Onboarding')}>
           Onboarding kitöltése
         </Button>
@@ -100,11 +96,17 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+          onPress={() =>
+            navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')
+          }
           testID="action-plan-back-button"
         />
-        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>
-        <Button mode="text" onPress={refetch} compact>Frissítés</Button>
+        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>
+          Pályázati Felkészülés
+        </Text>
+        <Button mode="text" onPress={refetch} compact>
+          Frissítés
+        </Button>
       </View>
 
       <Banner
@@ -117,7 +119,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         ]}
         icon="alert"
       >
-        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
+        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget
+        vagy főkönyvet!
       </Banner>
 
       {error && (
@@ -126,65 +129,17 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         </Surface>
       )}
 
-
       {visiblePlans.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          {matchId ? (
-            generating ? (
-              <>
-                <ActivityIndicator size="large" color="#1A237E" style={{ marginBottom: 16 }} />
-                <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
-                  Akcióterv generálása folyamatban...
-                </Text>
-                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666' }}>
-                  A Gemini AI elemzi a pályázatot és a cégprofilodat. Ez eltarthat egy kis ideig.
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
-                  Ehhez a pályázathoz még nincs akcióterv
-                </Text>
-                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
-                  Kattints az alábbi gombra, hogy a Gemini AI elkészítse számodra a személyre szabott felkészülési tervet!
-                </Text>
-                <Button
-                  mode="contained"
-                  style={styles.primaryButton}
-                  onPress={async () => {
-                    if (!profile || !matchId) return;
-                    setGenerating(true);
-                    try {
-                      await generatePlanForMatch(profile.id, matchId);
-                      setSnackbarMessage('Akcióterv sikeresen legenerálva!');
-                      setSnackbarVisible(true);
-                    } catch (err: unknown) {
-                      logger.error('Hiba az akcióterv generálása során:', err);
-                      setSnackbarMessage('Hiba történt a generálás során. Kérjük, próbálja újra később.');
-                      setSnackbarVisible(true);
-                    } finally {
-                      setGenerating(false);
-                    }
-                  }}
-                >
-                  Akcióterv Generálása
-                </Button>
-              </>
-            )
-          ) : (
-            <>
-              <Text variant="titleMedium" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 'bold' }}>
-                Nincs aktív akcióterved
-              </Text>
-              <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
-                Jelölj meg egy számodra érdekes pályázatot a főképernyőn, hogy elkészíthessük hozzá a felkészülési tervet!
-              </Text>
-              <Button mode="contained" style={styles.primaryButton} onPress={() => navigation.navigate('Home')}>
-                Pályázatok keresése
-              </Button>
-            </>
-          )}
-        </View>
+        <ActionPlanEmptyState
+          matchId={matchId}
+          generating={generating}
+          profile={profile}
+          onGenerate={generatePlanForMatch}
+          onNavigateHome={() => navigation.navigate('Home')}
+          setGenerating={setGenerating}
+          setSnackbarMessage={setSnackbarMessage}
+          setSnackbarVisible={setSnackbarVisible}
+        />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {visiblePlans.map((plan) => {
@@ -217,7 +172,6 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -230,12 +184,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#F8F9FA',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,10 +205,5 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
     paddingTop: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#1A237E',
-    borderRadius: 8,
-    paddingHorizontal: 8,
   },
 });

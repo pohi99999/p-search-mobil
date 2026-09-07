@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform, Alert } from 'react-native';
-import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 'react-native-purchases';
+import Purchases, {
+  CustomerInfo,
+  PurchasesPackage,
+  PURCHASES_ERROR_CODE,
+} from 'react-native-purchases';
 import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
 import { getErrorMessage, isPurchasesError } from '../utils/error';
 import { logger } from '../utils/logger';
-
 
 interface BillingContextType {
   isPro: boolean;
@@ -50,12 +53,16 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const isPlaceholderIOS = !API_KEY_IOS || API_KEY_IOS.includes('placeholder');
 
         if (Platform.OS === 'android' && isPlaceholderAndroid) {
-          logger.warn('RevenueCat Android API key is missing or placeholder. Skipping RevenueCat initialization.');
+          logger.warn(
+            'RevenueCat Android API key is missing or placeholder. Skipping RevenueCat initialization.',
+          );
           setIsLoading(false);
           return;
         }
         if (Platform.OS === 'ios' && isPlaceholderIOS) {
-          logger.warn('RevenueCat iOS API key is missing or placeholder. Skipping RevenueCat initialization.');
+          logger.warn(
+            'RevenueCat iOS API key is missing or placeholder. Skipping RevenueCat initialization.',
+          );
           setIsLoading(false);
           return;
         }
@@ -92,7 +99,7 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const customerInfoUpdateListener = (customerInfo: CustomerInfo) => {
       checkProStatus(customerInfo);
     };
-    
+
     Purchases.addCustomerInfoUpdateListener(customerInfoUpdateListener);
 
     return () => {
@@ -110,7 +117,9 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { customerInfo } = await Purchases.purchasePackage(pack);
       checkProStatus(customerInfo);
     } catch (e: unknown) {
-      const isCancelled = isPurchasesError(e) && (e.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || e.userCancelled);
+      const isCancelled =
+        isPurchasesError(e) &&
+        (e.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || e.userCancelled);
       if (!isCancelled) {
         logger.error('Error purchasing package:', getErrorMessage(e));
         Alert.alert('Hiba', 'Sikertelen vásárlás');

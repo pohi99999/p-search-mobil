@@ -15,24 +15,24 @@ jest.mock('../../lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: jest.fn().mockResolvedValue({
-        data: { session: { user: { id: 'test-user-id' } } }
-      })
+        data: { session: { user: { id: 'test-user-id' } } },
+      }),
     },
     from: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           single: jest.fn().mockResolvedValue({
-            data: { id: 'test-business-id' }
-          })
-        })
-      })
+            data: { id: 'test-business-id' },
+          }),
+        }),
+      }),
     }),
     functions: {
       invoke: jest.fn().mockResolvedValue({
-        data: { text: 'Test AI response' }
-      })
-    }
-  }
+        data: { text: 'Test AI response' },
+      }),
+    },
+  },
 }));
 
 // Provide timers mock to resolve tearing down issues with setTimeout used inside React Native Paper and FlatList components
@@ -42,7 +42,10 @@ describe('CopilotChatScreen Error Handling', () => {
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     // For error handling tests, mock session as null to test fallback
-    (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: null });
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -83,11 +86,15 @@ describe('CopilotChatScreen Error Handling', () => {
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Network error');
+    expect(treeStr).toContain(
+      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Network error',
+    );
   });
 
   it('should display the exact error message if it already contains "Sajnálom"', async () => {
-    (supabase.functions.invoke as jest.Mock).mockRejectedValue(new Error('Sajnálom, egyedi hiba történt'));
+    (supabase.functions.invoke as jest.Mock).mockRejectedValue(
+      new Error('Sajnálom, egyedi hiba történt'),
+    );
 
     const route = { params: { matchId: null } } as any;
     const navigation = {} as any;
@@ -133,14 +140,14 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
   const mockRoute: any = {
     params: {
       matchId: 'test-match-id',
-    }
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     // For these tests, mock active session
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-      data: { session: { user: { id: 'test-user-id' } } }
+      data: { session: { user: { id: 'test-user-id' } } },
     });
   });
 
@@ -153,7 +160,7 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
 
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -189,7 +196,7 @@ describe('CopilotChatScreen Empty Input Behavior', () => {
 
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -236,7 +243,12 @@ describe('CopilotChatScreen Chat History Persistence', () => {
 
   it('loads persisted chat history from AsyncStorage on mount', async () => {
     const storedMessages = [
-      { id: 'm1', text: 'Korábbi kérdésem', sender: 'user', created_at: '2026-08-01T10:00:00.000Z' },
+      {
+        id: 'm1',
+        text: 'Korábbi kérdésem',
+        sender: 'user',
+        created_at: '2026-08-01T10:00:00.000Z',
+      },
       { id: 'm2', text: 'Korábbi AI válasz', sender: 'ai', created_at: '2026-08-01T10:00:05.000Z' },
     ];
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(storedMessages));
@@ -244,7 +256,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -265,13 +277,11 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
-    expect(AsyncStorage.getItem).toHaveBeenCalledWith(
-      expect.stringContaining('test-user-id')
-    );
+    expect(AsyncStorage.getItem).toHaveBeenCalledWith(expect.stringContaining('test-user-id'));
     const key = (AsyncStorage.getItem as jest.Mock).mock.calls[0][0];
     expect(key).toBe('@copilot_chat_history_test-user-id_test-match-id');
 
@@ -286,7 +296,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -304,7 +314,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -322,7 +332,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -342,7 +352,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 
@@ -389,7 +399,7 @@ describe('CopilotChatScreen Chat History Persistence', () => {
     let component: renderer.ReactTestRenderer;
     await renderer.act(async () => {
       component = renderer.create(
-        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />
+        <CopilotChatScreen navigation={mockNavigation} route={mockRoute} />,
       );
     });
 

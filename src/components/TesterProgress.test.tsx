@@ -36,7 +36,7 @@ describe('TesterProgress', () => {
     await act(async () => {
       resolvePromise(null);
       // Give the next tick a chance to run so state updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
   });
 
@@ -54,10 +54,9 @@ describe('TesterProgress', () => {
       (node) =>
         node.type === 'Text' &&
         node.props.children &&
-        (
-          node.props.children === '0/14 nap aktív' ||
-          (Array.isArray(node.props.children) && node.props.children.join('') === '0/14 nap aktív')
-        )
+        (node.props.children === '0/14 nap aktív' ||
+          (Array.isArray(node.props.children) &&
+            node.props.children.join('') === '0/14 nap aktív')),
     );
 
     expect(daysTextInstances.length).toBeGreaterThan(0);
@@ -77,10 +76,9 @@ describe('TesterProgress', () => {
       (node) =>
         node.type === 'Text' &&
         node.props.children &&
-        (
-          node.props.children === '1/14 nap aktív' ||
-          (Array.isArray(node.props.children) && node.props.children.join('') === '1/14 nap aktív')
-        )
+        (node.props.children === '1/14 nap aktív' ||
+          (Array.isArray(node.props.children) &&
+            node.props.children.join('') === '1/14 nap aktív')),
     );
 
     expect(daysTextInstances.length).toBeGreaterThan(0);
@@ -102,10 +100,9 @@ describe('TesterProgress', () => {
       (node) =>
         node.type === 'Text' &&
         node.props.children &&
-        (
-          node.props.children === '3/14 nap aktív' ||
-          (Array.isArray(node.props.children) && node.props.children.join('') === '3/14 nap aktív')
-        )
+        (node.props.children === '3/14 nap aktív' ||
+          (Array.isArray(node.props.children) &&
+            node.props.children.join('') === '3/14 nap aktív')),
     );
 
     expect(daysTextInstances.length).toBeGreaterThan(0);
@@ -114,9 +111,9 @@ describe('TesterProgress', () => {
 
   it('shows completion message when required days are met', async () => {
     const today = new Date().toISOString().split('T')[0];
-    const existingDays = Array.from({ length: 14 }, (_, i) => `2026-06-${i+1}`);
+    const existingDays = Array.from({ length: 14 }, (_, i) => `2026-06-${i + 1}`);
     if (!existingDays.includes(today)) {
-        existingDays.push(today);
+      existingDays.push(today);
     }
 
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(existingDays));
@@ -129,7 +126,8 @@ describe('TesterProgress', () => {
     const completionInstances = root.root.findAll(
       (node) =>
         node.type === 'Text' &&
-        node.props.children === 'Köszönjük! Teljesítetted a 14 napos kötelező tesztelési fázist. 🎉'
+        node.props.children ===
+          'Köszönjük! Teljesítetted a 14 napos kötelező tesztelési fázist. 🎉',
     );
 
     expect(completionInstances.length).toBeGreaterThan(0);

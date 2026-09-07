@@ -57,9 +57,9 @@ describe('generateAndSharePDF', () => {
   it('should throw an error if sharing is not available', async () => {
     (Sharing.isAvailableAsync as jest.Mock).mockResolvedValue(false);
 
-    await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
-      .rejects
-      .toThrow('A megosztás nem támogatott ezen az eszközön.');
+    await expect(generateAndSharePDF(mockHtmlContent, mockFileName)).rejects.toThrow(
+      'A megosztás nem támogatott ezen az eszközön.',
+    );
 
     expect(Print.printToFileAsync).toHaveBeenCalledTimes(1);
     expect(Sharing.isAvailableAsync).toHaveBeenCalledTimes(1);
@@ -71,9 +71,7 @@ describe('generateAndSharePDF', () => {
     const errorMessage = 'Print failed';
     (Print.printToFileAsync as jest.Mock).mockRejectedValue(new Error(errorMessage));
 
-    await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
-      .rejects
-      .toThrow(errorMessage);
+    await expect(generateAndSharePDF(mockHtmlContent, mockFileName)).rejects.toThrow(errorMessage);
 
     expect(Sharing.isAvailableAsync).not.toHaveBeenCalled();
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
@@ -84,9 +82,7 @@ describe('generateAndSharePDF', () => {
     const errorMessage = 'Sharing failed';
     (Sharing.shareAsync as jest.Mock).mockRejectedValue(new Error(errorMessage));
 
-    await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
-      .rejects
-      .toThrow(errorMessage);
+    await expect(generateAndSharePDF(mockHtmlContent, mockFileName)).rejects.toThrow(errorMessage);
 
     expect(Print.printToFileAsync).toHaveBeenCalledTimes(1);
     expect(Sharing.isAvailableAsync).toHaveBeenCalledTimes(1);
@@ -96,9 +92,9 @@ describe('generateAndSharePDF', () => {
   it('should handle non-Error objects being thrown', async () => {
     (Print.printToFileAsync as jest.Mock).mockRejectedValue('String error message');
 
-    await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
-      .rejects
-      .toThrow('String error message');
+    await expect(generateAndSharePDF(mockHtmlContent, mockFileName)).rejects.toThrow(
+      'String error message',
+    );
 
     expect(console.error).toHaveBeenCalled();
   });
@@ -106,9 +102,9 @@ describe('generateAndSharePDF', () => {
   it('should fallback to default error message if error message is empty', async () => {
     (Print.printToFileAsync as jest.Mock).mockRejectedValue('');
 
-    await expect(generateAndSharePDF(mockHtmlContent, mockFileName))
-      .rejects
-      .toThrow('Nem sikerült előállítani vagy megosztani a PDF dokumentumot.');
+    await expect(generateAndSharePDF(mockHtmlContent, mockFileName)).rejects.toThrow(
+      'Nem sikerült előállítani vagy megosztani a PDF dokumentumot.',
+    );
 
     expect(console.error).toHaveBeenCalled();
   });

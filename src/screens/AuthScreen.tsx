@@ -11,7 +11,6 @@ export function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const theme = useTheme();
 
-
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -54,9 +53,15 @@ export function AuthScreen() {
     });
 
     if (error) {
-      Alert.alert('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
+      Alert.alert(
+        'Hiba regisztrációkor',
+        'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.',
+      );
     } else if (data.session == null) {
-      Alert.alert('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
+      Alert.alert(
+        'Sikeres regisztráció!',
+        'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.',
+      );
     } else {
       Alert.alert('Sikeres regisztráció!');
     }
@@ -64,13 +69,16 @@ export function AuthScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <Surface style={styles.surface} elevation={4}>
         <View style={styles.header}>
-          <Text variant="headlineMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
+          <Text
+            variant="headlineMedium"
+            style={{ fontWeight: 'bold', color: theme.colors.primary }}
+          >
             P-Search
           </Text>
           <Text variant="titleMedium" style={{ color: theme.colors.secondary, marginTop: 8 }}>
@@ -81,7 +89,11 @@ export function AuthScreen() {
         <View style={styles.form}>
           <TextInput
             label="E-mail cím"
-            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="email" {...props} />} />}
+            left={
+              <TextInput.Icon
+                icon={(props) => <MaterialCommunityIcons name="email" {...props} />}
+              />
+            }
             onChangeText={(text) => setEmail(text)}
             value={email}
             placeholder="ceged@pelda.hu"
@@ -91,7 +103,9 @@ export function AuthScreen() {
           />
           <TextInput
             label="Jelszó"
-            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} />}
+            left={
+              <TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} />
+            }
             onChangeText={(text) => setPassword(text)}
             value={password}
             secureTextEntry={true}
@@ -111,11 +125,7 @@ export function AuthScreen() {
             {isLogin ? 'Bejelentkezés' : 'Regisztráció'}
           </Button>
 
-          <Button
-            mode="text"
-            onPress={() => setIsLogin(!isLogin)}
-            style={styles.switchButton}
-          >
+          <Button mode="text" onPress={() => setIsLogin(!isLogin)} style={styles.switchButton}>
             {isLogin ? 'Nincs még fiókod? Regisztrálj!' : 'Már van fiókod? Lépj be!'}
           </Button>
         </View>

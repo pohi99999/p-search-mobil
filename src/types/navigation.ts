@@ -22,4 +22,7 @@ export type CopilotChatScreenRouteProp = RouteProp<RootStackParamList, 'CopilotC
 
 export type ActionPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'ActionPlan'>;
 export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
-export type DocumentUploadScreenProps = NativeStackScreenProps<RootStackParamList, 'DocumentUpload'>;
+export type DocumentUploadScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'DocumentUpload'
+>;
