@@ -9,9 +9,7 @@ import renderer, { act } from 'react-test-renderer';
  * @testing-library/react-hooks' renderHook so existing hook tests need only
  * swap their import.
  */
-export function renderHook<TResult, TProps = undefined>(
-  callback: (props: TProps) => TResult
-) {
+export function renderHook<TResult, TProps = undefined>(callback: (props: TProps) => TResult) {
   const result: { current: TResult } = { current: undefined as unknown as TResult };
 
   function TestComponent({ hookProps }: { hookProps: TProps }) {

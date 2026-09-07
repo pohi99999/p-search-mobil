@@ -11,32 +11,34 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 // Mock Supabase globally for this test
 jest.mock('../../lib/supabase', () => {
   const mockSingle = jest.fn().mockResolvedValue({
-    data: { id: 'test-business-id' }
+    data: { id: 'test-business-id' },
   });
   const mockEq = jest.fn().mockReturnValue({
-    single: mockSingle
+    single: mockSingle,
   });
   const mockSelect = jest.fn().mockReturnValue({
-    eq: mockEq
+    eq: mockEq,
   });
   const mockFrom = jest.fn().mockReturnValue({
-    select: mockSelect
+    select: mockSelect,
   });
 
   return {
     supabase: {
       auth: {
         getSession: jest.fn().mockResolvedValue({
-          data: { session: { user: { id: 'test-user-id' } } }
+          data: { session: { user: { id: 'test-user-id' } } },
         }),
-        onAuthStateChange: jest.fn().mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } })
+        onAuthStateChange: jest
+          .fn()
+          .mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } }),
       },
       from: mockFrom,
       functions: {
         invoke: jest.fn().mockResolvedValue({
-          data: { text: 'Test AI response' }
-        })
-      }
+          data: { text: 'Test AI response' },
+        }),
+      },
     },
     mockSingle, // Exported to count calls
   };
@@ -58,11 +60,11 @@ describe('CopilotChatScreen Performance', () => {
     // Mount the app-level provider
     let appLevelComponent: renderer.ReactTestRenderer;
     await renderer.act(async () => {
-        appLevelComponent = renderer.create(
-            <ProfileProvider>
-                <></>
-            </ProfileProvider>
-        )
+      appLevelComponent = renderer.create(
+        <ProfileProvider>
+          <></>
+        </ProfileProvider>,
+      );
     });
 
     await renderer.act(async () => {
@@ -73,11 +75,11 @@ describe('CopilotChatScreen Performance', () => {
 
     // Navigate to Chat Screen
     await renderer.act(async () => {
-        appLevelComponent.update(
-            <ProfileProvider>
-                <CopilotChatScreen route={route} navigation={navigation} />
-            </ProfileProvider>
-        )
+      appLevelComponent.update(
+        <ProfileProvider>
+          <CopilotChatScreen route={route} navigation={navigation} />
+        </ProfileProvider>,
+      );
     });
 
     await renderer.act(async () => {
@@ -86,11 +88,11 @@ describe('CopilotChatScreen Performance', () => {
 
     // Navigate Away
     await renderer.act(async () => {
-        appLevelComponent.update(
-            <ProfileProvider>
-                <></>
-            </ProfileProvider>
-        )
+      appLevelComponent.update(
+        <ProfileProvider>
+          <></>
+        </ProfileProvider>,
+      );
     });
 
     await renderer.act(async () => {
@@ -99,11 +101,11 @@ describe('CopilotChatScreen Performance', () => {
 
     // Navigate Back to Chat Screen
     await renderer.act(async () => {
-        appLevelComponent.update(
-            <ProfileProvider>
-                <CopilotChatScreen route={route} navigation={navigation} />
-            </ProfileProvider>
-        )
+      appLevelComponent.update(
+        <ProfileProvider>
+          <CopilotChatScreen route={route} navigation={navigation} />
+        </ProfileProvider>,
+      );
     });
 
     await renderer.act(async () => {

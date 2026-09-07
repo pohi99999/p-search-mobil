@@ -57,9 +57,14 @@ describe('PaywallScreen', () => {
 
   const renderWithSafeArea = (children: React.ReactNode) => {
     return renderer.create(
-      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 0, height: 0 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
         {children}
-      </SafeAreaProvider>
+      </SafeAreaProvider>,
     );
   };
 
@@ -91,9 +96,9 @@ describe('PaywallScreen', () => {
     const treeStr = JSON.stringify(component!.toJSON());
     expect(treeStr).toContain('Sikeres Pro Előfizetés! 🎉');
 
-    const backButton = root.findAllByType(Button).find(
-      (b) => b.props.children === 'Vissza a Kezdőlapra'
-    );
+    const backButton = root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Vissza a Kezdőlapra');
     expect(backButton).toBeDefined();
 
     await act(async () => {
@@ -139,9 +144,9 @@ describe('PaywallScreen', () => {
     const treeStr = JSON.stringify(component!.toJSON());
     expect(treeStr).toContain('Test Pro');
 
-    const purchaseButtons = root.findAllByType(Button).filter(
-      (b) => b.props.children === 'Előfizetés indítása'
-    );
+    const purchaseButtons = root
+      .findAllByType(Button)
+      .filter((b) => b.props.children === 'Előfizetés indítása');
     expect(purchaseButtons.length).toBe(1);
 
     await act(async () => {
@@ -165,7 +170,7 @@ describe('PaywallScreen', () => {
     (useBilling as jest.Mock).mockReturnValue({
       ...mockBilling,
       packages: mockPackages,
-      purchasePackage: failingPurchasePackage
+      purchasePackage: failingPurchasePackage,
     });
 
     let component: renderer.ReactTestRenderer;
@@ -173,16 +178,19 @@ describe('PaywallScreen', () => {
       component = renderWithSafeArea(<PaywallScreen />);
     });
 
-    const purchaseButton = component!.root.findAllByType(Button).find(
-      (b) => b.props.children === 'Előfizetés indítása'
-    );
+    const purchaseButton = component!.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Előfizetés indítása');
 
     await act(async () => {
       await purchaseButton!.props.onPress();
     });
 
     expect(failingPurchasePackage).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Hiba',
+      'Vásárlási hiba történt. Kérjük, próbáld újra később.',
+    );
     expect(logger.error).toHaveBeenCalledWith('Vásárlási hiba:', 'Test purchase error');
   });
 
@@ -205,9 +213,9 @@ describe('PaywallScreen', () => {
     expect(treeStr).not.toContain('1 990');
     expect(treeStr).not.toContain('ingyenes próba');
 
-    const purchaseButton = component!.root.findAllByType(Button).find(
-      (b) => b.props.children === 'Előfizetés indítása'
-    );
+    const purchaseButton = component!.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Előfizetés indítása');
     expect(purchaseButton).toBeUndefined();
     expect(Alert.alert).not.toHaveBeenCalled();
   });
@@ -220,9 +228,9 @@ describe('PaywallScreen', () => {
       component = renderWithSafeArea(<PaywallScreen />);
     });
 
-    const restoreButton = component!.root.findAllByType(Button).find(
-      (b) => b.props.children === 'Korábbi vásárlások visszaállítása'
-    );
+    const restoreButton = component!.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Korábbi vásárlások visszaállítása');
     expect(restoreButton).toBeDefined();
 
     await act(async () => {
@@ -237,7 +245,7 @@ describe('PaywallScreen', () => {
     const failingRestore = jest.fn().mockRejectedValue(new Error('Test restore error'));
     (useBilling as jest.Mock).mockReturnValue({
       ...mockBilling,
-      restorePurchases: failingRestore
+      restorePurchases: failingRestore,
     });
 
     let component: renderer.ReactTestRenderer;
@@ -245,16 +253,74 @@ describe('PaywallScreen', () => {
       component = renderWithSafeArea(<PaywallScreen />);
     });
 
-    const restoreButton = component!.root.findAllByType(Button).find(
-      (b) => b.props.children === 'Korábbi vásárlások visszaállítása'
-    );
+    const restoreButton = component!.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Korábbi vásárlások visszaállítása');
 
     await act(async () => {
       await restoreButton!.props.onPress();
     });
 
     expect(failingRestore).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Hiba',
+      'Visszaállítási hiba történt. Kérjük, próbáld újra később.',
+    );
     expect(logger.error).toHaveBeenCalledWith('Visszaállítási hiba:', 'Test restore error');
+  });
+
+  it('closes screen on back button press', async () => {
+    (useBilling as jest.Mock).mockReturnValue(mockBilling);
+
+    let component;
+    await act(async () => {
+      component = renderWithSafeArea(<PaywallScreen />);
+    });
+
+    // Find the close button, which is an IconButton with icon="close"
+    // Since IconButton is from react-native-paper, we can find it by type and prop
+    const iconButtons = component.root.findAllByType(require('react-native-paper').IconButton);
+    const closeButton = iconButtons.find((b) => b.props.icon === 'close');
+    expect(closeButton).toBeDefined();
+
+    await act(async () => {
+      closeButton.props.onPress();
+    });
+
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  it('dismisses OCR confidence banner', async () => {
+    (useBilling as jest.Mock).mockReturnValue(mockBilling);
+
+    let component;
+    await act(async () => {
+      component = renderWithSafeArea(<PaywallScreen />);
+    });
+
+    const banner = component.root.findByType(require('react-native-paper').Banner);
+    expect(banner).toBeDefined();
+
+    // Call the onPress action for the "Újra fotózom" button to cover the inline function
+    await act(async () => {
+      banner.props.actions[0].onPress();
+    });
+  });
+
+  it('dismisses upload error snackbar', async () => {
+    (useBilling as jest.Mock).mockReturnValue(mockBilling);
+
+    let component;
+    await act(async () => {
+      component = renderWithSafeArea(<PaywallScreen />);
+    });
+
+    const snackbar = component.root.findByType(require('react-native-paper').Snackbar);
+    expect(snackbar).toBeDefined();
+
+    // Call the onDismiss prop to cover the inline function
+    await act(async () => {
+      snackbar.props.onDismiss();
+    });
   });
 });

@@ -14,7 +14,8 @@ export const PaywallSuccess = ({ onBack }: PaywallSuccessProps) => {
         Sikeres Pro Előfizetés! 🎉
       </Text>
       <Text variant="bodyLarge" style={styles.successSubtitle}>
-        Köszönjük a bizalmat! Mostantól korlátlan hozzáférésed van az összes prémium funkcióhoz reklámok nélkül.
+        Köszönjük a bizalmat! Mostantól korlátlan hozzáférésed van az összes prémium funkcióhoz
+        reklámok nélkül.
       </Text>
       <Button mode="contained" onPress={onBack} style={styles.backButtonPro}>
         Vissza a Kezdőlapra

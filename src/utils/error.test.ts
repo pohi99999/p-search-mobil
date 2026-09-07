@@ -57,14 +57,14 @@ describe('formatChatErrorMessage', () => {
   it('wraps the error message in a standard format if it does not contain "Sajnálom"', () => {
     const error = new Error('Valami rosszul sült el');
     expect(formatChatErrorMessage(error)).toBe(
-      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Valami rosszul sült el. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!'
+      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Valami rosszul sült el. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!',
     );
   });
 
   it('uses a fallback message if the extracted error message is empty', () => {
     const error = new Error('');
     expect(formatChatErrorMessage(error)).toBe(
-      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: hálózati hiba. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!'
+      'Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: hálózati hiba. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!',
     );
   });
 });

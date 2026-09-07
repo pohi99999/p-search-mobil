@@ -17,9 +17,7 @@ describe('HomeEmptyState', () => {
 
     let root: renderer.ReactTestRenderer | undefined;
     await act(async () => {
-      root = renderer.create(
-        <HomeEmptyState onRefresh={onRefreshMock} />
-      );
+      root = renderer.create(<HomeEmptyState onRefresh={onRefreshMock} />);
     });
 
     if (!root) {
@@ -27,7 +25,7 @@ describe('HomeEmptyState', () => {
     }
 
     // Verify it shows "Ismeretlen" when no industryCode is provided
-    const texts = root.root.findAll(node => {
+    const texts = root.root.findAll((node) => {
       if (node.props.children) {
         const children = Array.isArray(node.props.children)
           ? node.props.children.join('')
@@ -46,9 +44,7 @@ describe('HomeEmptyState', () => {
 
     let root: renderer.ReactTestRenderer | undefined;
     await act(async () => {
-      root = renderer.create(
-        <HomeEmptyState industryCode={testCode} onRefresh={onRefreshMock} />
-      );
+      root = renderer.create(<HomeEmptyState industryCode={testCode} onRefresh={onRefreshMock} />);
     });
 
     if (!root) {
@@ -56,7 +52,7 @@ describe('HomeEmptyState', () => {
     }
 
     // Verify it shows the specific code
-    const texts = root.root.findAll(node => {
+    const texts = root.root.findAll((node) => {
       if (node.props.children) {
         const children = Array.isArray(node.props.children)
           ? node.props.children.join('')
@@ -74,9 +70,7 @@ describe('HomeEmptyState', () => {
 
     let root: renderer.ReactTestRenderer | undefined;
     await act(async () => {
-      root = renderer.create(
-        <HomeEmptyState onRefresh={onRefreshMock} />
-      );
+      root = renderer.create(<HomeEmptyState onRefresh={onRefreshMock} />);
     });
 
     if (!root) {
@@ -85,7 +79,7 @@ describe('HomeEmptyState', () => {
 
     // Find the Button by looking for something that has an onPress and mode="contained" (which is the Paper button prop)
     const button = root.root.find(
-      (node) => node.props.onPress !== undefined && node.props.mode === 'contained'
+      (node) => node.props.onPress !== undefined && node.props.mode === 'contained',
     );
 
     expect(button).toBeDefined();

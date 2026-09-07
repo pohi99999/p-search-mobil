@@ -13,7 +13,9 @@ export const PaywallOverlay = ({ purchasing }: PaywallOverlayProps) => {
     <View style={styles.purchasingOverlay}>
       <View style={styles.overlayCard}>
         <ActivityIndicator size="large" color="#1A237E" style={{ marginBottom: 16 }} />
-        <Text variant="titleMedium" style={styles.overlayTitle}>Feldolgozás...</Text>
+        <Text variant="titleMedium" style={styles.overlayTitle}>
+          Feldolgozás...
+        </Text>
         <Text variant="bodyMedium" style={styles.overlaySubtitle}>
           Kérjük, ne zárd be az appot.
         </Text>

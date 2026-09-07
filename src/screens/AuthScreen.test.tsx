@@ -41,14 +41,19 @@ describe('AuthScreen', () => {
       textInputs[1].props.onChangeText('password123');
     });
 
-    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Bejelentkezés');
+    const actionBtn = component.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Bejelentkezés');
 
     await act(async () => {
       await actionBtn.props.onPress();
     });
 
     expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Érvénytelen adat',
+      'Kérlek, valós e-mail címet adj meg.',
+    );
   });
 
   it('prevents sign in with short password', async () => {
@@ -63,14 +68,19 @@ describe('AuthScreen', () => {
       textInputs[1].props.onChangeText('123');
     });
 
-    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Bejelentkezés');
+    const actionBtn = component.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Bejelentkezés');
 
     await act(async () => {
       await actionBtn.props.onPress();
     });
 
     expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Érvénytelen adat',
+      'A jelszónak legalább 8 karakter hosszúnak kell lennie.',
+    );
   });
 
   it('handles signUp error correctly', async () => {
@@ -93,20 +103,25 @@ describe('AuthScreen', () => {
     });
 
     const buttons = component.root.findAllByType(Button);
-    const switchBtn = buttons.find(b => b.props.children === 'Nincs még fiókod? Regisztrálj!');
+    const switchBtn = buttons.find((b) => b.props.children === 'Nincs még fiókod? Regisztrálj!');
 
     await act(async () => {
       switchBtn.props.onPress();
     });
 
-    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Regisztráció');
+    const actionBtn = component.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Regisztráció');
 
     await act(async () => {
       await actionBtn.props.onPress();
     });
 
     expect(supabase.auth.signUp).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Hiba regisztrációkor',
+      'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.',
+    );
   });
 
   it('handles successful signUp with null session (email confirmation required)', async () => {
@@ -127,20 +142,25 @@ describe('AuthScreen', () => {
     });
 
     const buttons = component.root.findAllByType(Button);
-    const switchBtn = buttons.find(b => b.props.children === 'Nincs még fiókod? Regisztrálj!');
+    const switchBtn = buttons.find((b) => b.props.children === 'Nincs még fiókod? Regisztrálj!');
 
     await act(async () => {
       switchBtn.props.onPress();
     });
 
-    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Regisztráció');
+    const actionBtn = component.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Regisztráció');
 
     await act(async () => {
       await actionBtn.props.onPress();
     });
 
     expect(supabase.auth.signUp).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Sikeres regisztráció!',
+      'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.',
+    );
   });
 
   it('handles successful signUp with session', async () => {
@@ -161,13 +181,15 @@ describe('AuthScreen', () => {
     });
 
     const buttons = component.root.findAllByType(Button);
-    const switchBtn = buttons.find(b => b.props.children === 'Nincs még fiókod? Regisztrálj!');
+    const switchBtn = buttons.find((b) => b.props.children === 'Nincs még fiókod? Regisztrálj!');
 
     await act(async () => {
       switchBtn.props.onPress();
     });
 
-    const actionBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Regisztráció');
+    const actionBtn = component.root
+      .findAllByType(Button)
+      .find((b) => b.props.children === 'Regisztráció');
 
     await act(async () => {
       await actionBtn.props.onPress();

@@ -1,4 +1,4 @@
-import { RootStackNavigationProp } from "../types/navigation";
+import { RootStackNavigationProp } from '../types/navigation';
 import React, { useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
@@ -12,7 +12,7 @@ import {
   PaywallFeatures,
   PaywallPackages,
   PaywallOverlay,
-  PaywallSuccess
+  PaywallSuccess,
 } from '../components/paywall';
 
 export const PaywallScreen = () => {
@@ -73,7 +73,8 @@ export const PaywallScreen = () => {
         </Text>
 
         <Text variant="bodyLarge" style={styles.subtitle}>
-          Maximalizáld a pályázati sikereidet a legfejlettebb AI asszisztenssel és korlátlan lehetőségekkel.
+          Maximalizáld a pályázati sikereidet a legfejlettebb AI asszisztenssel és korlátlan
+          lehetőségekkel.
         </Text>
 
         <PaywallFeatures />
@@ -88,7 +89,8 @@ export const PaywallScreen = () => {
           ]}
           icon="alert"
         >
-          A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
+          A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget
+          vagy főkönyvet!
         </Banner>
 
         {isLoading && !purchasing ? (
@@ -113,17 +115,14 @@ export const PaywallScreen = () => {
         </Button>
 
         <Text variant="bodySmall" style={styles.disclaimer}>
-          Az előfizetés automatikusan megújul, de bármikor lemondható a Google Play Áruház fiók beállításaiban.
+          Az előfizetés automatikusan megújul, de bármikor lemondható a Google Play Áruház fiók
+          beállításaiban.
         </Text>
       </ScrollView>
 
       <PaywallOverlay purchasing={purchasing} />
 
-      <Snackbar
-        visible={!!uploadError}
-        onDismiss={() => setUploadError(null)}
-        duration={3000}
-      >
+      <Snackbar visible={!!uploadError} onDismiss={() => setUploadError(null)} duration={3000}>
         {uploadError}
       </Snackbar>
     </View>

@@ -14,7 +14,6 @@ export const clearProfileCache = () => {
   fetchPromise = null;
 };
 
-
 interface ProfileContextType {
   profile: BusinessProfile | null;
   loading: boolean;
@@ -62,7 +61,9 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
       try {
         let currentUserId = userId;
         if (!currentUserId) {
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           currentUserId = session?.user?.id;
         }
 
@@ -103,7 +104,9 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     // In production with Supabase JS v2, INITIAL_SESSION fires immediately inside this call.
     let listenerFired = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       listenerFired = true;
       if (session?.user) {
         // Only force refresh if it's an actual state change, not the initial session load,
@@ -127,7 +130,9 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, refreshProfile: () => fetchProfile(true), setProfile }}>
+    <ProfileContext.Provider
+      value={{ profile, loading, refreshProfile: () => fetchProfile(true), setProfile }}
+    >
       {children}
     </ProfileContext.Provider>
   );

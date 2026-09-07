@@ -5,7 +5,7 @@ import { PaywallSuccess } from '../PaywallSuccess';
 jest.mock('react-native-paper', () => ({
   Button: 'Button',
   Text: 'Text',
-  IconButton: 'IconButton'
+  IconButton: 'IconButton',
 }));
 
 describe('PaywallSuccess', () => {
@@ -27,19 +27,22 @@ describe('PaywallSuccess', () => {
 
     // Check titles
     const titleInstances = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === 'Sikeres Pro Előfizetés! 🎉'
+      (node) => node.type === 'Text' && node.props.children === 'Sikeres Pro Előfizetés! 🎉',
     );
     expect(titleInstances.length).toBeGreaterThan(0);
 
     // Check subtitle
     const subtitleInstances = root!.root.findAll(
-      (node) => node.type === 'Text' && typeof node.props.children === 'string' && node.props.children.includes('Köszönjük a bizalmat!')
+      (node) =>
+        node.type === 'Text' &&
+        typeof node.props.children === 'string' &&
+        node.props.children.includes('Köszönjük a bizalmat!'),
     );
     expect(subtitleInstances.length).toBeGreaterThan(0);
 
     // Check back button
     const buttonInstances = root!.root.findAll(
-      (node) => node.type === 'Button' && node.props.children === 'Vissza a Kezdőlapra'
+      (node) => node.type === 'Button' && node.props.children === 'Vissza a Kezdőlapra',
     );
     expect(buttonInstances.length).toBeGreaterThan(0);
   });
@@ -52,7 +55,9 @@ describe('PaywallSuccess', () => {
       root = renderer.create(<PaywallSuccess onBack={mockOnBack} />);
     });
 
-    const button = root!.root.find((node) => node.type === 'Button' && node.props.children === 'Vissza a Kezdőlapra');
+    const button = root!.root.find(
+      (node) => node.type === 'Button' && node.props.children === 'Vissza a Kezdőlapra',
+    );
 
     act(() => {
       button.props.onPress();

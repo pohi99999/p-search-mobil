@@ -161,7 +161,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+          onPress={() =>
+            navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')
+          }
           testID="settings-back-button"
           accessibilityLabel="Vissza a főoldalra"
         />

@@ -27,12 +27,14 @@ export const useActionPlan = (businessProfileId?: string) => {
       if (plansData && plansData.length > 0) {
         const { parsedPlans, tasksMap } = plansData.reduce(
           (acc, planRow) => {
-            const { action_tasks, ...plan } = planRow as ActionPlan & { action_tasks: ActionTask[] | null };
+            const { action_tasks, ...plan } = planRow as ActionPlan & {
+              action_tasks: ActionTask[] | null;
+            };
             acc.parsedPlans.push(plan);
             acc.tasksMap[plan.id] = action_tasks || [];
             return acc;
           },
-          { parsedPlans: [] as ActionPlan[], tasksMap: {} as Record<string, ActionTask[]> }
+          { parsedPlans: [] as ActionPlan[], tasksMap: {} as Record<string, ActionTask[]> },
         );
 
         setPlans(parsedPlans);
@@ -48,55 +50,68 @@ export const useActionPlan = (businessProfileId?: string) => {
     }
   }, [businessProfileId]);
 
-  const updateTaskStatus = useCallback(async (taskId: string, planId: string, newStatus: ActionTaskStatus) => {
-    setError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('action_tasks')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', taskId);
+  const updateTaskStatus = useCallback(
+    async (taskId: string, planId: string, newStatus: ActionTaskStatus) => {
+      setError(null);
+      try {
+        const { error: updateError } = await supabase
+          .from('action_tasks')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', taskId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
 
-      // Helyi állapot frissítése a gyorsabb UX érdekében
-      setTasks((prev: Record<string, ActionTask[]>) => {
-        const planTasks = prev[planId] || [];
-        const updatedTasks = planTasks.map((t: ActionTask) =>
-          t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t
-        );
-        return {
-          ...prev,
-          [planId]: updatedTasks
-        };
-      });
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Nem sikerült frissíteni a feladat állapotát.');
-      throw err;
-    }
-  }, []);
+        // Helyi állapot frissítése a gyorsabb UX érdekében
+        setTasks((prev: Record<string, ActionTask[]>) => {
+          const planTasks = prev[planId] || [];
+          const updatedTasks = planTasks.map((t: ActionTask) =>
+            t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t,
+          );
+          return {
+            ...prev,
+            [planId]: updatedTasks,
+          };
+        });
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || 'Nem sikerült frissíteni a feladat állapotát.');
+        throw err;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     fetchPlansAndTasks();
   }, [fetchPlansAndTasks]);
 
-  const generatePlanForMatch = useCallback(async (businessProfileId: string, matchId: string | string[]) => {
-    setError(null);
-    try {
-      const { data, error: invokeError } = await supabase.functions.invoke('generate-action-plan', {
-        body: { business_profile_id: businessProfileId, match_ids: Array.isArray(matchId) ? matchId : [matchId], match_id: Array.isArray(matchId) ? matchId[0] : matchId }
-      });
+  const generatePlanForMatch = useCallback(
+    async (businessProfileId: string, matchId: string | string[]) => {
+      setError(null);
+      try {
+        const { data, error: invokeError } = await supabase.functions.invoke(
+          'generate-action-plan',
+          {
+            body: {
+              business_profile_id: businessProfileId,
+              match_ids: Array.isArray(matchId) ? matchId : [matchId],
+              match_id: Array.isArray(matchId) ? matchId[0] : matchId,
+            },
+          },
+        );
 
-      if (invokeError) throw invokeError;
-      if (data?.error) throw new Error(data.error);
+        if (invokeError) throw invokeError;
+        if (data?.error) throw new Error(data.error);
 
-      // Frissítjük a terveket és feladatokat
-      await fetchPlansAndTasks();
-      return data;
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Nem sikerült legenerálni az akciótervet.');
-      throw err;
-    }
-  }, [fetchPlansAndTasks]);
+        // Frissítjük a terveket és feladatokat
+        await fetchPlansAndTasks();
+        return data;
+      } catch (err: unknown) {
+        setError(getErrorMessage(err) || 'Nem sikerült legenerálni az akciótervet.');
+        throw err;
+      }
+    },
+    [fetchPlansAndTasks],
+  );
 
   return {
     plans,
@@ -105,6 +120,6 @@ export const useActionPlan = (businessProfileId?: string) => {
     error,
     refetch: fetchPlansAndTasks,
     updateTaskStatus,
-    generatePlanForMatch
+    generatePlanForMatch,
   };
 };

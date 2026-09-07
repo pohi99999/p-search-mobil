@@ -24,7 +24,6 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     goals: '',
   });
 
-
   const handleSave = async () => {
     if (!form.company_name) {
       setError('A cégnév megadása kötelező!');
@@ -35,8 +34,10 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     const yearlyRevenueStr = form.yearly_revenue ? form.yearly_revenue.trim() : '';
     const digitsOnly = /^\d+$/;
 
-    if ((employeeCountStr && !digitsOnly.test(employeeCountStr)) ||
-        (yearlyRevenueStr && !digitsOnly.test(yearlyRevenueStr))) {
+    if (
+      (employeeCountStr && !digitsOnly.test(employeeCountStr)) ||
+      (yearlyRevenueStr && !digitsOnly.test(yearlyRevenueStr))
+    ) {
       setError('Hiba történt a mentés során.');
       return;
     }
@@ -45,7 +46,9 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('Nincs bejelentkezett felhasználó!');
 
       const { data: newProfile, error: dbError } = await supabase
@@ -59,7 +62,7 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
             employee_count: employeeCountStr ? parseInt(employeeCountStr, 10) : null,
             yearly_revenue: yearlyRevenueStr ? parseInt(yearlyRevenueStr, 10) : null,
             goals: form.goals,
-          }
+          },
         ])
         .select()
         .single();
@@ -68,18 +71,20 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
 
       // Keresés indítása edge functionön keresztül (Fire and forget, nem várjuk meg)
       if (newProfile) {
-        supabase.functions.invoke('trigger-n8n-webhook', {
-          body: {
-            business_id: newProfile.id,
-            action: 'new_profile_created'
-          }
-        }).catch(err => logger.warn('Edge function hívás hiba:', err));
+        supabase.functions
+          .invoke('trigger-n8n-webhook', {
+            body: {
+              business_id: newProfile.id,
+              action: 'new_profile_created',
+            },
+          })
+          .catch((err) => logger.warn('Edge function hívás hiba:', err));
       }
 
       // Siker esetén navigálás a Home oldalra
       navigation.replace('Home');
     } catch (e: unknown) {
-      setError((getErrorMessage(e)) || 'Hiba történt a mentés során.');
+      setError(getErrorMessage(e) || 'Hiba történt a mentés során.');
     } finally {
       setLoading(false);
     }
@@ -89,12 +94,19 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <ScrollView style={styles.container}>
         <Surface style={styles.surface} elevation={2}>
-          <Text variant="headlineMedium" style={styles.title}>Cégprofil Létrehozása</Text>
+          <Text variant="headlineMedium" style={styles.title}>
+            Cégprofil Létrehozása
+          </Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!
+            Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább
+            megfelelő pályázatokat!
           </Text>
 
-          {error && <HelperText type="error" visible={true}>{error}</HelperText>}
+          {error && (
+            <HelperText type="error" visible={true}>
+              {error}
+            </HelperText>
+          )}
 
           <TextInput
             label="Cégnév *"
@@ -148,9 +160,9 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
             mode="outlined"
           />
 
-          <Button 
-            mode="contained" 
-            onPress={handleSave} 
+          <Button
+            mode="contained"
+            onPress={handleSave}
             loading={loading}
             disabled={loading}
             style={styles.button}

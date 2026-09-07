@@ -15,7 +15,7 @@ jest.mock('../../lib/supabase', () => ({
     },
     from: jest.fn(),
     functions: {
-        invoke: jest.fn(),
+      invoke: jest.fn(),
     },
   },
 }));
@@ -24,13 +24,11 @@ jest.mock('../../components/AdBanner', () => ({
   AdBanner: () => null,
 }));
 
-
 jest.mock('../../utils/logger', () => ({
   logger: {
     warn: jest.fn(),
   },
 }));
-
 
 describe('OnboardingScreen Form Validation', () => {
   beforeEach(() => {
@@ -38,7 +36,10 @@ describe('OnboardingScreen Form Validation', () => {
   });
 
   it('shows error when company name is empty and save is clicked', async () => {
-    const navigationMock = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    const navigationMock = { replace: jest.fn() } as unknown as NativeStackNavigationProp<
+      RootStackParamList,
+      'Onboarding'
+    >;
 
     let root;
     act(() => {
@@ -83,9 +84,9 @@ describe('OnboardingScreen Database Error Handling', () => {
 
     const root = component!.root;
 
-    const companyNameInput = root.findAllByType(TextInput).find(
-      (node) => node.props.label === 'Cégnév *'
-    );
+    const companyNameInput = root
+      .findAllByType(TextInput)
+      .find((node) => node.props.label === 'Cégnév *');
     expect(companyNameInput).toBeTruthy();
 
     await act(async () => {
@@ -108,7 +109,6 @@ describe('OnboardingScreen Database Error Handling', () => {
     expect(mockNavigation.replace).not.toHaveBeenCalled();
   });
 });
-
 
 describe('OnboardingScreen Webhook Handling', () => {
   beforeEach(() => {
@@ -145,9 +145,9 @@ describe('OnboardingScreen Webhook Handling', () => {
 
     const root = component.root;
 
-    const companyNameInput = root.findAllByType(TextInput).find(
-      (node) => node.props.label === 'Cégnév *'
-    );
+    const companyNameInput = root
+      .findAllByType(TextInput)
+      .find((node) => node.props.label === 'Cégnév *');
 
     await act(async () => {
       companyNameInput.props.onChangeText('Test Company');
@@ -162,14 +162,14 @@ describe('OnboardingScreen Webhook Handling', () => {
     // Wait for the fire-and-forget fetch to settle
     await act(async () => {
       await Promise.resolve();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', {
       body: {
         business_id: 'profile-id',
-        action: 'new_profile_created'
-      }
+        action: 'new_profile_created',
+      },
     });
 
     expect(logger.warn).toHaveBeenCalledWith('Edge function hívás hiba:', fetchError);

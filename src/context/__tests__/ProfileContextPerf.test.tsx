@@ -26,7 +26,9 @@ describe('ProfileContext Performance Baseline', () => {
 
     mockGetSession.mockResolvedValue({ data: { session: { user: { id: '123' } } } });
 
-    const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'prof', user_id: '123' }, error: null });
+    const mockSingle = jest
+      .fn()
+      .mockResolvedValue({ data: { id: 'prof', user_id: '123' }, error: null });
     const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
     const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
     mockFrom.mockReturnValue({ select: mockSelect });
@@ -39,11 +41,15 @@ describe('ProfileContext Performance Baseline', () => {
     });
 
     await act(async () => {
-      renderer.create(<ProfileProvider><div>Test</div></ProfileProvider>);
+      renderer.create(
+        <ProfileProvider>
+          <div>Test</div>
+        </ProfileProvider>,
+      );
     });
 
-    console.log("Number of getSession calls:", mockGetSession.mock.calls.length);
-    console.log("Number of profile queries:", mockSingle.mock.calls.length);
+    console.log('Number of getSession calls:', mockGetSession.mock.calls.length);
+    console.log('Number of profile queries:', mockSingle.mock.calls.length);
 
     // We expect it to be redundant if we can use the session from INITIAL_SESSION directly.
   });

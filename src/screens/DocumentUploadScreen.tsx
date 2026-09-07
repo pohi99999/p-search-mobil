@@ -37,13 +37,7 @@ type ProcessMasterDocumentResponse = {
   error?: string;
 };
 
-const acceptedMimeTypes = [
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-];
+const acceptedMimeTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 const inferMimeType = (fileName: string) => {
   const lowerName = fileName.toLowerCase();
@@ -133,7 +127,7 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
             mime_type: mimeType,
             file_name: asset.name,
           },
-        }
+        },
       );
 
       if (error) throw error;
@@ -169,7 +163,9 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+          onPress={() =>
+            navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')
+          }
           testID="document-upload-back-button"
           accessibilityLabel="Vissza a főoldalra"
         />
@@ -188,7 +184,8 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
         ]}
         icon="alert"
       >
-        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
+        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget
+        vagy főkönyvet!
       </Banner>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -237,7 +234,10 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
           <Card style={styles.card} mode="elevated">
             <Card.Title title="Kinyert pénzügyi adatok" />
             <Card.Content>
-              <ResultRow label="Nettó árbevétel" value={formatCurrency(extractedData.net_revenue)} />
+              <ResultRow
+                label="Nettó árbevétel"
+                value={formatCurrency(extractedData.net_revenue)}
+              />
               <ResultRow label="EBITDA" value={formatCurrency(extractedData.ebitda)} />
               <ResultRow label="Saját tőke" value={formatCurrency(extractedData.equity)} />
               <ResultRow label="Létszám" value={formatNumber(extractedData.employee_count)} />
