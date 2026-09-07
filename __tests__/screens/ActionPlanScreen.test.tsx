@@ -240,6 +240,9 @@ describe('ActionPlanScreen', () => {
 
     expect(mockGeneratePlanForMatch).toHaveBeenCalledWith('test-profile', 'match-1');
 
+    const { logger } = require('../../src/utils/logger');
+    expect(logger.error).toHaveBeenCalledWith('Hiba az akcióterv generálása során:', expect.any(Error));
+
     // Find Snackbar
     const snackbar = root.findByType(require('react-native-paper').Snackbar);
     expect(snackbar.props.visible).toBe(true);
