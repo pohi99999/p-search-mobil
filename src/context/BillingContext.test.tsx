@@ -85,6 +85,29 @@ describe('BillingContext', () => {
     };
   };
 
+
+  describe('Default Context Values', () => {
+    it('provides no-op functions by default', async () => {
+      let contextValue: any;
+      const TestComponent = () => {
+        contextValue = useBilling();
+        return null;
+      };
+
+      await act(async () => {
+        renderer.create(<TestComponent />);
+      });
+
+      expect(async () => {
+        await contextValue.purchasePackage({ identifier: 'pro' });
+      }).not.toThrow();
+
+      expect(async () => {
+        await contextValue.restorePurchases();
+      }).not.toThrow();
+    });
+  });
+
   describe('Initialization', () => {
 
     it('cleans up customer info update listener on unmount', async () => {
@@ -144,6 +167,14 @@ describe('BillingContext', () => {
       const { getContext } = await renderProvider();
 
       expect(logger.warn).toHaveBeenCalledWith('Error setting up RevenueCat (prevented crash):', 'Setup failed');
+      expect(getContext().isLoading).toBe(false);
+    });
+
+    it('does not configure Purchases for unsupported platforms', async () => {
+      Platform.OS = 'web';
+      const { getContext } = await renderProvider();
+
+      expect(Purchases.configure).not.toHaveBeenCalled();
       expect(getContext().isLoading).toBe(false);
     });
   });
@@ -291,7 +322,7 @@ describe('BillingContext', () => {
   });
 
   describe('restorePurchases', () => {
-    it('catches and logs error when Purchases.restorePurchases throws an error', async () => {
+    it('catches and logs error when Purchases.restorePurchases throws an error and resets loading', async () => {
       const { getContext } = await renderProvider();
       const testError = new Error('Test restore error');
       (Purchases.restorePurchases as jest.Mock).mockRejectedValueOnce(testError);
@@ -300,7 +331,9 @@ describe('BillingContext', () => {
         await getContext().restorePurchases();
       });
 
+      expect(Purchases.restorePurchases).toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledWith('Error restoring purchases:', 'Test restore error');
+      expect(getContext().isLoading).toBe(false);
     });
 
     it('warns if RevenueCat is not configured', async () => {
@@ -330,18 +363,6 @@ describe('BillingContext', () => {
       expect(getContext().isLoading).toBe(false);
     });
 
-    it('handles restorePurchases error correctly', async () => {
-      const { getContext } = await renderProvider();
-      const error = new Error('Restore failed');
-      (Purchases.restorePurchases as jest.Mock).mockRejectedValueOnce(error);
 
-      await act(async () => {
-        await getContext().restorePurchases();
-      });
-
-      expect(Purchases.restorePurchases).toHaveBeenCalled();
-      expect(logger.error).toHaveBeenCalledWith('Error restoring purchases:', 'Restore failed');
-      expect(getContext().isLoading).toBe(false);
-    });
   });
 });
