@@ -14,8 +14,21 @@ export interface Message {
 
 export const MAX_HISTORY_MESSAGES = 50;
 
+export const CHAT_HISTORY_KEY_PREFIX = '@copilot_chat_history_';
+
 export const getChatHistoryStorageKey = (userId: string, matchId: string | null) =>
-  `@copilot_chat_history_${userId}_${matchId ?? 'general'}`;
+  `${CHAT_HISTORY_KEY_PREFIX}${userId}_${matchId ?? 'general'}`;
+
+// Kijelentkezéskor az eszközön tárolt beszélgetés-előzményt el kell dobni:
+// a tulajdonosi döntés szerint nem titkosítva tároljuk, hanem kilépéskor töröljük.
+// Csak a saját előhívónkkal kezdődő kulcsokat érinti, más tárolt adatot nem.
+export const clearStoredChatHistory = async (): Promise<void> => {
+  const keys = await AsyncStorage.getAllKeys();
+  const chatKeys = keys.filter(key => key.startsWith(CHAT_HISTORY_KEY_PREFIX));
+  if (chatKeys.length > 0) {
+    await AsyncStorage.multiRemove(chatKeys);
+  }
+};
 
 export function useCopilotChat(matchId: string | null, profileId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([

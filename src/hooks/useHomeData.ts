@@ -5,6 +5,7 @@ import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/databa
 import { useBilling } from '../context/BillingContext';
 import { logger } from '../utils/logger';
 import { RootStackNavigationProp } from '../types/navigation';
+import { clearStoredChatHistory } from './useCopilotChat';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 
@@ -211,6 +212,13 @@ export function useHomeData(navigation: RootStackNavigationProp) {
   });
 
   async function signOut() {
+    // Előbb a helyi beszélgetés-előzmény, hogy egy sikertelen hálózati
+    // kijelentkezés se hagyja az eszközön a korábbi chatet.
+    try {
+      await clearStoredChatHistory();
+    } catch (err) {
+      logger.error('Failed to clear stored chat history on sign out:', err);
+    }
     await supabase.auth.signOut();
   }
 
