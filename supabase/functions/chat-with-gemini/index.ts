@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
+import { describeRequestData } from '../_shared/request-log.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -63,7 +64,9 @@ serve(async (req) => {
     console.log('Kérés törzsének (JSON) beolvasása...');
     // Kliens paraméterek beolvasása
     const requestData = await req.json();
-    console.log('Beolvasott adatok:', JSON.stringify(requestData));
+    // Csak a kulcsok es meretek: a tartalom (a felhasznalo uzenete, uzleti
+    // kontextusa) NEM kerulhet a szolgaltatoi naplóba (2026-09-08, merve).
+    console.log('Beolvasott adatok (kulcsok es meretek):', describeRequestData(requestData));
 
     const message = requestData.prompt || requestData.message || requestData.text || '';
     const history = requestData.history || [];

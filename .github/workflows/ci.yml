@@ -24,3 +24,4 @@ jobs:
           deno-version: v2.x
       - run: deno test --allow-env supabase/functions/increment-search-count/
       - run: deno test --allow-env supabase/functions/trigger-n8n-webhook/
+      - run: deno test --allow-read supabase/functions/_shared/
