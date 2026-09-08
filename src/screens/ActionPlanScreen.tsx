@@ -10,6 +10,13 @@ import type { ActionPlanScreenProps } from "../types/navigation";
 import { logger } from '../utils/logger';
 import { ActionPlanCard } from '../components/action-plan/ActionPlanCard';
 
+
+const STATUS_TRANSITION: Record<ActionTaskStatus, ActionTaskStatus> = {
+  todo: 'in_progress',
+  in_progress: 'done',
+  done: 'todo',
+};
+
 export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const matchId = route?.params?.matchId;
   const { profile, loading: profileLoading } = useProfile();
@@ -29,15 +36,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const visiblePlans = matchId ? plans.filter(p => p.match_id === matchId) : plans;
 
   const handleStatusChange = useCallback(async (task: ActionTask, currentStatus: ActionTaskStatus) => {
-    // Váltogatás: todo -> in_progress -> done -> todo
-    let newStatus: ActionTaskStatus = 'todo';
-    if (currentStatus === 'todo') {
-      newStatus = 'in_progress';
-    } else if (currentStatus === 'in_progress') {
-      newStatus = 'done';
-    } else {
-      newStatus = 'todo';
-    }
+    const newStatus = STATUS_TRANSITION[currentStatus] ?? 'todo';
 
     try {
       await updateTaskStatus(task.id, task.plan_id, newStatus);
