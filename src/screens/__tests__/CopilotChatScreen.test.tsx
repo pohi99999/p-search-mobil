@@ -86,6 +86,118 @@ describe('CopilotChatScreen Error Handling', () => {
     expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Network error');
   });
 
+
+  it('should display an error message if supabase.functions.invoke returns invokeError', async () => {
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: null,
+      error: new Error('Invoke Error'),
+    });
+
+    const route = { params: { matchId: null } } as any;
+    const navigation = {} as any;
+
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(<CopilotChatScreen route={route} navigation={navigation} />);
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const root = component!.root;
+    const input = root.findByType(TextInput);
+
+    await renderer.act(async () => {
+      input.props.onChangeText('Test message');
+    });
+
+    await renderer.act(async () => {
+      input.props.right.props.onPress();
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const treeStr = JSON.stringify(component!.toJSON());
+    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Invoke Error');
+  });
+
+  it('should display an error message if data.error is returned', async () => {
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { error: 'Data Error' },
+      error: null,
+    });
+
+    const route = { params: { matchId: null } } as any;
+    const navigation = {} as any;
+
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(<CopilotChatScreen route={route} navigation={navigation} />);
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const root = component!.root;
+    const input = root.findByType(TextInput);
+
+    await renderer.act(async () => {
+      input.props.onChangeText('Test message');
+    });
+
+    await renderer.act(async () => {
+      input.props.right.props.onPress();
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const treeStr = JSON.stringify(component!.toJSON());
+    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Data Error');
+  });
+
+  it('should display a fallback error message if reply is empty', async () => {
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { reply: '' },
+      error: null,
+    });
+
+    const route = { params: { matchId: null } } as any;
+    const navigation = {} as any;
+
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(<CopilotChatScreen route={route} navigation={navigation} />);
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const root = component!.root;
+    const input = root.findByType(TextInput);
+
+    await renderer.act(async () => {
+      input.props.onChangeText('Test message');
+    });
+
+    await renderer.act(async () => {
+      input.props.right.props.onPress();
+    });
+
+    await renderer.act(async () => {
+      jest.runAllTimers();
+    });
+
+    const treeStr = JSON.stringify(component!.toJSON());
+    expect(treeStr).toContain('Sajnálom, hiba történt az AI válasz generálása során. Kérlek, próbáld újra!');
+  });
+
   it('should display the exact error message if it already contains "Sajnálom"', async () => {
     (supabase.functions.invoke as jest.Mock).mockRejectedValue(new Error('Sajnálom, egyedi hiba történt'));
 
