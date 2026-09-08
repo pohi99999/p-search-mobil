@@ -1,7 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
-import { describeRequestData } from '../_shared/request-log.ts';
+import {
+  describeRequestData,
+  describeText,
+  describeJsonText,
+  describeParseError,
+} from '../_shared/request-log.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -74,7 +79,7 @@ serve(async (req) => {
       requestData.business_profile_id || requestData.businessProfileId || null;
     const match_id = requestData.match_id || requestData.matchId || null;
 
-    console.log(`Kinyert prompt/üzenet: "${message}"`);
+    console.log('Kinyert prompt/üzenet:', describeText(message));
     console.log(`Profil ID: ${business_profile_id}, Match ID: ${match_id}`);
     console.log(`Előzmények száma: ${history.length}`);
 
@@ -358,7 +363,7 @@ Példa a kimenetre:
 
     console.log('Gemini hívás sikeresen lefutott.');
     const replyJSONText = result.response.text() || '{}';
-    console.log('Gemini nyers JSON válasz:', replyJSONText);
+    console.log('Gemini nyers JSON válasz:', describeJsonText(replyJSONText));
 
     let reply = 'Sajnálom, nem sikerült választ generálnom.';
     let databaseUpdated = false;
@@ -382,7 +387,7 @@ Példa a kimenetre:
         if (Object.keys(updates).length > 0) {
           console.log(
             'Cégprofil frissítése az adatbázisban a következő értékekkel:',
-            JSON.stringify(updates),
+            describeRequestData(updates),
           );
           const { error: profileError } = await supabaseClient
             .from('business_profiles')
@@ -421,12 +426,16 @@ Példa a kimenetre:
         }
       }
     } catch (parseErr) {
-      console.error('Hiba a Gemini JSON válasz feldolgozásakor:', parseErr, replyJSONText);
+      console.error(
+        'Hiba a Gemini JSON válasz feldolgozásakor:',
+        describeParseError(parseErr),
+        describeJsonText(replyJSONText),
+      );
       // Fallback: Ha mégsem JSON jött vissza, a teljes szöveget küldjük el válaszként
       reply = replyJSONText;
     }
 
-    console.log('Kérés kiszolgálása sikeres. Küldött válasz:', reply);
+    console.log('Kérés kiszolgálása sikeres. Küldött válasz:', describeText(reply));
     return new Response(
       JSON.stringify({
         reply: reply,
