@@ -96,26 +96,42 @@ export function mapTenderToGrant(t: Tender): GrantRecord {
 
 export interface SelectOptions {
   now?: Date;
-  /** If true, only KKV-relevant open grants; else all open grants (KKV as a tag). */
+  /** If true, only KKV-relevant grants; else all (KKV is a scored tag, default). */
   kkvOnly?: boolean;
   existingSourceUrls: ReadonlySet<string>;
 }
 
 export interface SelectResult {
+  /** Everything to write to `grants` this run: open (dated, future) + undated-active. */
   toInsert: GrantRecord[];
+  /** Of toInsert, how many are open (Aktiv + future deadline). This is the >=50 metric. */
+  openCount: number;
+  /** Of toInsert, how many are Aktiv with no usable deadline (deadline=null in the row). */
+  undatedCount: number;
+  /** Candidates dropped because their source_url already exists (DB or earlier in batch). */
   skippedExisting: number;
-  undatedActive: Tender[]; // flagged, not inserted into the "open" set
 }
 
-/** Dedups against existing source_urls and applies the open (+optional KKV) filter. */
-export function selectNewOpenGrants(tenders: Tender[], opts: SelectOptions): SelectResult {
+/**
+ * Selects the grants to ingest this run: OPEN (Aktiv AND future deadline) plus
+ * ACTIVE-UNDATED (Aktiv, no usable deadline). Undated rows carry deadline=null,
+ * which is how the DB (and the app) tells them apart from dated ones -- they must
+ * NOT be shown as expired (owner rule 2026-09-11). Aktiv-but-past-deadline calls
+ * are stale and are NOT ingested. Dedups by source_url against the DB and within
+ * the batch. `kkvOnly` (default false) applies to both categories when set.
+ */
+export function selectGrantsToIngest(tenders: Tender[], opts: SelectOptions): SelectResult {
   const now = opts.now ?? new Date();
-  const undatedActive = tenders.filter(isActiveButUndated);
-  const open = tenders.filter((t) => isOpen(t, now) && (!opts.kkvOnly || isKkvRelevant(t)));
-  let skippedExisting = 0;
+  const kkvOk = (t: Tender) => !opts.kkvOnly || isKkvRelevant(t);
   const seen = new Set<string>();
   const toInsert: GrantRecord[] = [];
-  for (const t of open) {
+  let openCount = 0;
+  let undatedCount = 0;
+  let skippedExisting = 0;
+  for (const t of tenders) {
+    const open = isOpen(t, now);
+    const undated = isActiveButUndated(t);
+    if ((!open && !undated) || !kkvOk(t)) continue;
     const g = mapTenderToGrant(t);
     if (opts.existingSourceUrls.has(g.source_url) || seen.has(g.source_url)) {
       skippedExisting++;
@@ -123,6 +139,8 @@ export function selectNewOpenGrants(tenders: Tender[], opts: SelectOptions): Sel
     }
     seen.add(g.source_url);
     toInsert.push(g);
+    if (open) openCount++;
+    else undatedCount++;
   }
-  return { toInsert, skippedExisting, undatedActive };
+  return { toInsert, openCount, undatedCount, skippedExisting };
 }

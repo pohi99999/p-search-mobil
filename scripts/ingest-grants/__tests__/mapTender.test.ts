@@ -6,7 +6,7 @@ import {
   isActiveButUndated,
   hasFutureDeadline,
   buildSourceUrl,
-  selectNewOpenGrants,
+  selectGrantsToIngest,
 } from '../mapTender';
 
 const NOW = new Date('2026-09-15T00:00:00.000Z');
@@ -83,27 +83,42 @@ describe('open / KKV / undated classification', () => {
   });
 });
 
-describe('selectNewOpenGrants (dedup + filters)', () => {
+describe('selectGrantsToIngest (open + undated, dedup + filters)', () => {
   const closed: Tender = { ...bayVoucher, id: 'x', code: 'CLOSED-1', status: 'Lezárva' };
   const nonKkv: Tender = { ...bayVoucher, id: 'y', code: 'NONKKV-1', beneficiaries: ['Költségvetési szerv'] };
   const undated: Tender = { ...bayVoucher, id: 'z', code: 'UNDATED-1', endTime: null };
+  const stalePast: Tender = { ...bayVoucher, id: 'w', code: 'STALE-1', endTime: '2026-09-01T00:00:00.000Z' };
 
-  it('keeps only open grants, dedups against existing source_urls, and flags undated', () => {
+  it('ingests open + undated-active, dedups existing, drops closed and stale-past', () => {
     const existing = new Set<string>([buildSourceUrl(bayVoucher)]); // already ingested
-    const r = selectNewOpenGrants([bayVoucher, closed, nonKkv, undated], { now: NOW, existingSourceUrls: existing });
-    // bayVoucher is open but already existing -> skipped; nonKkv is open (KKV as tag, not filter) -> inserted
-    expect(r.toInsert.map((g) => g.source_url)).toEqual([buildSourceUrl(nonKkv)]);
-    expect(r.skippedExisting).toBe(1);
-    expect(r.undatedActive.map((t) => t.code)).toEqual(['UNDATED-1']);
+    const r = selectGrantsToIngest([bayVoucher, closed, nonKkv, undated, stalePast], {
+      now: NOW,
+      existingSourceUrls: existing,
+    });
+    const urls = r.toInsert.map((g) => g.source_url).sort();
+    expect(urls).toEqual([buildSourceUrl(nonKkv), buildSourceUrl(undated)].sort());
+    expect(r.openCount).toBe(1); // nonKkv (open, KKV as tag not filter)
+    expect(r.undatedCount).toBe(1); // undated
+    expect(r.skippedExisting).toBe(1); // bayVoucher already existed
+    // stalePast (Aktív but past deadline) is neither open nor undated -> excluded
+    expect(urls).not.toContain(buildSourceUrl(stalePast));
   });
 
-  it('kkvOnly=true excludes non-KKV open grants', () => {
-    const r = selectNewOpenGrants([bayVoucher, nonKkv], { now: NOW, kkvOnly: true, existingSourceUrls: new Set() });
+  it('undated-active rows carry deadline=null (the DB distinguisher, not shown as expired)', () => {
+    const r = selectGrantsToIngest([undated], { now: NOW, existingSourceUrls: new Set() });
+    expect(r.toInsert).toHaveLength(1);
+    expect(r.toInsert[0].deadline).toBeNull();
+    expect(r.undatedCount).toBe(1);
+    expect(r.openCount).toBe(0);
+  });
+
+  it('kkvOnly=true excludes non-KKV grants (default is false: KKV is a scored tag)', () => {
+    const r = selectGrantsToIngest([bayVoucher, nonKkv], { now: NOW, kkvOnly: true, existingSourceUrls: new Set() });
     expect(r.toInsert.map((g) => g.source_url)).toEqual([buildSourceUrl(bayVoucher)]);
   });
 
   it('dedups duplicates within the same batch', () => {
-    const r = selectNewOpenGrants([bayVoucher, { ...bayVoucher }], { now: NOW, existingSourceUrls: new Set() });
+    const r = selectGrantsToIngest([bayVoucher, { ...bayVoucher }], { now: NOW, existingSourceUrls: new Set() });
     expect(r.toInsert).toHaveLength(1);
     expect(r.skippedExisting).toBe(1);
   });
