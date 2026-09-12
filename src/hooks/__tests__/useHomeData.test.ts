@@ -234,12 +234,10 @@ describe('useHomeData', () => {
       );
     });
 
-    it('handles Free user with available search', async () => {
+    it('Free user: search runs match-grants directly (no increment-search-count)', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ isPro: false });
       setupSupabaseMocks();
       (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
-        if (fn === 'increment-search-count') {
-          return Promise.resolve({ data: { allowed: true, newCount: 1 }, error: null });
-        }
         if (fn === 'match-grants') {
           return Promise.resolve({ data: { success: true, matches_found: 2 }, error: null });
         }
@@ -247,22 +245,17 @@ describe('useHomeData', () => {
       });
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
-
       await waitFor(() => expect(result.current.loading).toBe(false));
-
       await act(async () => {
         await result.current.handleNewSearch();
       });
 
-      expect(supabase.functions.invoke).toHaveBeenCalledWith('increment-search-count');
+      // Search is free now: no pre-check call, straight to the matching engine.
+      expect(supabase.functions.invoke).not.toHaveBeenCalledWith('increment-search-count');
       expect(supabase.functions.invoke).toHaveBeenCalledWith('match-grants', {
         body: { business_profile_id: mockBusinessProfile.id },
       });
-      expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'AI keresés kész',
-        expect.stringContaining('2'),
-      );
+      expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.stringContaining('2'));
     });
 
     it('surfaces an error when the matching engine fails', async () => {
@@ -276,59 +269,56 @@ describe('useHomeData', () => {
       });
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
-
       await waitFor(() => expect(result.current.loading).toBe(false));
-
       await act(async () => {
         await result.current.handleNewSearch();
       });
 
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Hiba',
-        expect.stringContaining('Nem sikerült lefuttatni a keresést'),
-      );
-      // The busy flag must be released even on the failure path.
+      expect(Alert.alert).toHaveBeenCalledWith('Hiba', expect.stringContaining('Nem sikerült lefuttatni a keresést'));
       expect(result.current.searching).toBe(false);
     });
 
-    it('handles Free user exhausted search', async () => {
-      setupSupabaseMocks(null, mockBusinessProfile, { id: 'test', search_count: 1 });
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: { allowed: false, reason: 'Limit reached' },
-        error: null,
+    it('Free user over the daily cap: match-grants 403 -> Paywall (no generic error)', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+      setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
+        if (fn === 'match-grants') {
+          const err = Object.assign(new Error('over cap'), { context: { status: 403 } });
+          return Promise.resolve({ data: null, error: err });
+        }
+        return Promise.resolve({ data: {}, error: null });
       });
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
-
       await waitFor(() => expect(result.current.loading).toBe(false));
-
       await act(async () => {
         await result.current.handleNewSearch();
       });
 
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall');
-      expect(supabase.functions.invoke).toHaveBeenCalledWith('increment-search-count');
+      expect(supabase.functions.invoke).not.toHaveBeenCalledWith('increment-search-count');
       expect(supabase.functions.invoke).not.toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
+      expect(Alert.alert).not.toHaveBeenCalledWith('Hiba', expect.stringContaining('Nem sikerült'));
     });
 
-    it('handles Free user update error', async () => {
+    it('Free user: a non-403 match-grants error shows a generic alert, not the Paywall', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ isPro: false });
       setupSupabaseMocks();
-      const updateError = new Error('Invoke failed');
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: null,
-        error: updateError,
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
+        if (fn === 'match-grants') {
+          return Promise.resolve({ data: null, error: new Error('boom') });
+        }
+        return Promise.resolve({ data: {}, error: null });
       });
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
-
       await waitFor(() => expect(result.current.loading).toBe(false));
-
       await act(async () => {
         await result.current.handleNewSearch();
       });
 
-      expect(logger.error).toHaveBeenCalledWith(updateError);
-      expect(Alert.alert).toHaveBeenCalledWith("Hiba történt a keresési limit ellenőrzésekor!");
+      expect(Alert.alert).toHaveBeenCalledWith('Hiba', expect.stringContaining('Nem sikerült lefuttatni a keresést'));
+      expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Paywall');
     });
   });
 });

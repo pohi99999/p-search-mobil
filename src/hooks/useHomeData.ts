@@ -22,7 +22,18 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
     body: { business_profile_id: businessId },
   });
 
-  if (error) throw error;
+  if (error) {
+    // A 403 from match-grants means the free daily cap is used up (or a Pro
+    // gate). That is an upsell moment, not an error: signal the caller to route
+    // to the Paywall instead of showing a generic failure.
+    const status = (error as { context?: { status?: number } })?.context?.status;
+    if (status === 403) {
+      const paywallErr = new Error('paywall') as Error & { paywall?: boolean };
+      paywallErr.paywall = true;
+      throw paywallErr;
+    }
+    throw error;
+  }
   if (data?.error) throw new Error(data.error);
 
   return { matchesFound: Number(data?.matches_found ?? 0) };
@@ -115,7 +126,6 @@ interface UseGrantSearchProps {
   navigation: RootStackNavigationProp;
   profile: BusinessProfile | null;
   userProfile: UserProfile | null;
-  setUserProfile: (profile: UserProfile) => void;
   isPro: boolean;
   onSearchSuccess: () => Promise<void>;
 }
@@ -124,7 +134,6 @@ function useGrantSearch({
   navigation,
   profile,
   userProfile,
-  setUserProfile,
   isPro,
   onSearchSuccess
 }: UseGrantSearchProps) {
@@ -147,6 +156,10 @@ function useGrantSearch({
           : 'Jelenleg nem találtunk új, a cégedhez illeszkedő pályázatot. Amint új kiírás jelenik meg, értesítünk.',
       );
     } catch (err) {
+      if ((err as { paywall?: boolean })?.paywall) {
+        navigation.navigate('Paywall');
+        return;
+      }
       logger.error('Hiba az AI keresés során:', err);
       Alert.alert('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
     } finally {
@@ -166,25 +179,11 @@ function useGrantSearch({
       return;
     }
 
-    if (isPro) {
-      await executeSearch(profile.id, 'new_search_pro');
-      return;
-    }
-
-    const { data, error: invokeError } = await supabase.functions.invoke('increment-search-count');
-
-    if (invokeError) {
-      logger.error(invokeError);
-      Alert.alert('Hiba történt a keresési limit ellenőrzésekor!');
-      return;
-    }
-
-    if (data?.allowed) {
-      setUserProfile({ ...userProfile, search_count: data.newCount });
-      await executeSearch(profile.id, 'new_search_free');
-    } else {
-      navigation.navigate('Paywall');
-    }
+    // Search is free (owner decision 2026-09-12). The daily cost cap (20/day for
+    // non-Pro) and the Pro gate are enforced server-side in match-grants; a 403
+    // there routes the user to the Paywall (handled in executeSearch). No
+    // client-side pre-check, and we no longer call increment-search-count.
+    await executeSearch(profile.id, isPro ? 'new_search_pro' : 'new_search_free');
   };
 
   return { searching, handleNewSearch };
@@ -206,7 +205,6 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     navigation,
     profile,
     userProfile,
-    setUserProfile,
     isPro,
     onSearchSuccess: fetchData
   });
