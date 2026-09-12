@@ -158,6 +158,11 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                       setSnackbarMessage('Akcióterv sikeresen legenerálva!');
                       setSnackbarVisible(true);
                     } catch (err: unknown) {
+                      if ((err as { proRequired?: boolean })?.proRequired) {
+                        // Pro feature: send the user to the Paywall (message already set by the hook).
+                        navigation.navigate('Paywall');
+                        return;
+                      }
                       logger.error('Hiba az akcióterv generálása során:', err);
                       setSnackbarMessage('Hiba történt a generálás során. Kérjük, próbálja újra később.');
                       setSnackbarVisible(true);
@@ -200,6 +205,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                 setPdfLoading={setPdfLoading}
                 showAdIfAvailable={showAdIfAvailable}
                 refetch={refetch}
+                onProRequired={() => navigation.navigate('Paywall')}
               />
             );
           })}

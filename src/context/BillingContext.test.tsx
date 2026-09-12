@@ -28,6 +28,8 @@ jest.mock('react-native-purchases', () => {
   return {
     configure: jest.fn(),
     getCustomerInfo: jest.fn().mockResolvedValue({ entitlements: { active: {} } }),
+    logIn: jest.fn().mockResolvedValue({ customerInfo: { entitlements: { active: {} } }, created: false }),
+    logOut: jest.fn().mockResolvedValue({ entitlements: { active: {} } }),
     getOfferings: jest.fn().mockResolvedValue({ current: null }),
     addCustomerInfoUpdateListener: jest.fn(),
     removeCustomerInfoUpdateListener: jest.fn(),
@@ -46,6 +48,16 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
+let mockSession: { user: { id: string } } | null = null;
+jest.mock('../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: jest.fn(() => Promise.resolve({ data: { session: mockSession } })),
+      onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+    },
+  },
+}));
+
 describe('BillingContext', () => {
   const originalDev = global.__DEV__;
 
@@ -58,6 +70,7 @@ describe('BillingContext', () => {
       API_KEY_IOS: 'test-ios-key',
     };
     global.__DEV__ = false;
+    mockSession = null;
     (isPurchasesError as jest.Mock).mockReturnValue(false);
   });
 
@@ -86,6 +99,20 @@ describe('BillingContext', () => {
   };
 
   describe('Initialization', () => {
+
+    it('logs the Supabase user into RevenueCat so the webhook can map the tier', async () => {
+      Platform.OS = 'ios';
+      mockSession = { user: { id: 'user-xyz' } };
+      await renderProvider();
+      expect(Purchases.logIn).toHaveBeenCalledWith('user-xyz');
+    });
+
+    it('does not call logIn when no user is signed in', async () => {
+      Platform.OS = 'ios';
+      mockSession = null;
+      await renderProvider();
+      expect(Purchases.logIn).not.toHaveBeenCalled();
+    });
 
     it('cleans up customer info update listener on unmount', async () => {
       const { root } = await renderProvider();
@@ -159,6 +186,7 @@ describe('BillingContext', () => {
 
     it('sets isPro to true if customer has pro entitlement in prod', async () => {
       global.__DEV__ = false;
+    mockSession = null;
       (Purchases.getCustomerInfo as jest.Mock).mockResolvedValueOnce({
         entitlements: { active: { pro: {} } }
       });
@@ -169,6 +197,7 @@ describe('BillingContext', () => {
 
     it('sets isPro to false if customer lacks pro entitlement in prod', async () => {
       global.__DEV__ = false;
+    mockSession = null;
       (Purchases.getCustomerInfo as jest.Mock).mockResolvedValueOnce({
         entitlements: { active: {} }
       });
@@ -179,6 +208,7 @@ describe('BillingContext', () => {
 
     it('updates pro status when customer info changes via listener', async () => {
       global.__DEV__ = false;
+    mockSession = null;
       let listener: any;
       (Purchases.addCustomerInfoUpdateListener as jest.Mock).mockImplementation((cb) => {
         listener = cb;

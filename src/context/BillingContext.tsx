@@ -4,6 +4,7 @@ import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 
 import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
 import { getErrorMessage, isPurchasesError } from '../utils/error';
 import { logger } from '../utils/logger';
+import { supabase } from '../lib/supabase';
 
 
 interface BillingContextType {
@@ -68,6 +69,15 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setConfigured(true);
         }
 
+        // Tie the RevenueCat identity to the Supabase user so the webhook's
+        // app_user_id maps to profiles.id (Pro mirror). Anonymous until sign-in.
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) await Purchases.logIn(session.user.id);
+        } catch (e) {
+          logger.warn('RevenueCat logIn failed (continuing):', getErrorMessage(e));
+        }
+
         const customerInfo = await Purchases.getCustomerInfo();
         checkProStatus(customerInfo);
 
@@ -98,6 +108,22 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => {
       Purchases.removeCustomerInfoUpdateListener(customerInfoUpdateListener);
     };
+  }, [configured]);
+
+  // Keep the RevenueCat identity in sync with sign-in/out so purchases are always
+  // attributed to the right Supabase user (and the webhook can mirror the tier).
+  useEffect(() => {
+    if (!configured) return;
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        Purchases.logIn(session.user.id).catch((e) =>
+          logger.warn('RevenueCat logIn on auth change failed:', getErrorMessage(e)));
+      } else {
+        Purchases.logOut().catch((e) =>
+          logger.warn('RevenueCat logOut on sign-out failed:', getErrorMessage(e)));
+      }
+    });
+    return () => { authSub.subscription.unsubscribe(); };
   }, [configured]);
 
   const purchasePackage = async (pack: PurchasesPackage) => {

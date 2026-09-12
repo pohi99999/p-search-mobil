@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.3';
+import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -81,6 +82,15 @@ serve(async (req) => {
         JSON.stringify({
           error: 'Hozzáférés megtagadva (403): Nem te vagy a cégprofil tulajdonosa',
         }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Pro-kapu (owner döntés 2026-09-12): a Copilot akcióterv a Pro csomag része.
+    const tier = await getSubscriptionTier(supabaseClient, user.id);
+    if (!isPro(tier)) {
+      return new Response(
+        JSON.stringify({ error: 'A Copilot akcióterv a Pro csomag része. Válts Pro-ra a használatához.', code: 'pro_required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

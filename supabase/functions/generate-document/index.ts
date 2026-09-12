@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getSubscriptionTier, isPro } from "../_shared/entitlement.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -66,6 +67,15 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Érvénytelen vagy lejárt hitelesítési token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Pro-kapu (owner döntés 2026-09-12): a dokumentum-generálás a Pro csomag része.
+    const tier = await getSubscriptionTier(supabaseClient, userData.user.id);
+    if (!isPro(tier)) {
+      return new Response(
+        JSON.stringify({ error: "A dokumentum-generálás a Pro csomag része. Válts Pro-ra a használatához.", code: "pro_required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

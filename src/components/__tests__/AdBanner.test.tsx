@@ -4,6 +4,7 @@ import { AdBanner } from '../AdBanner';
 import * as BillingContext from '../../context/BillingContext';
 import { BannerAd } from 'react-native-google-mobile-ads';
 import { logger } from '../../utils/logger';
+import { Platform } from 'react-native';
 
 jest.mock('react-native-google-mobile-ads', () => ({
   BannerAd: jest.fn(() => null),
@@ -22,6 +23,16 @@ jest.mock('../../utils/logger', () => ({
 describe('AdBanner', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Platform.OS = 'android';
+  });
+
+  it('renders nothing on non-android (web/iOS)', () => {
+    jest.spyOn(BillingContext, 'useBilling').mockReturnValue({ isPro: false } as never);
+    Platform.OS = 'web';
+    const tree = renderer.create(<AdBanner />);
+    expect(tree.toJSON()).toBeNull();
+    expect(BannerAd).not.toHaveBeenCalled();
+    Platform.OS = 'android';
   });
 
   it('renders BannerAd when isPro is false and ad has not failed', () => {

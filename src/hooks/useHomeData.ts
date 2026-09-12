@@ -22,7 +22,29 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
     body: { business_profile_id: businessId },
   });
 
-  if (error) throw error;
+  if (error) {
+    // A 403 from match-grants means the free daily cap is used up (or a Pro
+    // gate). That is an upsell moment, not an error: read the server's {code,
+    // error} body and signal the caller (daily_limit vs pro_required) so it can
+    // show the right Hungarian message and route to the Paywall.
+    const status = (error as { context?: { status?: number } })?.context?.status;
+    if (status === 403) {
+      let code = '';
+      let serverMessage = '';
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
+        const body = ctx?.json ? await ctx.json() : {};
+        code = body?.code ?? '';
+        serverMessage = body?.error ?? '';
+      } catch { /* body unreadable -> fall back to a plain Paywall route */ }
+      const paywallErr = new Error(serverMessage || 'paywall') as Error & { paywall?: boolean; code?: string; serverMessage?: string };
+      paywallErr.paywall = true;
+      paywallErr.code = code;
+      paywallErr.serverMessage = serverMessage;
+      throw paywallErr;
+    }
+    throw error;
+  }
   if (data?.error) throw new Error(data.error);
 
   return { matchesFound: Number(data?.matches_found ?? 0) };
@@ -115,7 +137,6 @@ interface UseGrantSearchProps {
   navigation: RootStackNavigationProp;
   profile: BusinessProfile | null;
   userProfile: UserProfile | null;
-  setUserProfile: (profile: UserProfile) => void;
   isPro: boolean;
   onSearchSuccess: () => Promise<void>;
 }
@@ -124,7 +145,6 @@ function useGrantSearch({
   navigation,
   profile,
   userProfile,
-  setUserProfile,
   isPro,
   onSearchSuccess
 }: UseGrantSearchProps) {
@@ -147,6 +167,25 @@ function useGrantSearch({
           : 'Jelenleg nem találtunk új, a cégedhez illeszkedő pályázatot. Amint új kiírás jelenik meg, értesítünk.',
       );
     } catch (err) {
+      const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };
+      if (paywallErr?.paywall) {
+        if (paywallErr.code === 'daily_limit') {
+          // Daily free cap hit: show the server's message with a Pro upsell,
+          // rather than jumping straight to the Paywall.
+          Alert.alert(
+            'Napi keresési limit',
+            paywallErr.serverMessage || 'Elérted a napi ingyenes keresést. Holnap újra próbálhatod.',
+            [
+              { text: 'Bezár', style: 'cancel' },
+              { text: 'Pro-ra váltok', onPress: () => navigation.navigate('Paywall') },
+            ],
+          );
+        } else {
+          // pro_required (or an unlabelled 403): straight to the Paywall.
+          navigation.navigate('Paywall');
+        }
+        return;
+      }
       logger.error('Hiba az AI keresés során:', err);
       Alert.alert('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
     } finally {
@@ -166,25 +205,11 @@ function useGrantSearch({
       return;
     }
 
-    if (isPro) {
-      await executeSearch(profile.id, 'new_search_pro');
-      return;
-    }
-
-    const { data, error: invokeError } = await supabase.functions.invoke('increment-search-count');
-
-    if (invokeError) {
-      logger.error(invokeError);
-      Alert.alert('Hiba történt a keresési limit ellenőrzésekor!');
-      return;
-    }
-
-    if (data?.allowed) {
-      setUserProfile({ ...userProfile, search_count: data.newCount });
-      await executeSearch(profile.id, 'new_search_free');
-    } else {
-      navigation.navigate('Paywall');
-    }
+    // Search is free (owner decision 2026-09-12). The daily cost cap (20/day for
+    // non-Pro) and the Pro gate are enforced server-side in match-grants; a 403
+    // there routes the user to the Paywall (handled in executeSearch). No
+    // client-side pre-check, and we no longer call increment-search-count.
+    await executeSearch(profile.id, isPro ? 'new_search_pro' : 'new_search_free');
   };
 
   return { searching, handleNewSearch };
@@ -206,7 +231,6 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     navigation,
     profile,
     userProfile,
-    setUserProfile,
     isPro,
     onSearchSuccess: fetchData
   });

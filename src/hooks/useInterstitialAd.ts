@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger';
 import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { useBilling } from '../context/BillingContext';
 import { INTERSTITIAL_AD_UNIT_ID } from '../config/env';
@@ -13,7 +14,8 @@ export const useInterstitialAd = () => {
 
   // Hirdetés létrehozása és betöltése
   const loadAd = () => {
-    if (isPro) return;
+    // Csak Androidon toltunk interstitialt; Pro-nak soha. (Web: nincs; iOS: nem build-cel.)
+    if (isPro || Platform.OS !== 'android') return;
 
     // Clear and call previous unsubscribes
     unsubscribesRef.current.forEach((unsub) => unsub());
@@ -56,7 +58,7 @@ export const useInterstitialAd = () => {
   };
 
   useEffect(() => {
-    if (!isPro) {
+    if (!isPro && Platform.OS === 'android') {
       loadAd();
     }
     return () => {
