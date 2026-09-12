@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { runMatchingForProfile } from '../_shared/matching.ts';
+import { isPro, FREE_DAILY_SEARCH_CAP } from '../_shared/entitlement.ts';
 
 /**
  * User-initiated grant matching ("Új AI Keresés").
@@ -91,6 +92,29 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
     );
+
+    // Free daily cost cap (owner decision 2026-09-12): search is free, but a
+    // non-Pro user gets at most FREE_DAILY_SEARCH_CAP matches/day. Pro is
+    // unlimited. Counter resets when the stored date is not today.
+    const { data: prof } = await adminClient
+      .from('profiles')
+      .select('subscription_tier, daily_search_count, daily_search_date')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!isPro(prof?.subscription_tier)) {
+      const today = new Date().toISOString().slice(0, 10);
+      const used = prof?.daily_search_date === today ? (prof?.daily_search_count ?? 0) : 0;
+      if (used >= FREE_DAILY_SEARCH_CAP) {
+        return json(
+          { error: `Elérted a napi ${FREE_DAILY_SEARCH_CAP} ingyenes keresést. Holnap újra próbálhatod, vagy válts Pro-ra a korlátlan kereséshez.`, code: 'daily_limit' },
+          403,
+        );
+      }
+      await adminClient
+        .from('profiles')
+        .update({ daily_search_count: used + 1, daily_search_date: today })
+        .eq('id', user.id);
+    }
 
     const summary = await runMatchingForProfile(adminClient, businessProfileId, geminiApiKey);
 

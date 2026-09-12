@@ -51,14 +51,10 @@ export async function handler(
 
     if (profileError) throw profileError
 
+    // Search is free (owner decision 2026-09-12): no lifetime block here. The
+    // real cost cap (20/day for non-Pro) lives in match-grants, the authoritative
+    // chokepoint. We still keep search_count as a lifetime stat.
     const currentCount = profile.search_count || 0
-    if (currentCount >= 1) {
-      return new Response(JSON.stringify({ allowed: false, error: 'Limit reached' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
-    }
-
     const newCount = currentCount + 1
     const { error: updateError } = await supabaseAdmin
       .from('profiles')

@@ -166,7 +166,9 @@ Deno.test("increment-search-count: valid, authorized request increments the call
   assertEquals(recorded.updateArgs[0].eqArgs, ["id", userId]);
 });
 
-Deno.test("increment-search-count: caller already at the limit -> denied, profile is NOT written", async () => {
+Deno.test("increment-search-count: search is free -> always allowed, counts even past 1", async () => {
+  // Owner decision 2026-09-12: search is free; the lifetime block is gone.
+  // The real cost cap (20/day for non-Pro) lives in match-grants, not here.
   const recorded = newRecorded();
   const userId = "user-456";
   const createClient = makeMockCreateClient(
@@ -184,11 +186,12 @@ Deno.test("increment-search-count: caller already at the limit -> denied, profil
   const body = await res.json();
 
   assertEquals(res.status, 200);
-  assertEquals(body.allowed, false);
-  assertEquals(body.error, "Limit reached");
-  // The read happens (to check the limit) but the write must be skipped.
+  assertEquals(body.allowed, true);
+  assertEquals(body.newCount, 2);
+  // Not blocked: the profile IS written with the incremented count.
   assertEquals(recorded.selectEqArgs, [["id", userId]]);
-  assertEquals(recorded.updateArgs.length, 0);
+  assertEquals(recorded.updateArgs.length, 1);
+  assertEquals(recorded.updateArgs[0].values, { search_count: 2 });
 });
 
 Deno.test("increment-search-count: profile lookup failure surfaces as an error, no write attempted", async () => {
