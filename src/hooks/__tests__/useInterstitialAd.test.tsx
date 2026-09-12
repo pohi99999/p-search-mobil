@@ -3,6 +3,7 @@ import { useInterstitialAd } from '../useInterstitialAd';
 import { useBilling } from '../../context/BillingContext';
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import renderer from 'react-test-renderer';
+import { Platform } from 'react-native';
 
 const act = renderer.act;
 
@@ -55,6 +56,7 @@ function HookTester({ isPro, onHookResult }: { isPro: boolean, onHookResult: (re
 
 describe('useInterstitialAd', () => {
   beforeEach(() => {
+    Platform.OS = 'android';
     jest.clearAllMocks();
     mockAdListeners = {};
     // Suppress logger warnings and errors in tests

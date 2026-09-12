@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 import { Surface } from 'react-native-paper';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 import { useBilling } from '../context/BillingContext';
@@ -11,8 +11,9 @@ export const AdBanner: React.FC = () => {
   const { isPro } = useBilling();
   const [adFailed, setAdFailed] = useState(false);
 
-  // Ha Pro előfizetőnk van, vagy nem sikerült betölteni a hirdetést, nem jelenítünk meg semmit
-  if (isPro || adFailed) {
+  // Csak Androidon jelenítünk hirdetést; Pro előfizetőnek soha, és ha a betöltés
+  // elhasalt, szintén nem. (Web: nincs hirdetés; iOS: nem build-cél.)
+  if (isPro || adFailed || Platform.OS !== 'android') {
     return null;
   }
 

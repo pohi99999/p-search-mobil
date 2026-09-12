@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import { PurchasesPackage } from 'react-native-purchases';
+import { formatIntroOffer } from '../../lib/introOffer';
 
 interface PaywallPackagesProps {
   packages: PurchasesPackage[];
@@ -42,6 +43,11 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
               <Text variant="headlineMedium" style={styles.packagePrice}>
                 {pkg.product.priceString}
               </Text>
+              {formatIntroOffer(pkg.product) ? (
+                <Text variant="bodyMedium" style={styles.introOffer}>
+                  {formatIntroOffer(pkg.product)}
+                </Text>
+              ) : null}
             </Card.Content>
             <Card.Actions style={styles.cardActions}>
               <Button
@@ -105,6 +111,12 @@ const styles = StyleSheet.create({
   packagePrice: {
     fontWeight: 'bold',
     color: '#2E7D32',
+  },
+  introOffer: {
+    color: '#FF6F00',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 6,
   },
   unavailableTitle: {
     fontWeight: 'bold',
