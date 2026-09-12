@@ -17,6 +17,7 @@ interface ActionPlanCardProps {
   setPdfLoading: (loading: boolean) => void;
   showAdIfAvailable: (callback: () => Promise<void>) => void;
   refetch: () => void;
+  onProRequired?: () => void;
 }
 
 export function ActionPlanCard({
@@ -28,7 +29,8 @@ export function ActionPlanCard({
   pdfLoading,
   setPdfLoading,
   showAdIfAvailable,
-  refetch
+  refetch,
+  onProRequired
 }: ActionPlanCardProps) {
   const { totalTasks, completedTasks, progress, percentage } = planStats[plan.id] || { totalTasks: 0, completedTasks: 0, progress: 0, percentage: 0 };
 
@@ -121,6 +123,19 @@ export function ActionPlanCard({
 
                 refetch();
               } catch (err: unknown) {
+                const status = (err as { context?: { status?: number } })?.context?.status;
+                if (status === 403) {
+                  // Pro-gate: show the server's Hungarian message and route to the Paywall.
+                  let serverMessage = '';
+                  try {
+                    const ctx = (err as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+                    const body = ctx?.json ? await ctx.json() : {};
+                    serverMessage = body?.error ?? '';
+                  } catch { /* fall through */ }
+                  Alert.alert('Pro funkció', serverMessage || 'A dokumentum-generálás a Pro csomag része. Válts Pro-ra a használatához.');
+                  onProRequired?.();
+                  return;
+                }
                 logger.error('PDF generation error:', err);
                 Alert.alert('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
               } finally {

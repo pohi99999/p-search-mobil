@@ -205,6 +205,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                 setPdfLoading={setPdfLoading}
                 showAdIfAvailable={showAdIfAvailable}
                 refetch={refetch}
+                onProRequired={() => navigation.navigate('Paywall')}
               />
             );
           })}
