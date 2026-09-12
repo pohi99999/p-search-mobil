@@ -6,7 +6,7 @@
  * The HTTP call is injected (`fetchImpl`) so the pagination logic is unit-
  * testable offline with no network.
  */
-import { Tender } from './mapTender';
+import type { Tender } from './mapTender.ts';
 
 export const TENDERS_LIST_URL = 'https://ginapp-api.fair.gov.hu/papi/tenders/list';
 // Static client identifiers baked into the site bundle; not auth, not a session.
