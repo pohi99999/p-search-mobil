@@ -24,12 +24,23 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
 
   if (error) {
     // A 403 from match-grants means the free daily cap is used up (or a Pro
-    // gate). That is an upsell moment, not an error: signal the caller to route
-    // to the Paywall instead of showing a generic failure.
+    // gate). That is an upsell moment, not an error: read the server's {code,
+    // error} body and signal the caller (daily_limit vs pro_required) so it can
+    // show the right Hungarian message and route to the Paywall.
     const status = (error as { context?: { status?: number } })?.context?.status;
     if (status === 403) {
-      const paywallErr = new Error('paywall') as Error & { paywall?: boolean };
+      let code = '';
+      let serverMessage = '';
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
+        const body = ctx?.json ? await ctx.json() : {};
+        code = body?.code ?? '';
+        serverMessage = body?.error ?? '';
+      } catch { /* body unreadable -> fall back to a plain Paywall route */ }
+      const paywallErr = new Error(serverMessage || 'paywall') as Error & { paywall?: boolean; code?: string; serverMessage?: string };
       paywallErr.paywall = true;
+      paywallErr.code = code;
+      paywallErr.serverMessage = serverMessage;
       throw paywallErr;
     }
     throw error;
@@ -156,8 +167,23 @@ function useGrantSearch({
           : 'Jelenleg nem találtunk új, a cégedhez illeszkedő pályázatot. Amint új kiírás jelenik meg, értesítünk.',
       );
     } catch (err) {
-      if ((err as { paywall?: boolean })?.paywall) {
-        navigation.navigate('Paywall');
+      const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };
+      if (paywallErr?.paywall) {
+        if (paywallErr.code === 'daily_limit') {
+          // Daily free cap hit: show the server's message with a Pro upsell,
+          // rather than jumping straight to the Paywall.
+          Alert.alert(
+            'Napi keresési limit',
+            paywallErr.serverMessage || 'Elérted a napi ingyenes keresést. Holnap újra próbálhatod.',
+            [
+              { text: 'Bezár', style: 'cancel' },
+              { text: 'Pro-ra váltok', onPress: () => navigation.navigate('Paywall') },
+            ],
+          );
+        } else {
+          // pro_required (or an unlabelled 403): straight to the Paywall.
+          navigation.navigate('Paywall');
+        }
         return;
       }
       logger.error('Hiba az AI keresés során:', err);

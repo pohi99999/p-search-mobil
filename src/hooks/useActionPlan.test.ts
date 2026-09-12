@@ -150,6 +150,35 @@ describe('useActionPlan', () => {
 
 
   describe('generatePlanForMatch', () => {
+    it('surfaces the server message and marks proRequired on a 403 Pro-gate', async () => {
+      const serverMsg = 'A Copilot akcióterv a Pro csomag része. Válts Pro-ra a használatához.';
+      const err403 = Object.assign(new Error('403'), {
+        context: { status: 403, json: async () => ({ code: 'pro_required', error: serverMsg }) },
+      });
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: err403 });
+      const mockFrom = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      };
+      (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+      const { result } = renderHook(() => useActionPlan('test-business-id'));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      let thrown: (Error & { proRequired?: boolean }) | undefined;
+      await act(async () => {
+        try {
+          await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+        } catch (e) {
+          thrown = e as Error & { proRequired?: boolean };
+        }
+      });
+
+      expect(result.current.error).toBe(serverMsg);
+      expect(thrown?.proRequired).toBe(true);
+    });
+
     it('should set error state when invokeError is present', async () => {
       const errorMessage = 'Function Invoke Error';
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({

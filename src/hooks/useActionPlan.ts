@@ -86,14 +86,35 @@ export const useActionPlan = (businessProfileId?: string) => {
         body: { business_profile_id: businessProfileId, match_ids: Array.isArray(matchId) ? matchId : [matchId], match_id: Array.isArray(matchId) ? matchId[0] : matchId }
       });
 
-      if (invokeError) throw invokeError;
+      if (invokeError) {
+        // Pro-gate: a 403 {code:'pro_required'} means this is a Pro feature. Read
+        // the server's Hungarian message and surface a typed error so the screen
+        // can route to the Paywall instead of showing a generic failure.
+        const status = (invokeError as { context?: { status?: number } })?.context?.status;
+        if (status === 403) {
+          let serverMessage = '';
+          try {
+            const ctx = (invokeError as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
+            const body = ctx?.json ? await ctx.json() : {};
+            serverMessage = body?.error ?? '';
+          } catch { /* fall through */ }
+          const msg = serverMessage || 'A Copilot akcióterv a Pro csomag része. Válts Pro-ra a használatához.';
+          setError(msg);
+          const proErr = new Error(msg) as Error & { proRequired?: boolean };
+          proErr.proRequired = true;
+          throw proErr;
+        }
+        throw invokeError;
+      }
       if (data?.error) throw new Error(data.error);
 
       // Frissítjük a terveket és feladatokat
       await fetchPlansAndTasks();
       return data;
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Nem sikerült legenerálni az akciótervet.');
+      if (!(err as { proRequired?: boolean })?.proRequired) {
+        setError(getErrorMessage(err) || 'Nem sikerült legenerálni az akciótervet.');
+      }
       throw err;
     }
   }, [fetchPlansAndTasks]);
