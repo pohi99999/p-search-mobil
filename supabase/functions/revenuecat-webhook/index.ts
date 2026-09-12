@@ -16,6 +16,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
  */
 export type CreateClientFn = typeof createClient;
 
+/** Constant-time string comparison (avoids leaking the secret via timing). */
+export function safeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let r = 0;
+  for (let i = 0; i < ea.length; i++) r |= ea[i] ^ eb[i];
+  return r === 0;
+}
+
 const PRO_EVENTS = new Set([
   'INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE', 'UNCANCELLATION',
   'NON_RENEWING_PURCHASE', 'SUBSCRIPTION_EXTENDED', 'TRIAL_STARTED', 'TRIAL_CONVERTED',
@@ -39,11 +49,11 @@ export async function handler(
   }
   const secret = Deno.env.get('REVENUECAT_WEBHOOK_SECRET');
   const auth = req.headers.get('Authorization');
-  if (!secret || auth !== secret) {
+  if (!secret || !auth || !safeEqual(auth, secret)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
 
-  let payload: { event?: { type?: string; app_user_id?: string } } = {};
+  let payload: { event?: { id?: string; type?: string; app_user_id?: string } } = {};
   try {
     payload = await req.json();
   } catch {
@@ -63,8 +73,25 @@ export async function handler(
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     { auth: { persistSession: false } },
   );
+
+  // Idempotency: claim this event.id first. A duplicate delivery hits the PK and
+  // is skipped, so a repeated event never re-applies (or rolls back) a tier.
+  const eventId = event?.id;
+  if (eventId) {
+    const { error: claimError } = await admin.from('processed_webhook_events').insert({ event_id: eventId });
+    if (claimError) {
+      // Unique violation (23505) = already processed. Any other error -> 500 (retry).
+      if ((claimError as { code?: string }).code === '23505') {
+        return new Response(JSON.stringify({ ok: true, changed: false, duplicate: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ error: claimError.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
   const { error } = await admin.from('profiles').update({ subscription_tier: tier }).eq('id', appUserId);
   if (error) {
+    // Roll back the idempotency claim so a retry can reprocess this event.
+    if (eventId) await admin.from('processed_webhook_events').delete().eq('event_id', eventId);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
   return new Response(JSON.stringify({ ok: true, changed: true, tier }), { status: 200, headers: { 'Content-Type': 'application/json' } });
