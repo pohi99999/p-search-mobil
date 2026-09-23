@@ -57,6 +57,7 @@
         "npm:@typescript-eslint/parser@^8.67.0",
         "npm:eslint-config-expo@^56.0.4",
         "npm:eslint@^8.57.1",
+        "npm:expo-application@~56.0.3",
         "npm:expo-build-properties@~56.0.19",
         "npm:expo-dev-client@~56.0.20",
         "npm:expo-document-picker@~56.0.4",
