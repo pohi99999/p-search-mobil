@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P-Search – Fiók és adatok törlése</title>
+<style>
+:root { --ink:#212121; --muted:#5f6368; --brand:#1A237E; --link:#1565C0; --line:#e0e0e0; --ground:#f5f5f5; --card:#fff; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--ground); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+.wrap { max-width:760px; margin:0 auto; padding:16px; }
+nav { display:flex; flex-wrap:wrap; gap:8px 16px; justify-content:flex-end; font-size:.95rem; padding:4px 0 12px; }
+main { background:var(--card); border-radius:16px; padding:20px 18px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+@media (min-width:600px) { main { padding:32px 36px; } }
+h1 { color:var(--brand); font-size:1.5rem; line-height:1.25; margin:0 0 8px; text-wrap:balance; }
+h2 { color:var(--brand); font-size:1.15rem; margin:28px 0 8px; }
+p, li { max-width:68ch; }
+a { color:var(--link); overflow-wrap:anywhere; }
+a:focus-visible { outline:2px solid var(--link); outline-offset:2px; border-radius:2px; }
+code { font-size:.9em; background:#f1f3f4; padding:1px 4px; border-radius:4px; }
+.table { overflow-x:auto; margin:12px 0; border:1px solid var(--line); border-radius:8px; }
+table { border-collapse:collapse; width:100%; font-size:.92rem; min-width:560px; }
+th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--line); }
+th { background:#f8f9fb; color:var(--brand); }
+tr:last-child td { border-bottom:0; }
+footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
+
+ol { padding-left:1.3em; }
+ol li { margin:6px 0; }
+.cta { display:inline-block; margin:6px 0 2px; padding:12px 16px; border-radius:8px; background:#1976D2; color:#fff; text-decoration:none; font-weight:600; }
+.cta:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
+.note { color:var(--muted); font-size:.92rem; }
+.lang { border-top:1px solid var(--line); margin-top:36px; padding-top:8px; }
+kbd { font:inherit; font-weight:600; background:#f1f3f4; border:1px solid var(--line); border-radius:4px; padding:0 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Kapcsolódó oldalak">
+  <a href="/adatvedelem">Adatvédelmi tájékoztató</a>
+  <a href="#en" hreflang="en" lang="en">English</a>
+</nav>
+<main>
+<h1>P-Search – Fiók és adatok törlése</h1>
+<p>Ez az oldal a P-Search (Pályázat Kereső) Android-alkalmazás (<code>com.pohankaestarsa.psearch</code>) fiókjának és adatainak törléséről szól. Az adatkezelő: Pohánka József Péter.</p>
+
+<h2>1. Törlés az alkalmazásban</h2>
+<ol>
+  <li>A főoldalon koppintson a fogaskerék ikonra (<strong>Beállítások</strong>).</li>
+  <li>Görgessen le a <strong>Fiók törlése</strong> kártyához, és koppintson a <strong>Fiók törlése</strong> gombra.</li>
+  <li>Írja be a megerősítő szót: <kbd>TÖRLÉS</kbd>, majd koppintson a <strong>Végleges törlés</strong> gombra.</li>
+</ol>
+<p>A törlés után az alkalmazás kilépteti Önt.</p>
+
+<h2>2. Törlés az alkalmazás nélkül, e-mailben</h2>
+<p>Küldjön e-mailt a <a href="mailto:peterpohankapersonal@gmail.com">peterpohankapersonal@gmail.com</a> címre <strong>a fiókjához tartozó e-mail címről</strong>, <strong>„P-Search fiók törlése”</strong> tárggyal. A kérést 30 napon belül teljesítjük.</p>
+<p><a class="cta" href="mailto:peterpohankapersonal@gmail.com?subject=P-Search%20fi%C3%B3k%20t%C3%B6rl%C3%A9se">E-mail írása a törléshez</a></p>
+<p class="note">Azért kérjük a fiókhoz tartozó címről, hogy biztosan Ön kérje a saját fiókja törlését.</p>
+
+<h2>3. Mit törlünk</h2>
+<p>A törlés a fiókot, a cégprofilt, a kereséseket, a Copilot-előzményeket és a feltöltött dokumentumokat érinti. Ezeket a törléskor 30 napon belül véglegesen töröljük.</p>
+
+<h2>4. Mit őrzünk meg, és meddig</h2>
+<ul>
+  <li><strong>Előfizetési és számviteli adatok:</strong> a jogszabályban előírt ideig (számviteli/adózási célra legfeljebb 8 évig).</li>
+  <li><strong>Hibanapló (Sentry):</strong> legfeljebb 90 nap.</li>
+  <li><strong>Hirdetési adatok:</strong> a Google AdMob saját szabályai szerint.</li>
+</ul>
+<p>A részleteket az <a href="/adatvedelem">adatvédelmi tájékoztató</a> tartalmazza.</p>
+
+<section id="en" class="lang" lang="en">
+<h1>P-Search – Delete your account and data</h1>
+<p>This page explains how to delete your account and data in the P-Search (Grant Finder) Android app (<code>com.pohankaestarsa.psearch</code>). Data controller: József Péter Pohánka.</p>
+
+<h2>1. In the app</h2>
+<ol>
+  <li>On the home screen, tap the gear icon (<strong>Settings</strong> – <span lang="hu">Beállítások</span>).</li>
+  <li>Scroll down to the <strong>Delete account</strong> card (<span lang="hu">Fiók törlése</span>) and tap the <strong>Delete account</strong> button.</li>
+  <li>Type the confirmation word <kbd lang="hu">TÖRLÉS</kbd>, then tap <strong>Delete permanently</strong> (<span lang="hu">Végleges törlés</span>).</li>
+</ol>
+<p>The app is in Hungarian; the Hungarian labels are shown in brackets. After deletion the app signs you out.</p>
+
+<h2>2. Without the app, by e-mail</h2>
+<p>Send an e-mail to <a href="mailto:peterpohankapersonal@gmail.com">peterpohankapersonal@gmail.com</a> <strong>from the e-mail address of your account</strong>, with the subject <strong>“P-Search fiók törlése”</strong>. We complete the request within 30 days.</p>
+<p><a class="cta" href="mailto:peterpohankapersonal@gmail.com?subject=P-Search%20fi%C3%B3k%20t%C3%B6rl%C3%A9se">Write the deletion e-mail</a></p>
+<p class="note">We ask you to write from the account's address so that only you can request deletion of your account.</p>
+
+<h2>3. What we delete</h2>
+<p>Deletion covers the account, company profile, searches, Copilot history and uploaded documents. These are permanently erased within 30 days of deletion.</p>
+
+<h2>4. What we keep, and for how long</h2>
+<ul>
+  <li><strong>Subscription and accounting records:</strong> as long as required by law (for accounting/tax purposes up to 8 years).</li>
+  <li><strong>Crash reports (Sentry):</strong> up to 90 days.</li>
+  <li><strong>Ad data:</strong> under Google AdMob's own policies.</li>
+</ul>
+<p>Details are in the <a href="/privacy" hreflang="en">privacy policy</a>.</p>
+</section>
+</main>
+<footer>P-Search · com.pohankaestarsa.psearch</footer>
+</div>
+</body>
+</html>
