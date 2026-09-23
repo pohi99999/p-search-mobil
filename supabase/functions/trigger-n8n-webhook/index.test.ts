@@ -29,7 +29,7 @@ interface MockConfig {
     error: Error | null;
   };
   businessProfileResult?: {
-    data: { id: string } | null;
+    data: ({ id: string } & Record<string, unknown>) | null;
     error: Error | null;
   };
 }
@@ -216,7 +216,10 @@ Deno.test("trigger-n8n-webhook: owner triggers webhook for their own business ->
   const createClient = makeMockCreateClient(
     {
       getUserResult: { data: { user: { id: "owner-1" } }, error: null },
-      businessProfileResult: { data: { id: "biz-1" }, error: null },
+      businessProfileResult: {
+        data: { id: "biz-1", company_name: "Teszt Kft", industry_code: "6201", employee_count: 5, yearly_revenue: 1000000, goals: "export" },
+        error: null,
+      },
     },
     recorded,
   );
@@ -247,6 +250,11 @@ Deno.test("trigger-n8n-webhook: owner triggers webhook for their own business ->
     business_id: "biz-1",
     user_id: "owner-1",
     action: "generate_action_plan",
+    company_name: "Teszt Kft",
+    industry_code: "6201",
+    employee_count: 5,
+    yearly_revenue: 1000000,
+    goals: "export",
   });
 
   Deno.env.delete("N8N_WEBHOOK_URL");
