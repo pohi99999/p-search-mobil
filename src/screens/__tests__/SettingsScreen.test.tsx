@@ -17,6 +17,8 @@ jest.mock('../../lib/supabase', () => ({
   },
 }));
 
+jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '8' }));
+
 jest.mock('../../utils/logger', () => ({
   logger: {
     error: jest.fn(),

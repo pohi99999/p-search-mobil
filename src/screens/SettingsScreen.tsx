@@ -15,6 +15,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/error';
+import { getAppVersionLabel } from '../lib/appVersion';
 import type { SettingsScreenProps } from '../types/navigation';
 
 type SearchFrequency = 'daily' | 'weekly' | 'manual';
@@ -324,6 +325,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             )}
           </Card.Content>
         </Card>
+
+        <Text variant="bodySmall" style={styles.versionText} testID="app-version" accessibilityLabel="Alkalmazás verziója">
+          P-Search {getAppVersionLabel()}
+        </Text>
       </ScrollView>
 
       <Snackbar
@@ -417,5 +422,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
+  },
+  versionText: {
+    textAlign: 'center',
+    color: '#888888',
+    marginTop: 24,
   },
 });

@@ -18,6 +18,8 @@ jest.mock('../../lib/supabase', () => ({
   },
 }));
 
+jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '8' }));
+
 jest.mock('../../utils/logger', () => ({ logger: { error: jest.fn() } }));
 
 jest.mock('react-native-paper', () => {
@@ -53,6 +55,24 @@ const render = async () => {
 
 const buttonByLabel = (component: renderer.ReactTestRenderer, label: string) =>
   component.root.findAllByType(Button).find((b) => b.props.accessibilityLabel === label);
+
+describe('SettingsScreen version footer', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } });
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { search_frequency: 'weekly', last_scan_at: null, next_scan_at: null }, error: null }),
+      update: jest.fn(),
+    });
+  });
+
+  it('shows the native version and build number', async () => {
+    const component = await render();
+    expect(JSON.stringify(component.toJSON())).toContain('P-Search 1.0.0 (8)');
+  });
+});
 
 describe('SettingsScreen account deletion', () => {
   beforeEach(() => {
