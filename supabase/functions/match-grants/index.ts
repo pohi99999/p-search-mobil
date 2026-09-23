@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { runMatchingForProfile } from '../_shared/matching.ts';
 import { FREE_DAILY_SEARCH_CAP } from '../_shared/entitlement.ts';
+import { refundDailySearch } from '../_shared/daily-search-refund.ts';
 
 /**
  * User-initiated grant matching ("Új AI Keresés").
@@ -113,7 +114,17 @@ serve(async (req) => {
       );
     }
 
-    const summary = await runMatchingForProfile(adminClient, businessProfileId, geminiApiKey);
+    // From here on the daily search is consumed: any failure below must give it
+    // back, otherwise a Gemini/DB outage silently eats the user's free searches
+    // (measured 2026-09-23: invalid GEMINI_API_KEY -> 500 with the counter kept).
+    let summary;
+    try {
+      summary = await runMatchingForProfile(adminClient, businessProfileId, geminiApiKey);
+    } catch (runErr) {
+      const refunded = await refundDailySearch(adminClient, user.id);
+      console.error('Pályázatkeresés hiba a levonás után, visszaadva:', refunded, runErr);
+      return json({ error: 'Nem sikerült lefuttatni a pályázatkeresést.', search_refunded: refunded !== null }, 500);
+    }
 
     // Record that a scan happened so the Settings screen can show it, without
     // touching next_scan_at: a manual run should not shift the user's cadence.
