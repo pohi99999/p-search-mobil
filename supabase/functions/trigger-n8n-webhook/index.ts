@@ -98,6 +98,8 @@ export async function handler(
         body: JSON.stringify({
           business_id: business_id,
           user_id: user.id,
+          // From the verified JWT user, never from the body (B2/1 welcome mail, eeac42d8).
+          user_email: user.email ?? null,
           action: action,
           company_name: businessProfile.company_name ?? null,
           industry_code: businessProfile.industry_code ?? null,

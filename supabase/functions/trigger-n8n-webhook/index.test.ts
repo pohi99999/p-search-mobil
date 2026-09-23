@@ -25,7 +25,7 @@ Deno.env.set("SUPABASE_ANON_KEY", "anon-key");
 
 interface MockConfig {
   getUserResult: {
-    data: { user: { id: string } | null };
+    data: { user: { id: string; email?: string } | null };
     error: Error | null;
   };
   businessProfileResult?: {
@@ -215,7 +215,7 @@ Deno.test("trigger-n8n-webhook: owner triggers webhook for their own business ->
 
   const createClient = makeMockCreateClient(
     {
-      getUserResult: { data: { user: { id: "owner-1" } }, error: null },
+      getUserResult: { data: { user: { id: "owner-1", email: "owner@example.com" } }, error: null },
       businessProfileResult: {
         data: { id: "biz-1", company_name: "Teszt Kft", industry_code: "6201", employee_count: 5, yearly_revenue: 1000000, goals: "export" },
         error: null,
@@ -249,6 +249,7 @@ Deno.test("trigger-n8n-webhook: owner triggers webhook for their own business ->
   assertEquals(sentBody, {
     business_id: "biz-1",
     user_id: "owner-1",
+    user_email: "owner@example.com",
     action: "generate_action_plan",
     company_name: "Teszt Kft",
     industry_code: "6201",
