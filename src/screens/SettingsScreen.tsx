@@ -10,6 +10,7 @@ import {
   Snackbar,
   Surface,
   Text,
+  TextInput,
 } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
@@ -46,6 +47,9 @@ const frequencyOptions: {
   },
 ];
 
+/** The word the user must type before the account is deleted for good. */
+export const DELETE_CONFIRM_WORD = 'TÖRLÉS';
+
 const isSearchFrequency = (value: string | null): value is SearchFrequency =>
   value === 'daily' || value === 'weekly' || value === 'manual';
 
@@ -71,6 +75,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [nextScanAt, setNextScanAt] = useState<string | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteWord, setDeleteWord] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
@@ -143,6 +150,26 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       showSnackbar('Nem sikerült menteni a beállításokat. Kérjük, próbáld újra később.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Google Play: in-app account deletion. The server removes only the JWT
+  // user's own rows (delete-account Edge Function); the client just confirms,
+  // calls it, and signs out. Nothing here takes a user id from the UI.
+  const handleDeleteAccount = async () => {
+    if (deleteWord.trim() !== DELETE_CONFIRM_WORD) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { confirm: true },
+      });
+      if (error) throw error;
+      if (!data?.deleted) throw new Error('A fiók törlése nem erősítődött meg.');
+      await supabase.auth.signOut();
+    } catch (err: unknown) {
+      logger.error('SettingsScreen fióktörlési hiba:', getErrorMessage(err));
+      showSnackbar('Nem sikerült törölni a fiókot. Kérjük, próbáld újra később.');
+      setDeleting(false);
     }
   };
 
@@ -236,6 +263,67 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         >
           Mentés
         </Button>
+
+        <Card style={styles.dangerCard} mode="outlined" testID="delete-account-card">
+          <Card.Title
+            title="Fiók törlése"
+            subtitle="Végleges: a cégprofil, a találatok, a tervek és a feltöltött dokumentumok adatai törlődnek."
+            subtitleNumberOfLines={3}
+          />
+          <Card.Content>
+            {!deleteOpen ? (
+              <Button
+                mode="outlined"
+                textColor="#B71C1C"
+                onPress={() => setDeleteOpen(true)}
+                accessibilityLabel="Fiók törlésének indítása"
+                testID="delete-account-open"
+              >
+                Fiók törlése
+              </Button>
+            ) : (
+              <View>
+                <Text variant="bodyMedium" style={styles.dangerText}>
+                  A megerősítéshez írd be: {DELETE_CONFIRM_WORD}
+                </Text>
+                <TextInput
+                  mode="outlined"
+                  value={deleteWord}
+                  onChangeText={setDeleteWord}
+                  autoCapitalize="characters"
+                  placeholder={DELETE_CONFIRM_WORD}
+                  accessibilityLabel="Törlés megerősítő szó"
+                  testID="delete-account-word"
+                  style={styles.dangerInput}
+                />
+                <View style={styles.dangerRow}>
+                  <Button
+                    mode="text"
+                    onPress={() => {
+                      setDeleteOpen(false);
+                      setDeleteWord('');
+                    }}
+                    disabled={deleting}
+                    accessibilityLabel="Fiók törlésének elvetése"
+                  >
+                    Mégse
+                  </Button>
+                  <Button
+                    mode="contained"
+                    buttonColor="#B71C1C"
+                    onPress={handleDeleteAccount}
+                    loading={deleting}
+                    disabled={deleting || deleteWord.trim() !== DELETE_CONFIRM_WORD}
+                    accessibilityLabel="Fiók végleges törlése"
+                    testID="delete-account-confirm"
+                  >
+                    Végleges törlés
+                  </Button>
+                </View>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
       </ScrollView>
 
       <Snackbar
@@ -313,5 +401,21 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#1976D2',
+  },
+  dangerCard: {
+    marginTop: 24,
+    borderColor: '#B71C1C',
+  },
+  dangerText: {
+    color: '#B71C1C',
+    marginBottom: 8,
+  },
+  dangerInput: {
+    marginBottom: 12,
+  },
+  dangerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
 });
