@@ -77,6 +77,29 @@ export function AuthScreen() {
     setLoading(false);
   }
 
+  /** Where the recovery mail's link lands: the static reset page shipped with the web build. */
+  const RESET_PASSWORD_URL = 'https://p-search-mobil.vercel.app/reset-password';
+
+  async function sendPasswordReset() {
+    if (!email || !isValidEmail(email)) {
+      Alert.alert('Érvénytelen adat', 'Add meg a fiókod e-mail címét, és utána kérd a jelszó-visszaállítást.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: RESET_PASSWORD_URL });
+    setLoading(false);
+    if (error) {
+      const tooMany = /rate limit|too many/i.test(error.message);
+      Alert.alert(
+        'Nem sikerült a kérés',
+        tooMany ? 'Túl sok kérés érkezett rövid idő alatt. Próbáld újra kicsit később.' : 'Kérlek, próbáld újra később.',
+      );
+      return;
+    }
+    // Same message whether or not the address exists: no account enumeration.
+    Alert.alert('Ellenőrizd az e-mailed', 'Ha van ilyen fiók, elküldtük a jelszó-visszaállító linket. A link egy óráig érvényes.');
+  }
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -124,6 +147,18 @@ export function AuthScreen() {
           >
             {isLogin ? 'Bejelentkezés' : 'Regisztráció'}
           </Button>
+
+          {isLogin && (
+            <Button
+              mode="text"
+              onPress={sendPasswordReset}
+              disabled={loading}
+              style={styles.switchButton}
+              accessibilityLabel="Elfelejtett jelszó, visszaállító levél kérése"
+            >
+              Elfelejtett jelszó?
+            </Button>
+          )}
 
           <Button
             mode="text"
