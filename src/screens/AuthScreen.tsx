@@ -4,6 +4,11 @@ import { TextInput, Button, Text, Surface, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
+/** True when Supabase reports the e-mail is already registered (empty identities, no mail sent). */
+export function isRepeatedSignUp(user: { identities?: unknown[] | null } | null | undefined): boolean {
+  return !!user && Array.isArray(user.identities) && user.identities.length === 0;
+}
+
 export function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,6 +60,15 @@ export function AuthScreen() {
 
     if (error) {
       Alert.alert('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
+    } else if (isRepeatedSignUp(data.user)) {
+      // Supabase answers a sign-up for an already registered, confirmed e-mail with
+      // HTTP 200 and an empty `identities` array ("user_repeated_signup") and sends
+      // NO e-mail, so the "check your inbox" message would be misleading here.
+      Alert.alert(
+        'Ezzel az e-mail címmel már van fiók',
+        'Nem küldtünk új megerősítő levelet. Jelentkezz be a jelszavaddal.',
+        [{ text: 'Bejelentkezés', onPress: () => setIsLogin(true) }],
+      );
     } else if (data.session == null) {
       Alert.alert('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
     } else {
