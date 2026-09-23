@@ -5,12 +5,11 @@
 
 type ProfileRow = { daily_search_count: number | null; daily_search_date: string | null };
 
-type MinimalClient = {
-  from: (table: string) => {
-    select: (cols: string) => { eq: (col: string, val: string) => { maybeSingle: () => Promise<{ data: ProfileRow | null; error: { message: string } | null }> } };
-    update: (values: Record<string, unknown>) => { eq: (col: string, val: string) => Promise<{ error: { message: string } | null }> };
-  };
-};
+// Structural, deliberately loose: the real SupabaseClient's builders are
+// thenables (PostgrestBuilder), not Promises, so a strict Promise-typed shape
+// does not accept it (deno check TS2345). `await` works on both.
+// deno-lint-ignore no-explicit-any
+type MinimalClient = { from: (table: string) => any };
 
 export function todayIsoDate(now: Date = new Date()): string {
   return now.toISOString().slice(0, 10);
