@@ -8,8 +8,9 @@ copied in unchanged). Output, served by Vercel with cleanUrls:
 
 The notice text is NOT edited here. The only substitutions are the ones the owner
 asked for (2026-09-23): the effective date, the square brackets around the in-app
-path (the feature now exists), and the "draft" label next to the version, which
-contradicts a published, effective notice. Every substitution asserts that it hit
+path (the feature now exists), and the version label: the source still reads
+"1.0 (draft)", the published notice is "1.1" since the VIES tax-number check was
+added (2026-09-23). Every substitution asserts that it hit
 exactly once, so a changed source fails loudly instead of publishing half-edited.
 
 The account-deletion page (public/fiok-torlese.html) is hand-written, not generated:
@@ -28,12 +29,12 @@ EDITS = {
     "hu": [
         ("**Hatályos:** 2026. szeptember [nap].", "**Hatályos:** 2026. szeptember 23."),
         ("[az alkalmazásban: Beállítások → Fiók törlése]", "az alkalmazásban: Beállítások → Fiók törlése"),
-        ("**Verzió:** 1.0 (tervezet)", "**Verzió:** 1.0"),
+        ("**Verzió:** 1.0 (tervezet)", "**Verzió:** 1.1"),
     ],
     "en": [
         ("**Effective:** September [day], 2026", "**Effective:** September 23, 2026"),
         ("[in the app: Settings → Delete account]", "in the app: Settings → Delete account"),
-        ("**Version:** 1.0 (draft)", "**Version:** 1.0"),
+        ("**Version:** 1.0 (draft)", "**Version:** 1.1"),
     ],
 }
 

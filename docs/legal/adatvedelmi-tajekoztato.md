@@ -15,7 +15,7 @@ Ez a tájékoztató a P-Search (Pályázat Kereső) mobilalkalmazásra (Android,
 | Adatkör | Konkrét adatok | Cél | Jogalap (GDPR) |
 |---|---|---|---|
 | Fiók | e-mail cím, jelszó (titkosítva, mi nem látjuk), név (ha megadja) | bejelentkezés, fiókkezelés | 6. cikk (1) b) – szerződés teljesítése |
-| Cégprofil | cégnév, adószám, TEÁOR-kód, létszám, árbevétel, célok | a céghez illő pályázatok megkeresése | 6. cikk (1) b) |
+| Cégprofil | cégnév, adószám, TEÁOR-kód, létszám, árbevétel, célok; az adószám alapján az EU VIES nyilvános adatbázisából lekért cégnév és cím (előtöltés, a felhasználó módosíthatja) | a céghez illő pályázatok megkeresése, az adószám ellenőrzése | 6. cikk (1) b) |
 | Keresések és találatok | keresések száma és ideje, pályázat-találatok és azok indoklása | szolgáltatás nyújtása, napi keresési keret | 6. cikk (1) b) |
 | Copilot (AI-asszisztens) | a beírt kérdések, a generált akcióterv és dokumentum | kérésre akcióterv és dokumentum készítése | 6. cikk (1) b) |
 | Feltöltött dokumentumok | a feltöltött fájl, a belőle kinyert szöveg | a dokumentum feldolgozása az Ön kérésére | 6. cikk (1) b) |
@@ -42,6 +42,7 @@ A pályázat-kereséshez, a Copilot-válaszokhoz és a dokumentumok feldolgozás
 | Google LLC – AdMob | hirdetések (csak az ingyenes verzióban) | Google infrastruktúra |
 | Functional Software Inc. (Sentry) | hibanapló | USA |
 | Google LLC – Gmail | az üdvözlő e-mail kézbesítése | Google infrastruktúra |
+| Európai Bizottság – VIES | adószám-ellenőrzés (csak az adószám kerül elküldésre) | EU |
 | Telegram (Telegram Messenger Inc.) | belső értesítés az adatkezelőnek új regisztrációról | EU-n kívül is |
 | n8n (saját üzemeltetés) és helyi AI-modell (Ollama) | az értesítés összeállítása és rövid összefoglaló, az adatkezelő saját gépén | az adatkezelő saját infrastruktúrája |
 
@@ -93,7 +94,7 @@ This policy applies to the P-Search (Grant Finder) mobile app (Android, package 
 | Category | Data | Purpose | Legal basis (GDPR) |
 |---|---|---|---|
 | Account | e-mail address, password (hashed, not visible to us), name (optional) | sign-in, account management | Art. 6(1)(b) – contract |
-| Company profile | company name, tax number, industry code, headcount, revenue, goals | finding matching grants | Art. 6(1)(b) |
+| Company profile | company name, tax number, industry code, headcount, revenue, goals; company name and address retrieved from the public EU VIES database by tax number (pre-filled, editable by the user) | finding matching grants, validating the tax number | Art. 6(1)(b) |
 | Searches and matches | number and time of searches, grant matches and their reasoning | providing the service, daily search limit | Art. 6(1)(b) |
 | Copilot (AI assistant) | your questions, generated action plans and documents | creating plans and documents on request | Art. 6(1)(b) |
 | Uploaded documents | the file and the text extracted from it | processing the document at your request | Art. 6(1)(b) |
@@ -120,6 +121,7 @@ Grant search, Copilot answers and document processing use the **Google Gemini** 
 | Google LLC – AdMob | ads (free version only) | Google infrastructure |
 | Functional Software Inc. (Sentry) | crash reporting | USA |
 | Google LLC – Gmail | delivering the welcome e-mail | Google infrastructure |
+| European Commission – VIES | tax-number validation (only the tax number is sent) | EU |
 | Telegram (Telegram Messenger Inc.) | internal new-sign-up notice to the controller | may be outside the EU |
 | n8n (self-hosted) and a local AI model (Ollama) | composing the notice and a short summary, on the controller's own machine | controller's own infrastructure |
 
