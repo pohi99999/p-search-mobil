@@ -10,6 +10,7 @@ jest.mock('../lib/supabase', () => ({
     auth: {
       signInWithPassword: jest.fn(),
       signUp: jest.fn(),
+      resetPasswordForEmail: jest.fn(),
     },
   },
 }));
@@ -211,6 +212,51 @@ describe('AuthScreen', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
     expect(Alert.alert).not.toHaveBeenCalledWith('Ezzel az e-mail címmel már van fiók', expect.anything(), expect.anything());
+  });
+
+  it('forgot password: needs a valid e-mail, then asks Supabase with the reset-page redirect', async () => {
+    let component;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+    const forgot = () => component.root.findAllByType(Button).find(b => b.props.children === 'Elfelejtett jelszó?');
+    expect(forgot()).toBeDefined();
+
+    // empty e-mail: no request
+    await act(async () => { await forgot().props.onPress(); });
+    expect(supabase.auth.resetPasswordForEmail).not.toHaveBeenCalled();
+
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => { textInputs[0].props.onChangeText('user@example.com'); });
+    (supabase.auth.resetPasswordForEmail as jest.Mock).mockResolvedValueOnce({ data: {}, error: null });
+    await act(async () => { await forgot().props.onPress(); });
+    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'https://p-search-mobil.vercel.app/reset-password',
+    });
+    expect(Alert.alert).toHaveBeenCalledWith('Ellenőrizd az e-mailed', expect.stringContaining('Ha van ilyen fiók'));
+  });
+
+  it('forgot password: a rate-limit error gets its own message', async () => {
+    let component;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+    const textInputs = component.root.findAllByType(TextInput);
+    act(() => { textInputs[0].props.onChangeText('user@example.com'); });
+    (supabase.auth.resetPasswordForEmail as jest.Mock).mockResolvedValueOnce({ data: null, error: { message: 'email rate limit exceeded' } });
+    const forgot = component.root.findAllByType(Button).find(b => b.props.children === 'Elfelejtett jelszó?');
+    await act(async () => { await forgot.props.onPress(); });
+    expect(Alert.alert).toHaveBeenCalledWith('Nem sikerült a kérés', expect.stringContaining('Túl sok kérés'));
+  });
+
+  it('forgot password button is hidden in sign-up mode', async () => {
+    let component;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+    const switchBtn = component.root.findAllByType(Button).find(b => b.props.children === 'Nincs még fiókod? Regisztrálj!');
+    await act(async () => { switchBtn.props.onPress(); });
+    expect(component.root.findAllByType(Button).find(b => b.props.children === 'Elfelejtett jelszó?')).toBeUndefined();
   });
 
   it('handles successful signUp with session', async () => {
