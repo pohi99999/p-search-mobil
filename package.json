@@ -12,6 +12,7 @@
     "@sentry/react-native": "~7.11.0",
     "@supabase/supabase-js": "^2.108.2",
     "expo": "~56.0.12",
+    "expo-application": "~56.0.3",
     "expo-build-properties": "~56.0.19",
     "expo-dev-client": "~56.0.20",
     "expo-document-picker": "~56.0.4",
