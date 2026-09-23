@@ -327,7 +327,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         <Text variant="bodySmall" style={styles.versionText} testID="app-version" accessibilityLabel="Alkalmazás verziója">
-          P-Search {getAppVersionLabel()}
+          {`P-Search ${getAppVersionLabel()}`}
         </Text>
       </ScrollView>
 
