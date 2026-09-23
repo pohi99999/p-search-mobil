@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
+import { normalizeHuTaxNumber } from '../lib/taxNumber';
 import { AdBanner } from '../components/AdBanner';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -23,6 +24,30 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     yearly_revenue: '',
     goals: '',
   });
+  const [viesHint, setViesHint] = useState<string | null>(null);
+  const [viesLookedUp, setViesLookedUp] = useState<string | null>(null);
+
+  // VIES pre-fill (kanban eeac42d8, B2/3): once the tax number has its first 8
+  // digits, ask the vies-check function for the registered name/address and
+  // fill ONLY an empty company-name field. A miss or an outage changes nothing.
+  const lookupVies = async (taxNumber: string, currentCompanyName: string) => {
+    const vat8 = normalizeHuTaxNumber(taxNumber);
+    if (!vat8 || vat8 === viesLookedUp) return;
+    setViesLookedUp(vat8);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('vies-check', { body: { tax_number: vat8 } });
+      if (fnError || !data?.found) {
+        setViesHint(null);
+        return;
+      }
+      setViesHint(`VIES: ${data.name ?? ''}${data.address ? `, ${data.address}` : ''}`);
+      if (!currentCompanyName.trim() && data.name) {
+        setForm((prev) => (prev.company_name.trim() ? prev : { ...prev, company_name: data.name }));
+      }
+    } catch (e: unknown) {
+      logger.warn('VIES lekérdezés hiba:', getErrorMessage(e));
+    }
+  };
 
 
   const handleSave = async () => {
@@ -107,10 +132,20 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
           <TextInput
             label="Adószám"
             value={form.tax_number}
-            onChangeText={(text) => setForm({ ...form, tax_number: text })}
+            onChangeText={(text) => {
+              setForm({ ...form, tax_number: text });
+              lookupVies(text, form.company_name);
+            }}
+            onBlur={() => lookupVies(form.tax_number, form.company_name)}
             style={styles.input}
             mode="outlined"
+            keyboardType="numeric"
           />
+          {viesHint ? (
+            <Text variant="bodySmall" style={styles.viesHint} accessibilityLabel="VIES találat">
+              {viesHint}
+            </Text>
+          ) : null}
 
           <TextInput
             label="Főtevékenység (TEÁOR)"
@@ -188,6 +223,11 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
+  },
+  viesHint: {
+    color: '#2E7D32',
+    marginTop: -6,
+    marginBottom: 10,
   },
   button: {
     marginTop: 8,
