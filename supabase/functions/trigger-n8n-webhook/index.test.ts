@@ -252,7 +252,7 @@ Deno.test("trigger-n8n-webhook: owner triggers webhook for their own business ->
   Deno.env.delete("N8N_WEBHOOK_URL");
 });
 
-Deno.test("trigger-n8n-webhook: n8n responds with a non-OK status -> 500 with the upstream status surfaced", async () => {
+Deno.test("trigger-n8n-webhook: n8n responds with a non-OK status -> 200 skipped (best-effort step, 503ebf8a)", async () => {
   const recorded = newRecorded();
   const fetchCalls = newRecordedFetch();
   Deno.env.set("N8N_WEBHOOK_URL", "https://n8n.example.com/webhook/abc");
@@ -278,13 +278,15 @@ Deno.test("trigger-n8n-webhook: n8n responds with a non-OK status -> 500 with th
   );
   const body = await res.json();
 
-  assertEquals(res.status, 500);
-  assertEquals(body.error, "N8N webhook hiba: 502 Bad Gateway");
+  assertEquals(res.status, 200);
+  assertEquals(body.success, false);
+  assertEquals(body.skipped, true);
+  assertEquals(body.reason, "upstream_502");
 
   Deno.env.delete("N8N_WEBHOOK_URL");
 });
 
-Deno.test("trigger-n8n-webhook: N8N_WEBHOOK_URL not configured -> 500, no fetch attempted", async () => {
+Deno.test("trigger-n8n-webhook: N8N_WEBHOOK_URL not configured -> 200 skipped, no fetch attempted", async () => {
   const recorded = newRecorded();
   const fetchCalls = newRecordedFetch();
   Deno.env.delete("N8N_WEBHOOK_URL");
@@ -307,9 +309,45 @@ Deno.test("trigger-n8n-webhook: N8N_WEBHOOK_URL not configured -> 500, no fetch 
   );
   const body = await res.json();
 
-  assertEquals(res.status, 500);
-  assertEquals(body.error, "N8N_WEBHOOK_URL nincs beállítva");
+  assertEquals(res.status, 200);
+  assertEquals(body.success, false);
+  assertEquals(body.skipped, true);
+  assertEquals(body.reason, "not_configured");
   assertEquals(fetchCalls.calls.length, 0);
+});
+
+Deno.test("trigger-n8n-webhook: n8n unreachable (fetch throws) -> 200 skipped, reason unreachable", async () => {
+  const recorded = newRecorded();
+  const fetchCalls = newRecordedFetch();
+  Deno.env.set("N8N_WEBHOOK_URL", "https://n8n.example.com/webhook/abc");
+  const createClient = makeMockCreateClient(
+    {
+      getUserResult: { data: { user: { id: "owner-1" } }, error: null },
+      businessProfileResult: { data: { id: "biz-1" }, error: null },
+    },
+    recorded,
+  );
+  const fetch = ((input: string | URL | Request, init?: RequestInit) => {
+    fetchCalls.calls.push({ url: String(input), init: init ?? {} });
+    return Promise.reject(new TypeError("dns error"));
+  }) as unknown as FetchFn;
+
+  const res = await handler(
+    makeRequest(
+      { Authorization: "Bearer valid-token" },
+      { business_id: "biz-1", action: "new_profile_created" },
+    ),
+    { createClient, fetch },
+  );
+  const body = await res.json();
+
+  assertEquals(res.status, 200);
+  assertEquals(body.success, false);
+  assertEquals(body.skipped, true);
+  assertEquals(body.reason, "unreachable");
+  assertEquals(fetchCalls.calls.length, 1);
+
+  Deno.env.delete("N8N_WEBHOOK_URL");
 });
 
 Deno.test("trigger-n8n-webhook: OPTIONS preflight is answered directly, without touching Supabase or n8n", async () => {

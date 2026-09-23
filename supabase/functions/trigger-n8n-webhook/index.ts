@@ -72,23 +72,47 @@ export async function handler(
     }
 
 
+    // The n8n step is best-effort (kanban 503ebf8a, 2026-09-23): the grant
+    // matching does not depend on it, both callers already fire-and-forget,
+    // and the old workflow target was a suspended host that answered 503 on
+    // every onboarding. A missing URL or an upstream failure is therefore
+    // reported as 200 {success:false, skipped:true, reason} and logged as a
+    // warning -- not surfaced as a 5xx that only pollutes the function log.
     const n8nWebhookUrl = Deno.env.get("N8N_WEBHOOK_URL");
     if (!n8nWebhookUrl) {
-        throw new Error("N8N_WEBHOOK_URL nincs beállítva");
+      console.warn("trigger-n8n-webhook: N8N_WEBHOOK_URL nincs beállítva, lépés kihagyva");
+      return new Response(JSON.stringify({ success: false, skipped: true, reason: "not_configured" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
-    const response = await deps.fetch(n8nWebhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        business_id: business_id,
-        user_id: user.id,
-        action: action
-      })
-    });
+    let response: Response;
+    try {
+      response = await deps.fetch(n8nWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_id: business_id,
+          user_id: user.id,
+          action: action
+        })
+      });
+    } catch (fetchErr: unknown) {
+      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+      console.warn(`trigger-n8n-webhook: n8n nem érhető el (${msg}), lépés kihagyva`);
+      return new Response(JSON.stringify({ success: false, skipped: true, reason: "unreachable" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     if (!response.ok) {
-       throw new Error(`N8N webhook hiba: ${response.status} ${response.statusText}`);
+      console.warn(`trigger-n8n-webhook: n8n ${response.status} ${response.statusText}, lépés kihagyva`);
+      return new Response(JSON.stringify({ success: false, skipped: true, reason: `upstream_${response.status}` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     return new Response(JSON.stringify({ success: true }), {
