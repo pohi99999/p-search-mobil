@@ -72,6 +72,15 @@ describe('SettingsScreen version footer', () => {
     const component = await render();
     expect(JSON.stringify(component.toJSON())).toContain('P-Search 1.0.0 (8)');
   });
+
+  it('keeps the footer above the Android navigation bar: bottom padding grows with the safe-area inset', async () => {
+    const { ScrollView } = require('react-native');
+    const component = await render();
+    const scroll = component.root.findAllByType(ScrollView).find((n) => n.props.testID === 'settings-scroll')!;
+    const style = [scroll.props.contentContainerStyle].flat(2).reduce((acc: any, s: any) => ({ ...acc, ...(s || {}) }), {});
+    // SafeAreaProvider initialMetrics in render() sets bottom inset 0 -> 32; with an inset it must be larger.
+    expect(style.paddingBottom).toBeGreaterThanOrEqual(32);
+  });
 });
 
 describe('SettingsScreen account deletion', () => {

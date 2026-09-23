@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/error';
 import { getAppVersionLabel } from '../lib/appVersion';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SettingsScreenProps } from '../types/navigation';
 
 type SearchFrequency = 'daily' | 'weekly' | 'manual';
@@ -69,6 +70,9 @@ const computeNextScanAt = (frequency: SearchFrequency) => {
 };
 
 export function SettingsScreen({ navigation }: SettingsScreenProps) {
+  // Android gesture/navigation bar: without the bottom inset the last rows
+  // (version footer) slide behind the system bar (Péter's screenshot, 1786).
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<SearchFrequency>('weekly');
@@ -198,7 +202,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]}
+        testID="settings-scroll"
+      >
         <Card style={styles.card} mode="elevated">
           <Card.Title
             title="Automatikus AI keresés"
