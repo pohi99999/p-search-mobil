@@ -57,9 +57,12 @@ export async function handler(
     }
 
     // Verify the user owns the business profile
+    // Ownership check AND the company fields the n8n onboarding workflow needs
+    // (kanban eeac42d8): n8n has no DB credential for this project on purpose,
+    // so the verified row travels in the webhook body instead.
     const { data: businessProfile, error: profileError } = await supabaseClient
         .from("business_profiles")
-        .select("id")
+        .select("id, company_name, industry_code, employee_count, yearly_revenue, goals")
         .eq("id", business_id)
         .eq("user_id", user.id)
         .single();
@@ -95,7 +98,12 @@ export async function handler(
         body: JSON.stringify({
           business_id: business_id,
           user_id: user.id,
-          action: action
+          action: action,
+          company_name: businessProfile.company_name ?? null,
+          industry_code: businessProfile.industry_code ?? null,
+          employee_count: businessProfile.employee_count ?? null,
+          yearly_revenue: businessProfile.yearly_revenue ?? null,
+          goals: businessProfile.goals ?? null,
         })
       });
     } catch (fetchErr: unknown) {
