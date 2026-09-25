@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.3';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
+import { foreignMatchIds } from '../_shared/match-ownership.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -110,20 +111,20 @@ serve(async (req) => {
         );
       }
 
-      // Ellenőrizzük a hozzáférést
-      for (const match of matchesData) {
-        if (match.business_profile_id !== business_profile_id) {
-          return new Response(
-            JSON.stringify({
-              error:
-                'Hozzáférés megtagadva (403): Egy vagy több match_id nem tartozik ehhez a cégprofilhoz',
-            }),
-            {
-              status: 403,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            },
-          );
-        }
+      // Ellenőrizzük a hozzáférést. A grant_matches tulajdonos-oszlopa `business_id`
+      // (nem business_profile_id): a rossz mezőnév minden találatot idegennek
+      // mutatott, és a tulajdonos saját találatára is 403 jött (2026-09-25).
+      if (foreignMatchIds(matchesData, business_profile_id).length > 0) {
+        return new Response(
+          JSON.stringify({
+            error:
+              'Hozzáférés megtagadva (403): Egy vagy több match_id nem tartozik ehhez a cégprofilhoz',
+          }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
       }
     }
 
