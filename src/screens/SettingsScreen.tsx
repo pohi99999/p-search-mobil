@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/error';
 import { getAppVersionLabel } from '../lib/appVersion';
+import { useBilling } from '../context/BillingContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SettingsScreenProps } from '../types/navigation';
 
@@ -73,6 +74,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   // Android gesture/navigation bar: without the bottom inset the last rows
   // (version footer) slide behind the system bar (Péter's screenshot, 1786).
   const insets = useSafeAreaInsets();
+  const billing = useBilling();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<SearchFrequency>('weekly');
@@ -206,6 +208,23 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]}
         testID="settings-scroll"
       >
+        <Card style={styles.card} mode="elevated">
+          {/* Entry point to the paywall: until now it was reachable only through the
+              Pro-gated action plan error (owner test 2026-09-25). */}
+          <List.Item
+            title="P-Search Pro"
+            description={
+              billing?.isPro
+                ? 'Aktív Pro előfizetés. Csomagok és visszaállítás.'
+                : 'Copilot akcióterv, reklámmentes használat, korlátlan keresés.'
+            }
+            left={(props) => <List.Icon {...props} icon="star" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => navigation.navigate('Paywall')}
+            testID="settings-pro-entry"
+          />
+        </Card>
+
         <Card style={styles.card} mode="elevated">
           <Card.Title
             title="Automatikus AI keresés"

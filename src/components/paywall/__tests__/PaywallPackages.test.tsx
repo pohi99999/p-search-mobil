@@ -43,7 +43,7 @@ describe('PaywallPackages', () => {
       product: {
         identifier: 'pro_monthly',
         description: 'Pro Monthly Subscription',
-        title: 'Pro Monthly',
+        title: 'P-Search Pro (com.pohankaestarsa.psearch (unreviewed))',
         price: 4.99,
         priceString: '$4.99',
         currencyCode: 'USD',
@@ -141,7 +141,7 @@ describe('PaywallPackages', () => {
 
       // Check first package
       const title1 = root!.root.findAll(
-        (node) => node.type === 'Text' && node.props.children === 'Pro Monthly'
+        (node) => node.type === 'Text' && node.props.children === 'P-Search Pro havi'
       );
       expect(title1.length).toBeGreaterThan(0);
 
@@ -152,13 +152,18 @@ describe('PaywallPackages', () => {
 
       // Check second package
       const title2 = root!.root.findAll(
-        (node) => node.type === 'Text' && node.props.children === 'Pro Yearly'
+        (node) => node.type === 'Text' && node.props.children === 'P-Search Pro éves'
       );
       expect(title2.length).toBeGreaterThan(0);
 
       const price2 = root!.root.findAll(
         (node) => node.type === 'Text' && node.props.children === '$49.99'
       );
+      // The raw Play product title (owner test 2026-09-25) must never reach the screen.
+      const rawTitle = root!.root.findAll(
+        (node) => node.type === 'Text' && typeof node.props.children === 'string' && node.props.children.includes('com.pohankaestarsa')
+      );
+      expect(rawTitle.length).toBe(0);
       expect(price2.length).toBeGreaterThan(0);
     });
 

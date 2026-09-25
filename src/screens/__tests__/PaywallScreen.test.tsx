@@ -137,7 +137,9 @@ describe('PaywallScreen', () => {
 
     const root = component!.root;
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Test Pro');
+    // Own label from the package type; the store title ('Test Pro') is never rendered.
+    expect(treeStr).toContain('P-Search Pro');
+    expect(treeStr).not.toContain('Test Pro');
 
     const purchaseButtons = root.findAllByType(Button).filter(
       (b) => b.props.children === 'Előfizetés indítása'
