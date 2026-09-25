@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import { PurchasesPackage } from 'react-native-purchases';
 import { formatIntroOffer } from '../../lib/introOffer';
+import { packageDescription, packageLabel } from '../../lib/packageLabel';
 
 interface PaywallPackagesProps {
   packages: PurchasesPackage[];
@@ -34,11 +35,13 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
           <Card key={pkg.identifier} style={styles.packageCard} mode="elevated">
             <Card.Content style={styles.packageContent}>
               <Text variant="labelMedium" style={styles.popularBadge}>⭐ LEGNÉPSZERŰBB</Text>
+              {/* Own labels: the store title is the raw Play product name with the
+                  package id and review state, never shown to the user. */}
               <Text variant="titleLarge" style={styles.packageName}>
-                {pkg.product.title || 'P-Search Pro előfizetés'}
+                {packageLabel(pkg)}
               </Text>
               <Text variant="bodyMedium" style={styles.packageDesc}>
-                {pkg.product.description || 'Hozzáférés az összes Pro funkcióhoz'}
+                {packageDescription(pkg)}
               </Text>
               <Text variant="headlineMedium" style={styles.packagePrice}>
                 {pkg.product.priceString}
