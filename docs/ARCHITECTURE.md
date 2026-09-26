@@ -578,6 +578,13 @@ Statements the code **confirms**:
 These came up while tracing the code above. This PR changes nothing. They are listed so that
 owners can triage them separately.
 
+> **Status 2026-09-26:** items 1, 2 and 3 were confirmed on the live database and **FIXED**:
+> PR #194 (77c16c6: `profiles` UPDATE limited to the app-edited columns, `consume_daily_search`
+> and `match_grant_chunks` executable by `service_role` only, `chat-with-gemini` writes only
+> to the caller's own plans) and PR #195 (e6550bf: new `public` functions no longer get
+> EXECUTE for PUBLIC/anon/authenticated by default). The text below describes the state
+> **before** those fixes.
+
 1. **The `profiles` UPDATE policy has no column restriction.**
    - The policy has no `WITH CHECK` and restricts no columns
      (supabase/migrations/20260822090000_security_and_performance_hardening.sql:25-27).
