@@ -152,6 +152,10 @@ Leírás: ${g.description || 'Nincs megadva'}`;
 
     // 3. Feladatok lekérdezése a céghez az azonosítókkal a rendszerpromptba dúsításhoz
     let tasksContext = '';
+    // Plans that belong to the caller's (already ownership-checked) business profile. The
+    // task-status write below must stay inside this set: the ids come from the model's reply,
+    // and the service-role client would otherwise update any user's task (measured 2026-09-26).
+    let ownedPlanIds: string[] = [];
     if (business_profile_id) {
       console.log('Aktív felkészülési feladatok lekérdezése...');
       const { data: plans, error: plansDbError } = await supabaseClient
@@ -165,6 +169,7 @@ Leírás: ${g.description || 'Nincs megadva'}`;
 
       if (plans && plans.length > 0) {
         const planIds = plans.map((p) => p.id);
+        ownedPlanIds = planIds;
         const { data: tasks, error: tasksDbError } = await supabaseClient
           .from('action_tasks')
           .select('id, title, status')
@@ -413,10 +418,15 @@ Példa a kimenetre:
           "Feladatok státuszának frissítése 'done'-ra a következő ID-kkal:",
           JSON.stringify(parsedReply.task_updates.completed_task_ids),
         );
-        const { error: taskError } = await supabaseClient
-          .from('action_tasks')
-          .update({ status: 'done', updated_at: new Date().toISOString() })
-          .in('id', parsedReply.task_updates.completed_task_ids);
+        // Ownership guard: only tasks of the caller's own plans can be closed, whatever ids the
+        // model echoed. With no owned plans nothing is written.
+        const { error: taskError } = ownedPlanIds.length === 0
+          ? { error: null }
+          : await supabaseClient
+            .from('action_tasks')
+            .update({ status: 'done', updated_at: new Date().toISOString() })
+            .in('id', parsedReply.task_updates.completed_task_ids)
+            .in('plan_id', ownedPlanIds);
 
         if (!taskError) {
           databaseUpdated = true;
