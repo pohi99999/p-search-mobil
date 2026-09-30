@@ -129,13 +129,15 @@ serve(async (req) => {
         continue;
       }
 
-      for (const business of businesses ?? []) {
-        try {
-          const summary = await runMatchingForProfile(admin, business.id, geminiApiKey);
-          totalMatches += summary.inserted;
-        } catch (err) {
+      const matchResults = await Promise.allSettled(
+        (businesses ?? []).map((business) => runMatchingForProfile(admin, business.id, geminiApiKey))
+      );
+      for (const [index, result] of matchResults.entries()) {
+        if (result.status === 'fulfilled') {
+          totalMatches += result.value.inserted;
+        } else {
           // One company's failure must not abort the whole scheduled batch.
-          console.error(`Matching hiba (cégprofil ${business.id}):`, err);
+          console.error(`Matching hiba (cégprofil ${(businesses ?? [])[index]?.id}):`, result.reason);
           failures++;
         }
       }
