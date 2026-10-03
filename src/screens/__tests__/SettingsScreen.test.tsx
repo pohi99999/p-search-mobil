@@ -42,8 +42,7 @@ const createNavigationMock = () =>
     navigate: jest.fn(),
   }) as unknown as NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
-const renderSettingsScreen = async () => {
-  const navigation = createNavigationMock();
+const renderSettingsScreen = async (navigation = createNavigationMock()) => {
   let component: renderer.ReactTestRenderer;
 
   await act(async () => {
@@ -69,6 +68,33 @@ describe('SettingsScreen', () => {
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { user: { id: 'user-1' } } },
     });
+  });
+
+  // Owner test 2026-09-25 (card 45ae57d1): the paywall used to be reachable only through the
+  // Pro-gated action plan error. The settings row is the second, ordinary way in.
+  it('opens the paywall from the P-Search Pro row', async () => {
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: { search_frequency: 'weekly', last_scan_at: null, next_scan_at: null },
+        error: null,
+      }),
+    });
+    const navigation = createNavigationMock();
+    const component = await renderSettingsScreen(navigation);
+
+    const proRow = component.root
+      .findAllByType(List.Item)
+      .find((item) => item.props.testID === 'settings-pro-entry');
+    expect(proRow).toBeDefined();
+    expect(proRow!.props.title).toBe('P-Search Pro');
+
+    await act(async () => {
+      proRow!.props.onPress();
+    });
+
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall');
   });
 
   it('renders frequency options and saves a daily schedule with a next scan date', async () => {
