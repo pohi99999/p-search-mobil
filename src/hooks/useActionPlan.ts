@@ -104,6 +104,21 @@ export const useActionPlan = (businessProfileId?: string) => {
           proErr.proRequired = true;
           throw proErr;
         }
+        // 429 daily AI quota / 503 AI overloaded (card 6303fd73): show the server's Hungarian text.
+        if (status === 429 || status === 503) {
+          let serverMessage = '';
+          try {
+            const ctx = (invokeError as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
+            const body = ctx?.json ? await ctx.json() : {};
+            serverMessage = body?.error ?? '';
+          } catch { /* fall through */ }
+          throw new Error(
+            serverMessage ||
+              (status === 429
+                ? 'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.'
+                : 'Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.'),
+          );
+        }
         throw invokeError;
       }
       if (data?.error) throw new Error(data.error);

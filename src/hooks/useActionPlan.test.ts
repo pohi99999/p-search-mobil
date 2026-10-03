@@ -179,6 +179,40 @@ describe('useActionPlan', () => {
       expect(thrown?.proRequired).toBe(true);
     });
 
+    // Card 6303fd73: a 429/503 from generate-action-plan carries {code, error}; the user sees the
+    // Hungarian server text, never the generic "invokeError" message.
+    it.each([
+      [429, 'gemini_quota', 'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.'],
+      [503, 'gemini_busy', 'Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.'],
+    ])('surfaces the Hungarian server text on %i %s', async (status, code, serverMsg) => {
+      const err = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+        context: { status, json: async () => ({ code, error: serverMsg }) },
+      });
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: err });
+      const mockFrom = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnValue({ order: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      };
+      (supabase.from as jest.Mock).mockReturnValue(mockFrom);
+
+      const { result } = renderHook(() => useActionPlan('test-business-id'));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      let thrown: (Error & { proRequired?: boolean }) | undefined;
+      await act(async () => {
+        try {
+          await result.current.generatePlanForMatch('test-business-id', 'test-match-id');
+        } catch (e) {
+          thrown = e as Error & { proRequired?: boolean };
+        }
+      });
+
+      expect(result.current.error).toBe(serverMsg);
+      expect(thrown?.message).toBe(serverMsg);
+      expect(thrown?.proRequired).toBeUndefined();
+    });
+
     it('should set error state when invokeError is present', async () => {
       const errorMessage = 'Function Invoke Error';
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({

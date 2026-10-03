@@ -43,6 +43,23 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
       paywallErr.serverMessage = serverMessage;
       throw paywallErr;
     }
+    // 429 daily AI quota / 503 AI overloaded (card 6303fd73): the server sends {code, error} with a
+    // Hungarian message; surface it instead of the generic failure.
+    if (status === 429 || status === 503) {
+      let code = '';
+      let serverMessage = '';
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
+        const body = ctx?.json ? await ctx.json() : {};
+        code = body?.code ?? '';
+        serverMessage = body?.error ?? '';
+      } catch { /* body unreadable -> generic AI message below */ }
+      const aiErr = new Error(serverMessage || 'ai_unavailable') as Error & { aiUnavailable?: boolean; code?: string; serverMessage?: string };
+      aiErr.aiUnavailable = true;
+      aiErr.code = code || (status === 429 ? 'gemini_quota' : 'gemini_busy');
+      aiErr.serverMessage = serverMessage;
+      throw aiErr;
+    }
     throw error;
   }
   if (data?.error) throw new Error(data.error);
@@ -184,6 +201,25 @@ function useGrantSearch({
           // pro_required (or an unlabelled 403): straight to the Paywall.
           navigation.navigate('Paywall');
         }
+        return;
+      }
+      const aiErr = err as { aiUnavailable?: boolean; code?: string; serverMessage?: string };
+      if (aiErr?.aiUnavailable) {
+        const quota = aiErr.code === 'gemini_quota';
+        Alert.alert(
+          quota ? 'Napi AI-keret' : 'Az AI most túlterhelt',
+          aiErr.serverMessage ||
+            (quota
+              ? 'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.'
+              : 'Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.'),
+          // A quota does not come back before 09:00, so only "busy" offers an immediate retry.
+          quota
+            ? [{ text: 'Bezár', style: 'cancel' }]
+            : [
+                { text: 'Bezár', style: 'cancel' },
+                { text: 'Újra', onPress: () => { void executeSearch(businessId, action); } },
+              ],
+        );
         return;
       }
       logger.error('Hiba az AI keresés során:', err);
