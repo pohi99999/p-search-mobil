@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
   Button,
@@ -18,6 +18,10 @@ import { getErrorMessage } from '../utils/error';
 import { getAppVersionLabel } from '../lib/appVersion';
 import { useBilling } from '../context/BillingContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// The privacy notice lives on the Pohánka site since 2026-10-03 (my_websitev2 PR #128); Google Play's
+// User Data policy wants it reachable from inside the app too.
+export const PRIVACY_POLICY_URL = 'https://www.pohankaestarsa.com/p-search/adatvedelem';
 import type { SettingsScreenProps } from '../types/navigation';
 
 type SearchFrequency = 'daily' | 'weekly' | 'manual';
@@ -290,6 +294,20 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         >
           Mentés
         </Button>
+
+        <Card style={styles.card} mode="elevated">
+          <List.Item
+            title="Adatvédelmi tájékoztató"
+            description="Milyen adatot kezelünk, miért, és milyen jogaid vannak."
+            left={(props) => <List.Icon {...props} icon="shield-account" />}
+            right={(props) => <List.Icon {...props} icon="open-in-new" />}
+            onPress={() => {
+              Linking.openURL(PRIVACY_POLICY_URL).catch((err) => logger.error('Az adatvédelmi tájékoztató nem nyílt meg:', err));
+            }}
+            accessibilityLabel="Adatvédelmi tájékoztató megnyitása"
+            testID="settings-privacy-entry"
+          />
+        </Card>
 
         <Card style={styles.dangerCard} mode="outlined" testID="delete-account-card">
           <Card.Title
