@@ -18,6 +18,83 @@ const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export class EmbeddingError extends Error {}
 
+// 429 (daily free-tier quota, 20 requests/day/model) and 503 ("high demand") are the two Gemini
+// answers a user meets in practice (measured 2026-09-25). They get ONE retry, then a typed error
+// the edge functions turn into a Hungarian message; the raw Google text never reaches the client.
+export type GeminiUnavailableCode = 'gemini_quota' | 'gemini_busy';
+
+export const GEMINI_USER_MESSAGES: Record<GeminiUnavailableCode, string> = {
+  gemini_quota: 'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.',
+  gemini_busy: 'Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.',
+};
+
+export class GeminiUnavailableError extends Error {
+  readonly code: GeminiUnavailableCode;
+  readonly status: 429 | 503;
+  constructor(status: 429 | 503) {
+    const code: GeminiUnavailableCode = status === 429 ? 'gemini_quota' : 'gemini_busy';
+    super(GEMINI_USER_MESSAGES[code]);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export interface GeminiDeps {
+  fetch: typeof fetch;
+  sleep: (ms: number) => Promise<void>;
+}
+
+const defaultDeps: GeminiDeps = {
+  fetch: (...args) => fetch(...args),
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+};
+
+/** The longest wait an edge function spends on the single retry. */
+export const MAX_RETRY_WAIT_MS = 30_000;
+const DEFAULT_RETRY_WAIT_MS = 2_000;
+
+/**
+ * How long to wait before the one retry, from Google's RetryInfo ("retryDelay": "12s") or the
+ * Retry-After header; null when the wait would exceed MAX_RETRY_WAIT_MS (an exhausted daily
+ * quota), because then a retry inside the request cannot succeed.
+ */
+export function retryWaitMs(res: Response, bodyText: string): number | null {
+  let seconds: number | null = null;
+  const m = bodyText.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  if (m) seconds = Number(m[1]);
+  else {
+    const h = res.headers.get('retry-after');
+    if (h && /^\d+(\.\d+)?$/.test(h.trim())) seconds = Number(h.trim());
+  }
+  const ms = seconds === null ? DEFAULT_RETRY_WAIT_MS : Math.ceil(seconds * 1000);
+  return ms > MAX_RETRY_WAIT_MS ? null : ms;
+}
+
+/**
+ * fetch with ONE retry on 429/503. Returns the response when it is ok or a different error; throws
+ * GeminiUnavailableError when 429/503 persists (or the retry wait would be too long).
+ */
+async function fetchWithGeminiRetry(url: string, init: RequestInit, deps: GeminiDeps, label: string): Promise<Response> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await deps.fetch(url, init);
+    if (res.status !== 429 && res.status !== 503) return res;
+    const detail = await res.text();
+    console.error(`Gemini ${label} hiba (${res.status}, próbálkozás ${attempt + 1}/2):`, detail);
+    const wait = retryWaitMs(res, detail);
+    if (attempt === 1 || wait === null) throw new GeminiUnavailableError(res.status as 429 | 503);
+    await deps.sleep(wait);
+  }
+  throw new Error('unreachable');
+}
+
+/** JSON response for a GeminiUnavailableError: {code, error} with the 429/503 status. */
+export function geminiUnavailableResponse(err: GeminiUnavailableError, headers: Record<string, string>, extra: Record<string, unknown> = {}): Response {
+  return new Response(JSON.stringify({ code: err.code, error: err.message, ...extra }), {
+    status: err.status,
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
+}
+
 /**
  * Generates a 768-dimensional embedding for `text`.
  *
@@ -25,8 +102,8 @@ export class EmbeddingError extends Error {}
  * arity does not match the `vector(768)` column, which would otherwise
  * surface much later as an opaque Postgres insert failure.
  */
-export async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const res = await fetch(
+export async function generateEmbedding(text: string, apiKey: string, deps: GeminiDeps = defaultDeps): Promise<number[]> {
+  const res = await fetchWithGeminiRetry(
     `${GEMINI_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
     {
       method: 'POST',
@@ -37,6 +114,8 @@ export async function generateEmbedding(text: string, apiKey: string): Promise<n
         outputDimensionality: EMBEDDING_DIMENSIONS,
       }),
     },
+    deps,
+    'embedding',
   );
 
   if (!res.ok) {
@@ -64,14 +143,17 @@ export async function generateEmbedding(text: string, apiKey: string): Promise<n
 
 /**
  * Calls a Gemini text model and returns the raw text of the first candidate.
+ *
+ * @throws {GeminiUnavailableError} on 429/503 after the one retry.
  */
 export async function generateText(
   prompt: string,
   apiKey: string,
   options: { model?: string; temperature?: number; responseMimeType?: string } = {},
+  deps: GeminiDeps = defaultDeps,
 ): Promise<string> {
   const model = options.model ?? CHAT_MODEL;
-  const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+  const res = await fetchWithGeminiRetry(`${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -81,7 +163,7 @@ export async function generateText(
         ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
       },
     }),
-  });
+  }, deps, 'generateContent');
 
   if (!res.ok) {
     const detail = await res.text();
