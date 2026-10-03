@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.3';
+import { generateText, GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
 
@@ -135,8 +135,6 @@ serve(async (req) => {
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY nincs beállítva');
     }
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Handle generic plan (no match provided)
     if (matchesData.length === 0) {
@@ -173,8 +171,9 @@ ${chat_history ? JSON.stringify(chat_history) : 'Nincs előzmény'}
 
 Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne tegyél semmilyen egyéb szöveget a válaszba, csak a Markdownt.`;
 
-        const result = await model.generateContent(systemPrompt);
-        const generatedMarkdown = result.response.text();
+        // Shared helper: one retry on 429/503, then a typed error (temperature 1.0 = the model
+        // default the SDK call used, so the plans read the same as before).
+        const generatedMarkdown = await generateText(systemPrompt, geminiApiKey, { temperature: 1.0 });
 
         return {
           match_id: matchItem?.id || null,
@@ -261,7 +260,12 @@ Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne 
       },
     );
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    if (err instanceof GeminiUnavailableError) {
+      return geminiUnavailableResponse(err, corsHeaders);
+    }
+    // The raw error text (it used to be Google's "[GoogleGenerativeAI Error] ...") stays in the log.
+    console.error('Akcióterv-generálás hiba:', err);
+    return new Response(JSON.stringify({ error: 'Nem sikerült elkészíteni az akciótervet, próbáld újra később.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

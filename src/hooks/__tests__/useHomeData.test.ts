@@ -234,6 +234,65 @@ describe('useHomeData', () => {
       );
     });
 
+    // Card 6303fd73: 429/503 from match-grants carry {code, error}; the Hungarian text must reach the
+    // user instead of the generic failure, and only "busy" offers an immediate retry.
+    const aiUnavailable = (status: number, code: string, error: string) => ({
+      data: null,
+      error: { context: { status, json: () => Promise.resolve({ code, error }) } },
+    });
+
+    it('429 gemini_quota: shows the server text, no retry button', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ isPro: true });
+      setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        fn === 'match-grants'
+          ? Promise.resolve(aiUnavailable(429, 'gemini_quota', 'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.'))
+          : Promise.resolve({ data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => {
+        await result.current.handleNewSearch();
+      });
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Napi AI-keret',
+        'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.',
+        [{ text: 'Bezár', style: 'cancel' }],
+      );
+      expect(Alert.alert).not.toHaveBeenCalledWith('Hiba', expect.anything());
+    });
+
+    it('503 gemini_busy: shows the server text and "Újra" runs the search again', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ isPro: true });
+      setupSupabaseMocks();
+      let matchCalls = 0;
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) => {
+        if (fn !== 'match-grants') return Promise.resolve({ data: {}, error: null });
+        matchCalls += 1;
+        return Promise.resolve(
+          matchCalls === 1
+            ? aiUnavailable(503, 'gemini_busy', 'Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.')
+            : { data: { success: true, matches_found: 1 }, error: null },
+        );
+      });
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => {
+        await result.current.handleNewSearch();
+      });
+      const call = (Alert.alert as jest.Mock).mock.calls.find((c) => c[0] === 'Az AI most túlterhelt');
+      expect(call).toBeDefined();
+      expect(call![1]).toBe('Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.');
+      const retry = (call![2] as Array<{ text: string; onPress?: () => void }>).find((b) => b.text === 'Újra');
+      expect(retry).toBeDefined();
+      await act(async () => {
+        retry!.onPress!();
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(matchCalls).toBe(2);
+      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.stringContaining('1')));
+    });
+
     it('Free user: search runs match-grants directly (no increment-search-count)', async () => {
       (useBilling as jest.Mock).mockReturnValue({ isPro: false });
       setupSupabaseMocks();

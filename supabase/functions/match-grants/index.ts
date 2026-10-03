@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { runMatchingForProfile } from '../_shared/matching.ts';
 import { FREE_DAILY_SEARCH_CAP } from '../_shared/entitlement.ts';
 import { refundDailySearch } from '../_shared/daily-search-refund.ts';
+import { GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
 
 /**
  * User-initiated grant matching ("Új AI Keresés").
@@ -123,6 +124,10 @@ serve(async (req) => {
     } catch (runErr) {
       const refunded = await refundDailySearch(adminClient, user.id);
       console.error('Pályázatkeresés hiba a levonás után, visszaadva:', refunded, runErr);
+      if (runErr instanceof GeminiUnavailableError) {
+        // 429 daily AI quota / 503 overloaded: the user gets the reason and when to retry.
+        return geminiUnavailableResponse(runErr, corsHeaders, { search_refunded: refunded !== null });
+      }
       return json({ error: 'Nem sikerült lefuttatni a pályázatkeresést.', search_refunded: refunded !== null }, 500);
     }
 
