@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   PaywallFeatures,
   PaywallPackages,
@@ -17,6 +18,8 @@ import {
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
+  // Edge-to-edge: keep the footer above the Android navigation bar (owner test 2026-10-04).
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<RootStackNavigationProp>();
   const [purchasing, setPurchasing] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
@@ -54,7 +57,7 @@ export const PaywallScreen = () => {
 
   return (
     <View style={styles.wrapper}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]} testID="paywall-scroll">
         {/* Bezárás gomb */}
         <View style={styles.headerRow}>
           <IconButton

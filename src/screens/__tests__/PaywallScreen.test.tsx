@@ -103,6 +103,23 @@ describe('PaywallScreen', () => {
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
 
+  // Card bc8e4135, owner test 2026-10-04: the footer sat under the Android navigation bar
+  // (edge-to-edge). The scroll content now clears the bottom inset.
+  it('keeps the footer above the navigation-bar inset', () => {
+    (useBilling as jest.Mock).mockReturnValue(mockBilling);
+    let tree: renderer.ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 48 } }}>
+          <PaywallScreen />
+        </SafeAreaProvider>
+      );
+    });
+    const scroll = tree!.root.find((n) => n.props.testID === 'paywall-scroll' && n.props.contentContainerStyle !== undefined);
+    const style = [scroll.props.contentContainerStyle].flat(3).reduce((acc: Record<string, unknown>, x: Record<string, unknown>) => ({ ...acc, ...(x || {}) }), {});
+    expect(style.paddingBottom).toBe(24 + 48);
+  });
+
   it('renders loader when isLoading is true', () => {
     (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isLoading: true });
 

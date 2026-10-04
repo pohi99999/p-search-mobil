@@ -9,10 +9,13 @@ import { RootStackParamList } from '../types/navigation';
 
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
 export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenNavigationProp }) {
+  // Edge-to-edge: when no banner is shown (Pro, or the ad failed), the button must still clear the navigation bar.
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,7 +115,7 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
           <Text variant="headlineMedium" style={styles.title}>Cégprofil Létrehozása</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
