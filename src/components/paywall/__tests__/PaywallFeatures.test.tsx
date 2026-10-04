@@ -32,23 +32,21 @@ describe('PaywallFeatures', () => {
     expect(tree).toMatchSnapshot();
   });
 
-  it('contains all feature items with correct titles', () => {
-    let component: any;
+  // Card bc8e4135: the Paywall may only promise what vc 11+ really does (Play policy). The loan
+  // agent, the DOCX export and the OCR document base were promised but not (or not Pro-only) there.
+  it('promises only the owner-approved Pro features', () => {
+    let component: renderer.ReactTestRenderer;
     act(() => {
       component = renderer.create(<PaywallFeatures />);
     });
-
-    const root = component.root;
-
-    const items = root.findAllByProps({ 'data-testID': 'list-item' });
-    const validItems = items.filter((item: any) => typeof item.type === 'string');
-
-    expect(validItems.length).toBe(4);
-
-    const titles = validItems.map((item: any) => item.props.title);
-    expect(titles).toContain('✍️ Korlátlan AI Pályázatíró & Hitelügyintéző');
-    expect(titles).toContain('📂 Automatikus Master Dokumentum Bázis (OCR)');
-    expect(titles).toContain('📄 Teljes PDF & DOCX Export');
-    expect(titles).toContain('🚫 Hirdetésmentesség');
+    const items = component!.root.findAll((n) => n.props['data-testID'] === 'list-item' && typeof n.props.title === 'string');
+    const titles = items.map((n) => n.props.title as string);
+    expect(titles).toEqual([
+      '✍️ Copilot akcióterv és pályázati dokumentum',
+      '🔎 Korlátlan AI keresés',
+      '🚫 Hirdetésmentesség',
+    ]);
+    const text = items.map((n) => `${n.props.title} ${n.props.description}`).join(' ');
+    expect(text).not.toMatch(/DOCX|Hitel|OCR/);
   });
 });

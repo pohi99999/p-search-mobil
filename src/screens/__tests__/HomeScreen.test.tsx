@@ -269,4 +269,10 @@ describe('HomeScreen', () => {
 
     expect(mockSignOut).toHaveBeenCalled();
   });
+
+  // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.
+  it('the Home screen source uses no AdMob test unit', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'HomeScreen.tsx'), 'utf8');
+    expect(src).not.toMatch(/TestIds/);
+  });
 });

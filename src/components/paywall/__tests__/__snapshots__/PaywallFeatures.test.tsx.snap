@@ -18,7 +18,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
   <View>
     <View
       data-testID="list-item"
-      description="Gemini AI megírja az igénylési dokumentumokat, elemzi a pályázatokat és felkészít a hitelügyintézésre."
+      description="A Gemini AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
       descriptionNumberOfLines={3}
       descriptionStyle={
         {
@@ -27,7 +27,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="✍️ Korlátlan AI Pályázatíró & Hitelügyintéző"
+      title="✍️ Copilot akcióterv és pályázati dokumentum"
       titleNumberOfLines={2}
       titleStyle={
         {
@@ -39,7 +39,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
     />
     <View
       data-testID="list-item"
-      description="Töltsd fel pénzügyi kimutatásaidat — az AI OCR-rel automatikusan feldolgozza és strukturálja az adatokat."
+      description="Nincs napi keresési korlát."
       descriptionNumberOfLines={3}
       descriptionStyle={
         {
@@ -48,7 +48,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="📂 Automatikus Master Dokumentum Bázis (OCR)"
+      title="🔎 Korlátlan AI keresés"
       titleNumberOfLines={2}
       titleStyle={
         {
@@ -60,28 +60,8 @@ exports[`PaywallFeatures renders correctly 1`] = `
     />
     <View
       data-testID="list-item"
-      description="Professzionálisan előkitöltött pályázati dokumentumok egy kattintással, letölthetőn és megoszthatóan."
+      description="Tiszta, reklám nélküli felület."
       descriptionNumberOfLines={3}
-      descriptionStyle={
-        {
-          "color": "#757575",
-          "fontSize": 13,
-          "marginTop": 2,
-        }
-      }
-      title="📄 Teljes PDF & DOCX Export"
-      titleNumberOfLines={2}
-      titleStyle={
-        {
-          "color": "#1565C0",
-          "fontSize": 16,
-          "fontWeight": "bold",
-        }
-      }
-    />
-    <View
-      data-testID="list-item"
-      description="Tiszta, zavaró tényezőktől mentes kezelőfelület a gyorsabb munkához."
       descriptionStyle={
         {
           "color": "#757575",
@@ -90,6 +70,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
         }
       }
       title="🚫 Hirdetésmentesség"
+      titleNumberOfLines={2}
       titleStyle={
         {
           "color": "#1565C0",

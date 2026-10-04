@@ -6,35 +6,30 @@ export const PaywallFeatures = () => {
   return (
     <Card style={styles.featureCard} mode="outlined">
       <Card.Content>
+        {/* Only what the app really does (owner-approved text, Telegram 6057, card bc8e4135). */}
         <List.Item
-          title="✍️ Korlátlan AI Pályázatíró & Hitelügyintéző"
+          title="✍️ Copilot akcióterv és pályázati dokumentum"
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
-          description="Gemini AI megírja az igénylési dokumentumokat, elemzi a pályázatokat és felkészít a hitelügyintézésre."
+          description="A Gemini AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
           descriptionStyle={styles.featureDesc}
           descriptionNumberOfLines={3}
         />
         <List.Item
-          title="📂 Automatikus Master Dokumentum Bázis (OCR)"
+          title="🔎 Korlátlan AI keresés"
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
-          description="Töltsd fel pénzügyi kimutatásaidat — az AI OCR-rel automatikusan feldolgozza és strukturálja az adatokat."
-          descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
-        />
-        <List.Item
-          title="📄 Teljes PDF & DOCX Export"
-          titleStyle={styles.featureTitle}
-          titleNumberOfLines={2}
-          description="Professzionálisan előkitöltött pályázati dokumentumok egy kattintással, letölthetőn és megoszthatóan."
+          description="Nincs napi keresési korlát."
           descriptionStyle={styles.featureDesc}
           descriptionNumberOfLines={3}
         />
         <List.Item
           title="🚫 Hirdetésmentesség"
           titleStyle={styles.featureTitle}
-          description="Tiszta, zavaró tényezőktől mentes kezelőfelület a gyorsabb munkához."
+          titleNumberOfLines={2}
+          description="Tiszta, reklám nélküli felület."
           descriptionStyle={styles.featureDesc}
+          descriptionNumberOfLines={3}
         />
       </Card.Content>
     </Card>
