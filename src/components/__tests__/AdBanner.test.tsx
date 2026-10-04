@@ -6,6 +6,10 @@ import { BannerAd } from 'react-native-google-mobile-ads';
 import { logger } from '../../utils/logger';
 import { Platform } from 'react-native';
 
+// BillingContext imports src/lib/supabase, which loads the native expo-secure-store module; jest
+// cannot load it ("Cannot read properties of undefined (reading 'EventEmitter')"), so the whole
+// suite failed to run and kept CI red since 2026-09-12. Mock the client like the other suites do.
+jest.mock('../../lib/supabase', () => ({ supabase: { auth: {}, from: jest.fn(), functions: { invoke: jest.fn() } } }));
 jest.mock('react-native-google-mobile-ads', () => ({
   BannerAd: jest.fn(() => null),
   BannerAdSize: { ANCHORED_ADAPTIVE_BANNER: 'ANCHORED_ADAPTIVE_BANNER' }
