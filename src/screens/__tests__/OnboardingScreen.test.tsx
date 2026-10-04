@@ -8,6 +8,12 @@ import type { RootStackParamList } from '../../types/navigation';
 import { logger } from '../../utils/logger';
 
 // Mock dependencies globally for all tests in this file
+// Edge-to-edge insets (card bc8e4135): tests set mockInsets.bottom to measure the layout.
+const mockInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: ({ children }: { children: unknown }) => children,
+  useSafeAreaInsets: () => mockInsets,
+}));
 jest.mock('../../lib/supabase', () => ({
   supabase: {
     auth: {

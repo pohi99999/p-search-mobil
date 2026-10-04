@@ -85,14 +85,13 @@ jest.mock('react-native-purchases', () => {
     };
 });
 
-jest.mock('react-native-safe-area-context', () => {
-  const inset = { top: 0, right: 0, bottom: 0, left: 0 };
-  return {
-    SafeAreaProvider: jest.fn().mockImplementation(({ children }) => children),
-    SafeAreaConsumer: jest.fn().mockImplementation(({ children }) => children(inset)),
-    useSafeAreaInsets: jest.fn().mockReturnValue(inset),
-  };
-});
+// mockInsets.bottom is set per test to measure the edge-to-edge layout (card bc8e4135).
+const mockInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: jest.fn().mockImplementation(({ children }) => children),
+  SafeAreaConsumer: jest.fn().mockImplementation(({ children }) => children(mockInsets)),
+  useSafeAreaInsets: jest.fn(() => mockInsets),
+}));
 
 jest.mock('../../hooks/useHomeData');
 jest.mock('../../components/AdBanner', () => ({
@@ -178,7 +177,8 @@ describe('HomeScreen', () => {
     expect(root.root.findByType('HomeEmptyState')).toBeTruthy();
   });
 
-  it('inserts an inline ad when not pro and has multiple matches', () => {
+  // Owner decision 2026-10-04 (card bc8e4135): no ad inside the list, only the bottom banner.
+  it.each([false, true])('never inserts an ad into the list (isPro=%s)', (isPro) => {
     const mockMatches = [
       { id: '1', title: 'Match 1', grants: {} },
       { id: '2', title: 'Match 2', grants: {} },
@@ -187,45 +187,43 @@ describe('HomeScreen', () => {
       loading: false,
       profile: { company_name: 'Test Company' },
       matches: mockMatches,
+      isPro,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+
+    const root = renderScreen();
+    const data = root.root.findByType('FlatList').props.data;
+    expect(data).toEqual(mockMatches);
+    expect(root.root.findAll((n) => (n.type as unknown) === 'BannerAd')).toHaveLength(0);
+  });
+
+  // Owner test 2026-10-04: the FAB sat on the banner / under the navigation bar.
+  it('keeps the FAB above the navigation-bar inset, and above the banner once it is measured', () => {
+    mockInsets.bottom = 48;
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test' },
+      matches: [{ id: '1', title: 'Match 1', grants: {} }],
       isPro: false,
       fetchData: jest.fn(),
       signOut: jest.fn(),
       handleNewSearch: jest.fn(),
     });
-
     const root = renderScreen();
-    const flatList = root.root.findByType('FlatList');
-    const data = flatList.props.data;
+    const fabBottom = () => {
+      const fab = root.root.find((n) => n.props.testID === 'new-search-fab' && n.props.style !== undefined);
+      return [fab.props.style].flat(3).reduce((acc: Record<string, unknown>, x: Record<string, unknown>) => ({ ...acc, ...(x || {}) }), {}).bottom;
+    };
+    expect(fabBottom()).toBe(48 + 4);
 
-    expect(data.length).toBe(3); // 2 matches + 1 ad
-    expect(data[1].type).toBe('ad');
-
-    // Verify renderItem renders the ad correctly
-    const renderItemResult = flatList.props.renderItem({ item: data[1] });
-    expect(renderItemResult.type).toBe('View'); // Wrapping view
-  });
-
-  it('does not insert an inline ad when pro', () => {
-    const mockMatches = [
-      { id: '1', title: 'Match 1', grants: {} },
-      { id: '2', title: 'Match 2', grants: {} },
-    ];
-    (useHomeData as jest.Mock).mockReturnValue({
-      loading: false,
-      profile: { company_name: 'Test Company' },
-      matches: mockMatches,
-      isPro: true, // User is PRO
-      fetchData: jest.fn(),
-      signOut: jest.fn(),
-      handleNewSearch: jest.fn(),
+    const banner = root.root.find((n) => (n.type as unknown) === 'AdBanner');
+    act(() => {
+      banner.props.onHeightChange(98);
     });
-
-    const root = renderScreen();
-    const flatList = root.root.findByType('FlatList');
-    const data = flatList.props.data;
-
-    expect(data.length).toBe(2); // Only matches, no ad
-    expect(data.some((item: any) => item.type === 'ad')).toBeFalsy();
+    expect(fabBottom()).toBe(98 + 4);
+    mockInsets.bottom = 0;
   });
 
   it('calls handleNewSearch on FAB press', () => {
@@ -270,5 +268,11 @@ describe('HomeScreen', () => {
     });
 
     expect(mockSignOut).toHaveBeenCalled();
+  });
+
+  // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.
+  it('the Home screen source uses no AdMob test unit', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'HomeScreen.tsx'), 'utf8');
+    expect(src).not.toMatch(/TestIds/);
   });
 });
