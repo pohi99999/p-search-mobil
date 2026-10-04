@@ -42,6 +42,18 @@ const createNavigationMock = () =>
     navigate: jest.fn(),
   }) as unknown as NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
+// Unmount every rendered screen after each test: react-native-paper's TextInput schedules a 50 ms
+// placeholder timer whose effect cleanup is the only thing that cancels it. Left mounted, on the
+// slower CI runner it fired after the Jest environment was torn down ("import a file after the
+// Jest environment has been torn down"), an uncaught error that made `npm test -- --ci` exit 1
+// although every test passed.
+const mounted: renderer.ReactTestRenderer[] = [];
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach((c) => c.unmount());
+  });
+});
+
 const renderSettingsScreen = async (navigation = createNavigationMock()) => {
   let component: renderer.ReactTestRenderer;
 
@@ -56,6 +68,7 @@ const renderSettingsScreen = async (navigation = createNavigationMock()) => {
         <SettingsScreen navigation={navigation} route={{ key: 'settings', name: 'Settings' }} />
       </SafeAreaProvider>
     );
+    mounted.push(component);
     await Promise.resolve();
   });
 
