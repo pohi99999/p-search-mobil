@@ -9,6 +9,7 @@ import { useInterstitialAd } from '../hooks/useInterstitialAd';
 import type { ActionPlanScreenProps } from "../types/navigation";
 import { logger } from '../utils/logger';
 import { ActionPlanCard } from '../components/action-plan/ActionPlanCard';
+import { useProfileGate } from '../hooks/useProfileGate';
 
 
 const STATUS_TRANSITION: Record<ActionTaskStatus, ActionTaskStatus> = {
@@ -27,6 +28,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
 
   const { showAdIfAvailable } = useInterstitialAd();
+  // An empty company profile: ask for the key fields before the plan is generated (card 431a496e).
+  const { gate: profileGate, dialog: profileDialog } = useProfileGate(profile);
 
 
 
@@ -150,7 +153,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                 <Button
                   mode="contained"
                   style={styles.primaryButton}
-                  onPress={async () => {
+                  onPress={() => profileGate(async () => {
                     if (!profile || !matchId) return;
                     setGenerating(true);
                     try {
@@ -169,7 +172,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                     } finally {
                       setGenerating(false);
                     }
-                  }}
+                  })}
                 >
                   Akcióterv Generálása
                 </Button>
@@ -218,6 +221,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
       >
         {snackbarMessage}
       </Snackbar>
+      {profileDialog}
     </View>
   );
 }
