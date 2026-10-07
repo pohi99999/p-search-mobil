@@ -125,6 +125,23 @@ describe('PaywallPackages', () => {
     });
   });
 
+  // Common test 2026-10-07 (card a96dd8e2 #3): "LEGNÉPSZERŰBB" on the only package means nothing.
+  describe('the LEGNÉPSZERŰBB badge', () => {
+    const badges = (pkgs: PurchasesPackage[]) => {
+      let root: renderer.ReactTestRenderer | undefined;
+      act(() => {
+        root = renderer.create(<PaywallPackages packages={pkgs} purchasing={false} handlePurchase={mockHandlePurchase} />);
+      });
+      return (renderedText(root!).match(/LEGNÉPSZERŰBB/g) || []).length;
+    };
+    it('is not shown when there is a single package', () => {
+      expect(badges([mockPackages[0]])).toBe(0);
+    });
+    it('is shown on exactly one package when there are two or more', () => {
+      expect(badges(mockPackages)).toBe(1);
+    });
+  });
+
   describe('when real packages are available', () => {
     it('renders provided packages correctly', () => {
       let root: renderer.ReactTestRenderer | undefined;

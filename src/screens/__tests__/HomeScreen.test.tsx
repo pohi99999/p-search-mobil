@@ -65,6 +65,7 @@ jest.mock('react-native-paper', () => {
         Text: 'Text',
         Button: 'Button',
         FAB: 'FAB',
+        AnimatedFAB: 'AnimatedFAB',
         IconButton: 'IconButton',
         MD3Colors: { primary50: '#000000' }
     }
@@ -226,6 +227,28 @@ describe('HomeScreen', () => {
     mockInsets.bottom = 0;
   });
 
+  // Card a96dd8e2 #9 (common test 2026-10-07): the wide "Új AI Keresés" button covered the text of the
+  // 2nd card. It shrinks to its round icon once the list is scrolled, and is extended again at the top.
+  it('collapses the search button to its icon while the list is scrolled', () => {
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test' },
+      matches: [{ id: '1', title: 'Match 1', grants: {} }, { id: '2', title: 'Match 2', grants: {} }],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+    const root = renderScreen();
+    const fab = () => root.root.find((n) => n.props.testID === 'new-search-fab' && typeof n.type === 'string');
+    const list = root.root.find((n) => typeof n.props.onScroll === 'function' && n.props.data !== undefined);
+    expect(fab().props.extended).toBe(true);
+    act(() => { list.props.onScroll({ nativeEvent: { contentOffset: { y: 240 } } }); });
+    expect(fab().props.extended).toBe(false);
+    act(() => { list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 } } }); });
+    expect(fab().props.extended).toBe(true);
+  });
+
   it('calls handleNewSearch on FAB press', () => {
     const mockHandleNewSearch = jest.fn();
     (useHomeData as jest.Mock).mockReturnValue({
@@ -239,7 +262,7 @@ describe('HomeScreen', () => {
     });
 
     const root = renderScreen();
-    const fab = root.root.findByType('FAB');
+    const fab = root.root.find((n) => n.props.testID === 'new-search-fab' && typeof n.type === 'string');
     act(() => {
       fab.props.onPress();
     });

@@ -19,7 +19,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
     <View
       data-testID="list-item"
       description="A Gemini AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
-      descriptionNumberOfLines={3}
+      descriptionNumberOfLines={8}
       descriptionStyle={
         {
           "color": "#757575",
@@ -40,7 +40,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
     <View
       data-testID="list-item"
       description="Nincs napi keresési korlát."
-      descriptionNumberOfLines={3}
+      descriptionNumberOfLines={8}
       descriptionStyle={
         {
           "color": "#757575",
@@ -61,7 +61,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
     <View
       data-testID="list-item"
       description="Tiszta, reklám nélküli felület."
-      descriptionNumberOfLines={3}
+      descriptionNumberOfLines={8}
       descriptionStyle={
         {
           "color": "#757575",
