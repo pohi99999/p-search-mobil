@@ -6,6 +6,9 @@ import { useActionPlan } from '../../src/hooks/useActionPlan';
 import { supabase } from '../../src/lib/supabase';
 import { useInterstitialAd } from '../../src/hooks/useInterstitialAd';
 
+// The profile gate (card 431a496e) has its own test; here generation itself is under test.
+jest.mock('../../src/hooks/useProfileGate', () => ({ useProfileGate: () => ({ gate: (action: () => void) => action(), dialog: null }) }));
+
 jest.mock('../../src/hooks/useActionPlan');
 
 jest.mock('../../src/context/ProfileContext', () => ({

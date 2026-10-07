@@ -6,6 +6,7 @@ import { ActionPlan, ActionTask, ActionTaskStatus, BusinessProfile } from '../..
 import { generateAndSharePDF } from '../../utils/documentGenerator';
 import { logger } from '../../utils/logger';
 import { TaskItem } from './TaskItem';
+import { useProfileGate } from '../../hooks/useProfileGate';
 
 interface ActionPlanCardProps {
   plan: ActionPlan;
@@ -33,6 +34,8 @@ export function ActionPlanCard({
   onProRequired
 }: ActionPlanCardProps) {
   const { totalTasks, completedTasks, progress, percentage } = planStats[plan.id] || { totalTasks: 0, completedTasks: 0, progress: 0, percentage: 0 };
+  // An empty company profile: ask for the key fields first, skippable (card 431a496e).
+  const { gate, dialog } = useProfileGate(profile);
 
   return (
     <Card style={styles.card} mode="elevated">
@@ -106,7 +109,7 @@ export function ActionPlanCard({
               Alert.alert('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
               return;
             }
-            showAdIfAvailable(async () => {
+            gate(() => showAdIfAvailable(async () => {
               setPdfLoading(true);
               try {
                 const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
@@ -148,13 +151,14 @@ export function ActionPlanCard({
               } finally {
                 setPdfLoading(false);
               }
-            });
+            }));
           }}
           style={styles.pdfButton}
         >
           {pdfLoading ? 'Generálás...' : plan.ai_context?.generated_document_html ? 'Újragenerálás' : 'PDF Generálása'}
         </Button>
       </Card.Actions>
+      {dialog}
     </Card>
   );
 }

@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSubscriptionTier, isPro } from "../_shared/entitlement.ts";
-import { generateJson } from "../_shared/gemini.ts";
-import { DOCUMENT_GENERATION, documentErrorResponse } from "./generation.ts";
+import { companyContext as buildCompanyContext, grantContext as buildGrantContext, NO_MISSING_DATA_RULE } from "../_shared/company-context.ts";
+import { documentErrorResponse, generateSections } from "./generation.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -109,20 +109,11 @@ serve(async (req) => {
       );
     }
 
+    // Only the filled fields reach the prompt (card 431a496e): no "Nincs megadva" for the model to repeat.
     const companyName = profile.company_name;
     const grantTitle = match.grants?.title || "Kiválasztott Pályázat";
-
-    const companyContext = `Cégnév: ${companyName}
-TEÁOR kód (iparág): ${profile.industry_code || "Nincs megadva"}
-Alkalmazottak száma: ${profile.employee_count || "Nincs megadva"}
-Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString("hu-HU") + " Ft" : "Nincs megadva"}
-Cég céljai: ${profile.goals || "Nincs megadva"}`;
-
-    const grantContext = `Pályázat címe: ${grantTitle}
-Kiíró: ${match.grants?.provider || "Nincs megadva"}
-Támogatás összege: ${match.grants?.amount_min ? match.grants.amount_min.toLocaleString("hu-HU") + " Ft" : "0"} - ${match.grants?.amount_max ? match.grants.amount_max.toLocaleString("hu-HU") + " Ft" : "?"}
-Kritériumok: ${match.grants?.eligibility_criteria || "Nincs megadva"}
-Pályázat leírása: ${match.grants?.description || "Nincs megadva"}`;
+    const companyContext = buildCompanyContext(profile);
+    const grantContext = buildGrantContext(match.grants);
 
     // 3. Gemini Prompt összeállítása a tartalmi blokkokhoz
     const systemPrompt = `Te egy professzionális pályázatíró AI asszisztens vagy.
@@ -138,7 +129,9 @@ Cégadatok:
 ${companyContext}
 
 Pályázati adatok:
-${grantContext}`;
+${grantContext}
+
+${NO_MISSING_DATA_RULE}`;
 
     // 4. Gemini (REST, _shared/gemini.ts): one retry on 429/503 and on a cut-off or broken JSON answer,
     // thinking off and a 4096-token cap (DOCUMENT_GENERATION); the finishReason is logged on failure.
@@ -149,10 +142,10 @@ ${grantContext}`;
       );
     }
 
-    const parsedData = await generateJson<{ executive_summary?: string; market_analysis?: string; financial_plan?: string }>(
+    const parsedData = await generateSections(
       "Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.",
       apiKey,
-      { ...DOCUMENT_GENERATION, systemInstruction: systemPrompt },
+      systemPrompt,
     );
 
     const executiveSummary = parsedData.executive_summary || "Nincs kitöltve.";

@@ -4,6 +4,7 @@ import { generateText, GeminiUnavailableError, geminiUnavailableResponse } from 
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
 import { extractNextSteps, stripMarkdownFence } from './tasks.ts';
+import { companyContext, mentionsMissingData, NO_MISSING_DATA_RULE } from '../_shared/company-context.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -161,20 +162,25 @@ Az akciótervnek tartalmaznia kell:
 3. Következő Lépések (Next Steps) - konkrét, cselekvésre ösztönző feladatok
 
 Cég adatai:
-- Név: ${businessData?.company_name || 'Ismeretlen'}
-- Árbevétel: ${businessData?.yearly_revenue || 'Ismeretlen'} Ft
-- Létszám: ${businessData?.employee_count || 'Ismeretlen'} fő
+${companyContext(businessData ?? {})}
 
 ${grantData ? `Kiválasztott pályázat:\n- Cím: ${grantData.title}\n- Leírás: ${grantData.description}\n` : ''}
 
 Eddigi beszélgetés előzményei (ha van):
 ${chat_history ? JSON.stringify(chat_history) : 'Nincs előzmény'}
 
+${NO_MISSING_DATA_RULE}
+
 Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne tegyél semmilyen egyéb szöveget a válaszba, csak a Markdownt.`;
 
         // Shared helper: one retry on 429/503, then a typed error (temperature 1.0 = the model
         // default the SDK call used, so the plans read the same as before).
-        const generatedMarkdown = await generateText(systemPrompt, geminiApiKey, { temperature: 1.0 });
+        let generatedMarkdown = await generateText(systemPrompt, geminiApiKey, { temperature: 1.0 });
+        // Still talks about missing data ("nincs megadva", "feltételezzük"; card 431a496e): ONE regeneration with a reminder.
+        if (mentionsMissingData(generatedMarkdown)) {
+          console.warn('Az akcióterv hiányzó adatot említett, újragenerálás emlékeztetővel.');
+          generatedMarkdown = await generateText(`${systemPrompt}\n\nAz előző változat hiányzó adatot említett. Ilyen kifejezés (nincs megadva, ismeretlen, feltételezzük) ne szerepeljen.`, geminiApiKey, { temperature: 1.0 });
+        }
 
         return {
           match_id: matchItem?.id || null,

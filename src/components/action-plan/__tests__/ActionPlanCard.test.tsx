@@ -8,6 +8,9 @@ import { generateAndSharePDF } from '../../../utils/documentGenerator';
 import { ActionPlan, BusinessProfile } from '../../../types/database';
 
 // Mock dependencies
+// The profile gate (card 431a496e) has its own test; here generation itself is under test.
+jest.mock('../../../hooks/useProfileGate', () => ({ useProfileGate: () => ({ gate: (action: () => void) => action(), dialog: null }) }));
+
 jest.mock('../../../lib/supabase', () => ({
   supabase: {
     functions: {
