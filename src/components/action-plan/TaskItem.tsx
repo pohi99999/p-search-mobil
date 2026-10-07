@@ -5,14 +5,17 @@ import { ActionTask, ActionTaskStatus } from '../../types/database';
 
 export const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void }) => {
   return (
+    // Up to 3 lines of title and 4 of description: one line cut "Részletes Pályáz..." (card a96dd8e2 #11).
     <List.Item
       title={task.title}
       titleStyle={[
         styles.taskTitle,
         task.status === 'done' && styles.doneTaskTitle
       ]}
+      titleNumberOfLines={3}
       description={task.description || undefined}
       descriptionStyle={styles.taskDescription}
+      descriptionNumberOfLines={4}
       left={props => (
         <View style={[props.style, styles.checkboxContainer]}>
           <Checkbox

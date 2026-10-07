@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSubscriptionTier, isPro } from "../_shared/entitlement.ts";
 import { companyContext as buildCompanyContext, grantContext as buildGrantContext, NO_MISSING_DATA_RULE } from "../_shared/company-context.ts";
 import { documentErrorResponse, generateSections } from "./generation.ts";
+import { huThousands } from "../_shared/hu-numbers.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -148,9 +149,10 @@ ${NO_MISSING_DATA_RULE}`;
       systemPrompt,
     );
 
-    const executiveSummary = parsedData.executive_summary || "Nincs kitöltve.";
-    const marketAnalysis = parsedData.market_analysis || "Nincs kitöltve.";
-    const financialPlan = parsedData.financial_plan || "Nincs kitöltve.";
+    const executiveSummary = huThousands(parsedData.executive_summary || "Nincs kitöltve.");
+    const marketAnalysis = huThousands(parsedData.market_analysis || "Nincs kitöltve.");
+    // "50.000.000 Ft" -> "50 000 000 Ft" in the model text (card a96dd8e2 #14)
+    const financialPlan = huThousands(parsedData.financial_plan || "Nincs kitöltve.");
 
     // 5. HTML Sablon összeállítása CSS stílusokkal és az adatok behelyettesítésével
     const htmlContent = `

@@ -6,14 +6,15 @@ export const PaywallFeatures = () => {
   return (
     <Card style={styles.featureCard} mode="outlined">
       <Card.Content>
-        {/* Only what the app really does (owner-approved text, Telegram 6057, card bc8e4135). */}
+        {/* Only what the app really does (owner-approved text, Telegram 6057, card bc8e4135). The descriptions
+            may run to 8 lines: at 3 the Copilot one was cut on the phone (card a96dd8e2 #4). */}
         <List.Item
           title="✍️ Copilot akcióterv és pályázati dokumentum"
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
           description="A Gemini AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
           descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
+          descriptionNumberOfLines={8}
         />
         <List.Item
           title="🔎 Korlátlan AI keresés"
@@ -21,7 +22,7 @@ export const PaywallFeatures = () => {
           titleNumberOfLines={2}
           description="Nincs napi keresési korlát."
           descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
+          descriptionNumberOfLines={8}
         />
         <List.Item
           title="🚫 Hirdetésmentesség"
@@ -29,7 +30,7 @@ export const PaywallFeatures = () => {
           titleNumberOfLines={2}
           description="Tiszta, reklám nélküli felület."
           descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
+          descriptionNumberOfLines={8}
         />
       </Card.Content>
     </Card>
