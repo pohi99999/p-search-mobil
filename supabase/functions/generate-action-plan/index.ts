@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateText, GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
+import { extractNextSteps, stripMarkdownFence } from './tasks.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -178,7 +179,8 @@ Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne 
         return {
           match_id: matchItem?.id || null,
           title: grantTitle,
-          markdown: generatedMarkdown,
+          // the ```markdown fence Gemini wraps the answer in is not part of the plan (card a815756f)
+          markdown: stripMarkdownFence(generatedMarkdown),
         };
       })
     );
@@ -209,22 +211,14 @@ Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne 
       const res = aiResults[i];
       const plan = insertedPlans[i];
 
-      const taskRegex = /^[*-]\s+(.+)$/gm;
-      let regexMatch;
-      const extractedTasks = [];
-      let orderIndex = 1;
-
-      while ((regexMatch = taskRegex.exec(res.markdown)) !== null) {
-        if (extractedTasks.length < 5) {
-          extractedTasks.push({
-            plan_id: plan.id,
-            title: regexMatch[1].substring(0, 100),
-            description: `Automatikusan generált feladat az akciótervből: ${res.match_id}`,
-            status: 'todo',
-            order_index: orderIndex++,
-          });
-        }
-      }
+      // Only the "Következő lépések" section: title = the step, description = its sub-points (card a815756f)
+      const extractedTasks = extractNextSteps(res.markdown).map((t, k) => ({
+        plan_id: plan.id,
+        title: t.title,
+        description: t.description || 'Az akcióterv „Következő lépések” részéből.',
+        status: 'todo',
+        order_index: k + 1,
+      }));
 
       if (extractedTasks.length > 0) {
         allTasksToInsert.push(...extractedTasks);
