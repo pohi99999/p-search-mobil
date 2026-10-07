@@ -23,9 +23,16 @@ export class EmbeddingError extends Error {}
 // the edge functions turn into a Hungarian message; the raw Google text never reaches the client.
 export type GeminiUnavailableCode = 'gemini_quota' | 'gemini_busy';
 
-export const GEMINI_USER_MESSAGES: Record<GeminiUnavailableCode, string> = {
+// A 200 answer can still be unusable: cut off at the token cap (finishReason MAX_TOKENS) or not
+// valid JSON. Measured 2026-10-07: generate-document got a JSON cut off at character 124 and the
+// bare JSON.parse threw a raw SyntaxError (card 6c7049fa #12).
+export type GeminiOutputCode = 'gemini_truncated' | 'gemini_bad_output';
+
+export const GEMINI_USER_MESSAGES: Record<GeminiUnavailableCode | GeminiOutputCode, string> = {
   gemini_quota: 'A napi AI-keret elfogyott, holnap 09:00 után próbáld újra.',
   gemini_busy: 'Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.',
+  gemini_truncated: 'Az AI válasza félbeszakadt, ezért a dokumentum nem készült el. Próbáld újra.',
+  gemini_bad_output: 'Az AI hibás formátumú választ adott, ezért a dokumentum nem készült el. Próbáld újra.',
 };
 
 export class GeminiUnavailableError extends Error {
@@ -36,6 +43,16 @@ export class GeminiUnavailableError extends Error {
     super(GEMINI_USER_MESSAGES[code]);
     this.code = code;
     this.status = status;
+  }
+}
+
+export class GeminiOutputError extends Error {
+  readonly code: GeminiOutputCode;
+  readonly finishReason: string | null;
+  constructor(code: GeminiOutputCode, finishReason: string | null) {
+    super(GEMINI_USER_MESSAGES[code]);
+    this.code = code;
+    this.finishReason = finishReason;
   }
 }
 
@@ -141,6 +158,17 @@ export async function generateEmbedding(text: string, apiKey: string, deps: Gemi
   return values;
 }
 
+export interface GenerateOptions {
+  model?: string;
+  temperature?: number;
+  responseMimeType?: string;
+  /** Cap on the answer; on gemini-2.5-flash the thinking tokens count against it too. */
+  maxOutputTokens?: number;
+  /** 0 turns thinking off, so the whole cap goes to the answer. */
+  thinkingBudget?: number;
+  systemInstruction?: string;
+}
+
 /**
  * Calls a Gemini text model and returns the raw text of the first candidate.
  *
@@ -149,18 +177,31 @@ export async function generateEmbedding(text: string, apiKey: string, deps: Gemi
 export async function generateText(
   prompt: string,
   apiKey: string,
-  options: { model?: string; temperature?: number; responseMimeType?: string } = {},
+  options: GenerateOptions = {},
   deps: GeminiDeps = defaultDeps,
 ): Promise<string> {
+  return (await generateCandidate(prompt, apiKey, options, deps)).text;
+}
+
+/** The first candidate's text and why it ended (STOP, MAX_TOKENS, SAFETY...). */
+async function generateCandidate(
+  prompt: string,
+  apiKey: string,
+  options: GenerateOptions,
+  deps: GeminiDeps,
+): Promise<{ text: string; finishReason: string | null }> {
   const model = options.model ?? CHAT_MODEL;
   const res = await fetchWithGeminiRetry(`${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      ...(options.systemInstruction ? { systemInstruction: { parts: [{ text: options.systemInstruction }] } } : {}),
       generationConfig: {
         temperature: options.temperature ?? 0.2,
         ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+        ...(options.maxOutputTokens ? { maxOutputTokens: options.maxOutputTokens } : {}),
+        ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
       },
     }),
   }, deps, 'generateContent');
@@ -172,11 +213,45 @@ export async function generateText(
   }
 
   const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = json?.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text;
+  const finishReason: string | null = candidate?.finishReason ?? null;
   if (typeof text !== 'string') {
+    console.error(`Gemini válasz szöveg nélkül (finishReason: ${finishReason}).`);
     throw new Error('A Gemini válasz nem tartalmazott szöveget.');
   }
-  return text;
+  return { text, finishReason };
+}
+
+/**
+ * Calls Gemini for a JSON answer and parses it. An answer cut off at the token cap (MAX_TOKENS) or
+ * not parseable gets ONE more attempt, then a typed GeminiOutputError with a Hungarian message;
+ * the finishReason is logged on every failed attempt so the server log says why.
+ *
+ * @throws {GeminiUnavailableError} on 429/503 after the one retry.
+ * @throws {GeminiOutputError} when both attempts give a cut-off or broken answer.
+ */
+export async function generateJson<T>(
+  prompt: string,
+  apiKey: string,
+  options: GenerateOptions = {},
+  deps: GeminiDeps = defaultDeps,
+): Promise<T> {
+  let last: GeminiOutputError | null = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const { text, finishReason } = await generateCandidate(prompt, apiKey, { responseMimeType: 'application/json', ...options }, deps);
+    if (finishReason === 'MAX_TOKENS') {
+      last = new GeminiOutputError('gemini_truncated', finishReason);
+    } else {
+      try {
+        return parseJsonFromModel<T>(text);
+      } catch {
+        last = new GeminiOutputError('gemini_bad_output', finishReason);
+      }
+    }
+    console.error(`Gemini JSON-válasz használhatatlan (${last.code}, finishReason: ${finishReason}, ${text.length} karakter, próbálkozás ${attempt}/2).`);
+  }
+  throw last!;
 }
 
 /**

@@ -182,6 +182,42 @@ describe('ActionPlanCard PDF Generation', () => {
     expect(generateAndSharePDF).not.toHaveBeenCalled();
   });
 
+  it('shows the server Hungarian text for a Gemini error (cut-off answer, 502), not the generic one', async () => {
+    const serverText = 'Az AI válasza félbeszakadt, ezért a dokumentum nem készült el. Próbáld újra.';
+    const mockError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 502, json: async () => ({ code: 'gemini_truncated', error: serverText }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: mockError });
+
+    let root: renderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      root = renderer.create(<ActionPlanCard {...defaultProps} />);
+    });
+    await act(async () => {
+      await getPdfButton(root!)?.props.onPress();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', serverText);
+    expect(generateAndSharePDF).not.toHaveBeenCalled();
+  });
+
+  it('a 500 without a Gemini code keeps the generic message', async () => {
+    const mockError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 500, json: async () => ({ error: 'Nem sikerült legenerálni a dokumentumot.' }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: mockError });
+
+    let root: renderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      root = renderer.create(<ActionPlanCard {...defaultProps} />);
+    });
+    await act(async () => {
+      await getPdfButton(root!)?.props.onPress();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+  });
+
   it('handles error inside data returned from supabase.functions.invoke', async () => {
     (supabase.functions.invoke as jest.Mock).mockResolvedValue({
       data: { error: 'Internal generation error' },
