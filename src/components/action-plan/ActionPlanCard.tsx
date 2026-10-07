@@ -137,7 +137,14 @@ export function ActionPlanCard({
                   return;
                 }
                 logger.error('PDF generation error:', err);
-                Alert.alert('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+                // Gemini quota / busy / cut-off answer: the server sends {code: 'gemini_*', error: <Hungarian text>}.
+                let geminiMessage = '';
+                try {
+                  const ctx = (err as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
+                  const body = ctx?.json ? await ctx.json() : {};
+                  if (body?.code?.startsWith('gemini_') && body.error) geminiMessage = body.error;
+                } catch { /* fall through */ }
+                Alert.alert('Hiba', geminiMessage || 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
               } finally {
                 setPdfLoading(false);
               }

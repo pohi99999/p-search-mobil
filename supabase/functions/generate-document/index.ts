@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSubscriptionTier, isPro } from "../_shared/entitlement.ts";
+import { generateJson } from "../_shared/gemini.ts";
+import { DOCUMENT_GENERATION, documentErrorResponse } from "./generation.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -138,7 +140,8 @@ ${companyContext}
 Pályázati adatok:
 ${grantContext}`;
 
-    // 4. Gemini API hívása (REST)
+    // 4. Gemini (REST, _shared/gemini.ts): one retry on 429/503 and on a cut-off or broken JSON answer,
+    // thinking off and a 4096-token cap (DOCUMENT_GENERATION); the finishReason is logged on failure.
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
       throw new Error(
@@ -146,49 +149,11 @@ ${grantContext}`;
       );
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-    const apiResponse = await fetch(geminiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: "Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.",
-              },
-            ],
-          },
-        ],
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 1500,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!apiResponse.ok) {
-      // The upstream body frequently echoes the request and key metadata, so
-      // it is logged server-side only and never surfaced to the client.
-      const errorText = await apiResponse.text();
-      console.error(`Gemini API hiba (${apiResponse.status}):`, errorText);
-      throw new Error(`Gemini API hiba (${apiResponse.status})`);
-    }
-
-    const responseData = await apiResponse.json();
-    const replyJSONText =
-      responseData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-
-    // Parse-oljuk a Gemini JSON kimenetét
-    const parsedData = JSON.parse(replyJSONText.trim());
+    const parsedData = await generateJson<{ executive_summary?: string; market_analysis?: string; financial_plan?: string }>(
+      "Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.",
+      apiKey,
+      { ...DOCUMENT_GENERATION, systemInstruction: systemPrompt },
+    );
 
     const executiveSummary = parsedData.executive_summary || "Nincs kitöltve.";
     const marketAnalysis = parsedData.market_analysis || "Nincs kitöltve.";
@@ -333,12 +298,7 @@ ${grantContext}`;
     // Full detail stays in the server log; the client receives a generic
     // message so internal identifiers and provider errors are not disclosed.
     console.error("Hiba a dokumentum generálása során:", err);
-    return new Response(
-      JSON.stringify({ error: "Nem sikerült legenerálni a dokumentumot." }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      },
-    );
+    // Gemini quota/busy/cut-off answers get their code and Hungarian text, anything else stays generic.
+    return documentErrorResponse(err, corsHeaders);
   }
 });
