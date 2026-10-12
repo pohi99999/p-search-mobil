@@ -1,6 +1,7 @@
 // The Gemini settings and the error answers of generate-document, kept apart from the request
 // handler so they can be tested (card 6c7049fa #12, 2026-10-07).
-import { GeminiOutputError, GeminiUnavailableError, geminiUnavailableResponse, generateJson, type GeminiDeps, type GenerateOptions } from "../_shared/gemini.ts";
+import { GeminiOutputError, GeminiUnavailableError, geminiUnavailableResponse, type GeminiDeps, type GenerateOptions } from "../_shared/gemini.ts";
+import { generateJson } from "../_shared/llm.ts";
 import { mentionsMissingData } from "../_shared/company-context.ts";
 
 // Three Hungarian sections of 150-200 words need well over 1500 tokens, and on gemini-2.5-flash the

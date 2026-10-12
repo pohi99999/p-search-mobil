@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import { extractJson } from "../_shared/llm.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -245,17 +246,20 @@ serve(async (req) => {
       file_base64.length,
     );
 
-    const geminiResult = await model.generateContent([
-      EXTRACTION_PROMPT,
-      {
-        inlineData: {
-          mimeType: mime_type,
-          data: file_base64,
+    // d8ff4f1b: Claude first (PDF as a document, JPEG/PNG/GIF/WebP as an image), this SDK call is
+    // the fallback and the only path for any other file type.
+    const rawOcrText = await extractJson(EXTRACTION_PROMPT, { mimeType: mime_type, base64: file_base64 }, async () => {
+      const geminiResult = await model.generateContent([
+        EXTRACTION_PROMPT,
+        {
+          inlineData: {
+            mimeType: mime_type,
+            data: file_base64,
+          },
         },
-      },
-    ]);
-
-    const rawOcrText = geminiResult.response.text();
+      ]);
+      return geminiResult.response.text();
+    }, 1024);
     console.log("Gemini OCR nyers válasz:", rawOcrText);
 
     // ------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { generateText, GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
+import { GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
+import { generateText } from '../_shared/llm.ts';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
 import { extractNextSteps, stripMarkdownFence } from './tasks.ts';
