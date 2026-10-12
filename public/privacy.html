@@ -117,7 +117,7 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 </table></div>
 <p>The app does <strong>not</strong> request location, contacts, camera or microphone, and uses no separate analytics tracker.</p>
 <h2>3. Use of AI</h2>
-<p>Grant search, Copilot answers and document processing use the <strong>Google Gemini</strong> model. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under the Gemini API terms, Google does not use this data to train its models. AI output is informational; decisions about applying for grants remain yours.</p>
+<p>Copilot chat answers are produced primarily by the <strong>Anthropic Claude</strong> model, and by <strong>Google Gemini</strong> when Claude is not available. Grant search, action plans, documents and the processing of uploaded documents use the <strong>Google Gemini</strong> model. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under their API terms, neither Anthropic nor Google uses this data to train its models. AI output is informational; decisions about applying for grants remain yours.</p>
 <h2>4. Processors</h2>
 <div class="table"><table>
 <thead>
@@ -132,6 +132,11 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <td>Supabase Inc.</td>
 <td>database, authentication, server functions</td>
 <td>EU (Ireland, eu-west-1)</td>
+</tr>
+<tr>
+<td>Anthropic Ireland, Limited – Claude API</td>
+<td>AI processing (Copilot chat answers)</td>
+<td>Anthropic infrastructure, may be outside the EU</td>
 </tr>
 <tr>
 <td>Google LLC – Gemini API</td>

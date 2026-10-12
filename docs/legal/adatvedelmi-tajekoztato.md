@@ -29,13 +29,14 @@ Az alkalmazás **nem** kér helymeghatározást, névjegyeket, kamerát vagy mik
 
 ## 3. Mesterséges intelligencia használata
 
-A pályázat-kereséshez, a Copilot-válaszokhoz és a dokumentumok feldolgozásához a **Google Gemini** nyelvi modellt használjuk. A modell a mi szerverünkön (Supabase Edge Functions) keresztül kapja meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). A Gemini API-n küldött adatokat a Google az API-feltételei szerint nem használja modelltanításra. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.
+A Copilot csevegő válaszait elsődlegesen az **Anthropic Claude** nyelvi modellje állítja elő; ha az nem elérhető, a **Google Gemini**. A pályázat-kereséshez, az akcióterv és a dokumentumok elkészítéséhez és a feltöltött dokumentumok feldolgozásához a **Google Gemini** nyelvi modellt használjuk. A modellek a mi szerverünkön (Supabase Edge Functions) keresztül kapják meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). Az API-n küldött adatokat sem az Anthropic, sem a Google nem használja modelltanításra a saját API-feltételei szerint. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.
 
 ## 4. Adatfeldolgozók (akiknek átadjuk az adatot)
 
 | Szolgáltató | Feladat | Adatok helye |
 |---|---|---|
 | Supabase Inc. | adatbázis, bejelentkezés, szerveroldali függvények | EU (Írország, eu-west-1) |
+| Anthropic Ireland, Limited – Claude API | AI-feldolgozás (a Copilot csevegő válaszai) | Anthropic infrastruktúra, EU-n kívül is |
 | Google LLC – Gemini API | AI-feldolgozás | Google infrastruktúra, EU-n kívül is |
 | RevenueCat Inc. | előfizetés-kezelés | USA |
 | Google LLC – Google Play | vásárlás, fizetés, alkalmazás-terjesztés | Google infrastruktúra |
@@ -108,13 +109,14 @@ The app does **not** request location, contacts, camera or microphone, and uses 
 
 ## 3. Use of AI
 
-Grant search, Copilot answers and document processing use the **Google Gemini** model. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under the Gemini API terms, Google does not use this data to train its models. AI output is informational; decisions about applying for grants remain yours.
+Copilot chat answers are produced primarily by the **Anthropic Claude** model, and by **Google Gemini** when Claude is not available. Grant search, action plans, documents and the processing of uploaded documents use the **Google Gemini** model. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under their API terms, neither Anthropic nor Google uses this data to train its models. AI output is informational; decisions about applying for grants remain yours.
 
 ## 4. Processors
 
 | Provider | Role | Location |
 |---|---|---|
 | Supabase Inc. | database, authentication, server functions | EU (Ireland, eu-west-1) |
+| Anthropic Ireland, Limited – Claude API | AI processing (Copilot chat answers) | Anthropic infrastructure, may be outside the EU |
 | Google LLC – Gemini API | AI processing | Google infrastructure, may be outside the EU |
 | RevenueCat Inc. | subscription management | USA |
 | Google LLC – Google Play | purchases, payments, distribution | Google infrastructure |
