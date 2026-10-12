@@ -49,7 +49,8 @@ Deno.test('Claude answers: its text is used and Gemini is NOT called', async () 
   const s = setup(() => claudeOk('claude-valasz'));
   assertEquals(await generateText('p', 'g', {}, s.deps), 'claude-valasz');
   assertEquals(s.seen.gemini, 0);
-  assertMatch(s.lines[0], /provider=claude model=claude-haiku-4-5 ok/);
+  assertMatch(s.lines[0], /provider=claude model=claude-haiku-5-5 ok/);
+  assertEquals(s.seen.claude[0].body.model, 'claude-haiku-5-5');
 });
 
 Deno.test('the Claude request carries NO temperature / thinking / prefill; the model comes from env', async () => {
@@ -60,6 +61,8 @@ Deno.test('the Claude request carries NO temperature / thinking / prefill; the m
   assertEquals(b.system, 'rendszer');
   assertEquals(b.messages, [{ role: 'user', content: 'p' }]);
   for (const k of ['temperature', 'thinking', 'top_p', 'top_k']) assert(!(k in b), k);
+  // the Gemini caps (chat 1000, OCR 1024) would cut a thinking model off: Claude gets at least 8000
+  assertEquals(b.max_tokens, 8000);
 });
 
 for (const [name, res, code] of [

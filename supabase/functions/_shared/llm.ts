@@ -34,8 +34,14 @@ import {
 
 const CLAUDE_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_VERSION = '2023-06-01';
-/** Only a default: the live name comes from ANTHROPIC_MODEL, checked against GET /v1/models. */
-export const DEFAULT_CLAUDE_MODEL = 'claude-haiku-4-5';
+/** The live name comes from ANTHROPIC_MODEL; this default was checked against GET /v1/models on
+ *  2026-10-12 (claude-haiku-5-5 and claude-sonnet-5-5 listed). */
+export const DEFAULT_CLAUDE_MODEL = 'claude-haiku-5-5';
+/** Haiku 5.5 thinks adaptively and its thinking counts against max_tokens (measured 2026-10-12:
+ *  736 of 1142 output tokens were thinking on a short task). The Gemini caps of the call sites
+ *  (1000 for the chat, 1024 for the OCR) would cut Claude off mid-answer, so Claude gets at least
+ *  this much; it is only a ceiling, output is billed as used. */
+export const MIN_CLAUDE_MAX_TOKENS = 8000;
 export const DEFAULT_TIMEOUT_MS = 30_000;
 
 const JSON_ONLY =
@@ -113,7 +119,7 @@ export async function claudeCall(req: ClaudeRequest, key: string, model: string,
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': ANTHROPIC_VERSION },
       body: JSON.stringify({
         model,
-        max_tokens: req.maxTokens ?? 4096,
+        max_tokens: Math.max(req.maxTokens ?? 0, MIN_CLAUDE_MAX_TOKENS),
         ...(req.system ? { system: req.system } : {}),
         messages,
       }),
