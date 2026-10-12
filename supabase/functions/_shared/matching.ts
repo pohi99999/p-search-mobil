@@ -20,7 +20,8 @@
  *      schedule and the project is on free-tier API quota.
  */
 
-import { generateEmbedding, generateText, parseJsonFromModel } from './gemini.ts';
+import { generateEmbedding, parseJsonFromModel } from './gemini.ts';
+import { generateText } from './llm.ts';
 
 /** Minimal shape of the Supabase client methods this module relies on. */
 // deno-lint-ignore no-explicit-any

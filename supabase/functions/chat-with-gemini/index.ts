@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
+import { chatJson, type Turn } from '../_shared/llm.ts';
 import {
   describeRequestData,
   describeText,
@@ -331,7 +332,7 @@ Példa a kimenetre:
 
     console.log('Beszélgetési előzmények leképezése a Gemini formátumára...');
     // 7. Előzmények leképezése a Gemini API formátumára
-    const geminiContents = [];
+    const geminiContents: { role: string; parts: { text: string }[] }[] = [];
     if (history && Array.isArray(history)) {
       const recentHistory = history.slice(-10);
       for (const msg of recentHistory) {
@@ -362,12 +363,18 @@ Példa a kimenetre:
       },
     });
 
-    const result = await model.generateContent({
-      contents: geminiContents,
-    });
-
-    console.log('Gemini hívás sikeresen lefutott.');
-    const replyJSONText = result.response.text() || '{}';
+    // d8ff4f1b: Claude first, this SDK call is the fallback (same history, same system prompt).
+    const claudeTurns: Turn[] = geminiContents.map((c) => ({
+      role: c.role === 'user' ? 'user' as const : 'assistant' as const,
+      text: c.parts.map((p) => p.text).join(''),
+    }));
+    const replyJSONText = (await chatJson(systemPrompt, claudeTurns, async () => {
+      const result = await model.generateContent({
+        contents: geminiContents,
+      });
+      return result.response.text();
+    }, 1000)) || '{}';
+    console.log('Modell-hívás sikeresen lefutott.');
     console.log('Gemini nyers JSON válasz:', describeJsonText(replyJSONText));
 
     let reply = 'Sajnálom, nem sikerült választ generálnom.';
