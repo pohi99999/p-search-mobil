@@ -304,6 +304,12 @@ export async function runMatchingForProfile(
     inserted = worthShowing.length;
   }
 
+  // Card 2428c38f: a new scan re-scores only the grants it found; the business's older 'new'
+  // matches kept their reasoning from the old profile and sat in the list mixed with the fresh ones.
+  // They are marked 'stale' (not deleted: an action plan may hang on them), and a stale match the
+  // new scan found again goes back to 'new'. A user's own 'ignored'/'applied' rows are not touched.
+  await markStaleMatches(supabase, businessProfileId, worthShowing.map((m) => m.grant_id));
+
   return {
     candidates: candidates.length,
     scored: scored.length,
@@ -324,4 +330,36 @@ export function computeNextScanAt(frequency: string, from: Date = new Date()): s
     return new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
   }
   return null;
+}
+
+export const STALE_MATCH_STATUS = 'stale';
+
+/** After a scan: 'new' matches of the business outside `freshGrantIds` become 'stale'; 'stale' ones inside go back to 'new'. */
+export async function markStaleMatches(
+  supabase: SupabaseClient,
+  businessProfileId: string,
+  freshGrantIds: string[],
+): Promise<{ staled: number; revived: number }> {
+  const idList = `(${freshGrantIds.map((id) => `"${id}"`).join(',')})`;
+  let staleQuery = supabase
+    .from('grant_matches')
+    .update({ status: STALE_MATCH_STATUS })
+    .eq('business_id', businessProfileId)
+    .eq('status', 'new');
+  if (freshGrantIds.length > 0) staleQuery = staleQuery.not('grant_id', 'in', idList);
+  const { data: staled, error: staleError } = await staleQuery.select('id');
+  if (staleError) throw new Error(`Nem sikerült a régi egyezéseket megjelölni: ${staleError.message}`);
+  let revived: { id: string }[] | null = [];
+  if (freshGrantIds.length > 0) {
+    const { data, error: reviveError } = await supabase
+      .from('grant_matches')
+      .update({ status: 'new' })
+      .eq('business_id', businessProfileId)
+      .eq('status', STALE_MATCH_STATUS)
+      .in('grant_id', freshGrantIds)
+      .select('id');
+    if (reviveError) throw new Error(`Nem sikerült a régi egyezéseket frissíteni: ${reviveError.message}`);
+    revived = data;
+  }
+  return { staled: staled?.length ?? 0, revived: revived?.length ?? 0 };
 }
