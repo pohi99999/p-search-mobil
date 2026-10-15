@@ -12,7 +12,7 @@ export const PaywallFeatures = () => {
           title="✍️ Copilot akcióterv és pályázati dokumentum"
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
-          description="A Gemini AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
+          description="Az AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
           descriptionStyle={styles.featureDesc}
           descriptionNumberOfLines={8}
         />

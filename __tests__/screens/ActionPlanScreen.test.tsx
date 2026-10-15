@@ -165,6 +165,47 @@ describe('ActionPlanScreen', () => {
   });
 
 
+  // Card 269fdd5f: the Copilot chat entry point, bound to this screen's match.
+  it('offers "Kérdezz a Copilottól" for a match and opens the chat with that matchId', async () => {
+    (useActionPlan as jest.Mock).mockReturnValue({
+      plans: [], tasks: {}, loading: false, error: null, refetch: jest.fn(), updateTaskStatus: jest.fn(), generatePlanForMatch: jest.fn(),
+    });
+    const mockNavigate = jest.fn();
+    const { SafeAreaProvider } = require('react-native-safe-area-context');
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <SafeAreaProvider>
+          <ActionPlanScreen
+            route={{ params: { matchId: 'match-1' } } as any}
+            navigation={{ replace: jest.fn(), navigate: mockNavigate, goBack: jest.fn(), canGoBack: jest.fn(() => true) } as any}
+          />
+        </SafeAreaProvider>
+      );
+    });
+    const button = component!.root.findByProps({ testID: 'ask-copilot-button' });
+    await renderer.act(async () => { button.props.onPress(); });
+    expect(mockNavigate).toHaveBeenCalledWith('CopilotChat', { matchId: 'match-1' });
+    await renderer.act(async () => { component!.unmount(); });
+  });
+
+  it('shows no Copilot button without a match (the chat needs a grant to talk about)', async () => {
+    (useActionPlan as jest.Mock).mockReturnValue({
+      plans: [], tasks: {}, loading: false, error: null, refetch: jest.fn(), updateTaskStatus: jest.fn(), generatePlanForMatch: jest.fn(),
+    });
+    const { SafeAreaProvider } = require('react-native-safe-area-context');
+    let component: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      component = renderer.create(
+        <SafeAreaProvider>
+          <ActionPlanScreen route={{ params: undefined } as any} navigation={{ replace: jest.fn(), navigate: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => false) } as any} />
+        </SafeAreaProvider>
+      );
+    });
+    expect(component!.root.findAllByProps({ testID: 'ask-copilot-button' })).toHaveLength(0);
+    await renderer.act(async () => { component!.unmount(); });
+  });
+
   it('calls navigation.goBack when the back button is pressed', async () => {
     (useActionPlan as jest.Mock).mockReturnValue({
       plans: [],

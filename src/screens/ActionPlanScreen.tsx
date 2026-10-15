@@ -109,6 +109,22 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
         <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>
 
+      {/* Card 269fdd5f: the Copilot chat had no entry point since 9bd7505 (2026-08-17). From here it opens
+          on the match of this screen, so the answers refer to that grant (chat-with-gemini match_id). */}
+      {matchId ? (
+        <View style={styles.copilotRow}>
+          <Button
+            mode="outlined"
+            icon="robot-outline"
+            onPress={() => navigation.navigate('CopilotChat', { matchId })}
+            testID="ask-copilot-button"
+            style={styles.copilotButton}
+          >
+            Kérdezz a Copilottól
+          </Button>
+        </View>
+      ) : null}
+
       <Banner
         visible={ocrConfidence === 'low'}
         actions={[
@@ -139,7 +155,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                   Akcióterv generálása folyamatban...
                 </Text>
                 <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666' }}>
-                  A Gemini AI elemzi a pályázatot és a cégprofilodat. Ez eltarthat egy kis ideig.
+                  Az AI elemzi a pályázatot és a cégprofilodat. Ez eltarthat egy kis ideig.
                 </Text>
               </>
             ) : (
@@ -148,7 +164,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                   Ehhez a pályázathoz még nincs akcióterv
                 </Text>
                 <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
-                  Kattints az alábbi gombra, hogy a Gemini AI elkészítse számodra a személyre szabott felkészülési tervet!
+                  Kattints az alábbi gombra, hogy az AI elkészítse számodra a személyre szabott felkészülési tervet!
                 </Text>
                 <Button
                   mode="contained"
@@ -265,6 +281,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
     paddingTop: 8,
+  },
+  copilotRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  copilotButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
   },
   primaryButton: {
     backgroundColor: '#1A237E',
