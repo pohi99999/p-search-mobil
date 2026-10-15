@@ -110,6 +110,15 @@ describe('SettingsScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('Paywall');
   });
 
+  // Card fa68ea84: the profile could be filled once and never corrected; this row opens the form in edit mode.
+  it('opens the company profile form in edit mode from the settings row', async () => {
+    const navigation = createNavigationMock();
+    const component = await renderSettingsScreen(navigation);
+    const row = component.root.findByProps({ testID: 'settings-profile-edit' });
+    await act(async () => { row.props.onPress(); });
+    expect(navigation.navigate).toHaveBeenCalledWith('Onboarding', { edit: true });
+  });
+
   it('renders frequency options and saves a daily schedule with a next scan date', async () => {
     const updateEq = jest.fn().mockResolvedValue({ data: null, error: null });
     const update = jest.fn().mockReturnValue({ eq: updateEq });

@@ -5,7 +5,7 @@ import type { RouteProp } from '@react-navigation/native';
 export type RootStackParamList = {
   Home: undefined;
   Auth: undefined;
-  Onboarding: undefined;
+  Onboarding: { edit?: boolean } | undefined;
   Paywall: undefined;
   Settings: undefined;
   DocumentUpload: undefined;
