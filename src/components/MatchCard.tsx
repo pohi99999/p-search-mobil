@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import { MatchWithGrant } from '../hooks/useHomeData';
+import { formatGrantAmount } from '../lib/grantAmount';
 
 interface MatchCardProps {
   item: MatchWithGrant;
@@ -9,6 +10,8 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ item, onPress }: MatchCardProps) {
+  // Card 378073ce: no invented ranges (placeholder 1 Ft minimum, programme budget as maximum).
+  const amountLine = formatGrantAmount(item.grants?.amount_min, item.grants?.amount_max);
   return (
     <Card style={styles.card} mode="elevated">
       <Card.Title title={item.grants?.title || 'Ismeretlen pályázat'} subtitle={`Egyezés: ${item.match_score}%`} />
@@ -19,9 +22,9 @@ export function MatchCard({ item, onPress }: MatchCardProps) {
         <Text variant="bodySmall">
           {item.match_reasoning || item.grants?.description}
         </Text>
-        {(item.grants?.amount_min || item.grants?.amount_max) && (
+        {amountLine && (
           <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
-            Összeg: {item.grants.amount_min ? `${item.grants.amount_min.toLocaleString('hu-HU')} Ft` : '0 Ft'} - {item.grants.amount_max ? `${item.grants.amount_max.toLocaleString('hu-HU')} Ft` : '? Ft'}
+            Összeg: {amountLine}
           </Text>
         )}
       </Card.Content>
