@@ -224,6 +224,7 @@ it('does not invent a range from a 1 Ft placeholder and a programme budget', asy
   let tree: renderer.ReactTestRenderer;
   await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
   const json = JSON.stringify(tree!.toJSON());
-  expect(json).toContain('Összeg: keretösszeg 138 937 500 000 Ft');
-  expect(json).not.toContain('1 Ft - ');
+  // The Text renders ["Összeg: ", "<amount line>"] as two children, so match the amount line itself.
+  expect(json).toContain('keretösszeg 138 937 500 000 Ft');
+  expect(json).not.toContain('1 Ft');
 });
