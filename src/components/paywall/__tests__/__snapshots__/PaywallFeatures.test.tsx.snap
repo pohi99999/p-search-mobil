@@ -18,7 +18,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
   <View>
     <View
       data-testID="list-item"
-      description="A Gemini AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
+      description="Az AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
       descriptionNumberOfLines={8}
       descriptionStyle={
         {

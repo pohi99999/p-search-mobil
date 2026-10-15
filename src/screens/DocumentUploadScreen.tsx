@@ -123,7 +123,7 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
 
       const fileBase64 = asset.base64 ?? (await new File(asset.uri).base64());
 
-      setStatusText('Gemini OCR feldolgozás folyamatban...');
+      setStatusText('AI OCR feldolgozás folyamatban...');
       const { data, error } = await supabase.functions.invoke<ProcessMasterDocumentResponse>(
         'process-master-document',
         {
@@ -199,7 +199,7 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
           />
           <Card.Content>
             <Text variant="bodyMedium" style={styles.description}>
-              A Gemini OCR kiolvassa a fő pénzügyi mutatókat, majd frissíti a cégprofilodat.
+              Az AI OCR kiolvassa a fő pénzügyi mutatókat, majd frissíti a cégprofilodat.
             </Text>
             {selectedFileName && (
               <Text variant="bodySmall" style={styles.fileName}>

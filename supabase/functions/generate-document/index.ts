@@ -237,17 +237,17 @@ ${NO_MISSING_DATA_RULE}`;
     </tr>
   </table>
 
-  <h2>1. Vezetői Összefoglaló (Executive Summary)</h2>
+  <h2>1. Vezetői Összefoglaló</h2>
   <p>${escapeHtml(executiveSummary)}</p>
 
-  <h2>2. Piacelemzés és Versenyelőny (Market Analysis)</h2>
+  <h2>2. Piacelemzés és Versenyelőny</h2>
   <p>${escapeHtml(marketAnalysis)}</p>
 
-  <h2>3. Pénzügyi Terv és Megtérülés (Financial Plan)</h2>
+  <h2>3. Pénzügyi Terv és Megtérülés</h2>
   <p>${escapeHtml(financialPlan)}</p>
 
   <div class="footer">
-    Ez a dokumentum a P-Search Mobil Alkalmazás és a Gemini AI segítségével készült.<br/>
+    Ez a dokumentum a P-Search Mobil Alkalmazás AI-asszisztensének segítségével készült.<br/>
     &copy; ${new Date().getFullYear()} P-Search Mobil. Minden jog fenntartva.
   </div>
 </body>
