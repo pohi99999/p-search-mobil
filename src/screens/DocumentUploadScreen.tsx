@@ -17,6 +17,11 @@ import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/error';
 import type { DocumentUploadScreenProps } from '../types/navigation';
 
+// The process-master-document cap (supabase/functions/_shared/input-limits.ts MAX_DOCUMENT_BYTES):
+// a bigger file is refused with 413 anyway, so say why before uploading it (SECURITY_AUDIT.md H1).
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+export const DOCUMENT_TOO_LARGE_MESSAGE = 'A dokumentum legfeljebb 10 MB lehet. Tölts fel kisebb fájlt (például tömörített PDF-et vagy kisebb felbontású fotót).';
+
 type ExtractionConfidence = 'high' | 'medium' | 'low';
 
 type ExtractedFinancialData = {
@@ -113,6 +118,12 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
 
       if (!acceptedMimeTypes.includes(mimeType)) {
         showSnackbar('Nem támogatott fájltípus. PDF, JPEG, PNG vagy WebP dokumentumot tölts fel.');
+        setStatusText('');
+        return;
+      }
+
+      if (typeof asset.size === 'number' && asset.size > MAX_DOCUMENT_BYTES) {
+        showSnackbar(DOCUMENT_TOO_LARGE_MESSAGE);
         setStatusText('');
         return;
       }
