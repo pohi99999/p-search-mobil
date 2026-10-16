@@ -3,7 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import { Button } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
-import { DocumentUploadScreen } from '../DocumentUploadScreen';
+import { DocumentUploadScreen, DOCUMENT_TOO_LARGE_MESSAGE, MAX_DOCUMENT_BYTES } from '../DocumentUploadScreen';
 import { supabase } from '../../lib/supabase';
 import { useProfile } from '../../context/ProfileContext';
 import { logger } from '../../utils/logger';
@@ -229,5 +229,39 @@ describe('DocumentUploadScreen', () => {
       'Nem támogatott fájltípus. PDF, JPEG, PNG vagy WebP dokumentumot tölts fel.'
     );
     expect(supabase.functions.invoke).not.toHaveBeenCalled();
+  });
+
+  const pickAndUpload = async (size: number | undefined) => {
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file://nagy.pdf', name: 'nagy.pdf', mimeType: 'application/pdf', base64: 'pdf-base64', size }],
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValueOnce({ data: null, error: new Error('nem várt hívás') });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = renderDocumentUploadScreen();
+    });
+    const uploadButton = component!.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Dokumentum kiválasztása');
+    await act(async () => {
+      await uploadButton!.props.onPress();
+    });
+    return JSON.stringify(component!.toJSON());
+  };
+
+  it('refuses a document over the 10 MB cap with a specific message, without calling the function', async () => {
+    const tree = await pickAndUpload(MAX_DOCUMENT_BYTES + 1);
+    expect(tree).toContain(DOCUMENT_TOO_LARGE_MESSAGE);
+    expect(supabase.functions.invoke).not.toHaveBeenCalled();
+  });
+
+  it('still uploads a document at the cap or with an unknown size', async () => {
+    for (const size of [MAX_DOCUMENT_BYTES, undefined]) {
+      jest.clearAllMocks();
+      const tree = await pickAndUpload(size);
+      expect(tree).not.toContain(DOCUMENT_TOO_LARGE_MESSAGE);
+      expect(supabase.functions.invoke).toHaveBeenCalledTimes(1);
+    }
   });
 });
