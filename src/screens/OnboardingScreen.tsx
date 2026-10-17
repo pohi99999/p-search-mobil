@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
@@ -6,6 +6,8 @@ import { normalizeHuTaxNumber } from '../lib/taxNumber';
 import { AdBanner } from '../components/AdBanner';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import type { RouteProp } from '@react-navigation/native';
+import { useProfile } from '../context/ProfileContext';
 
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
@@ -13,7 +15,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 
-export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenNavigationProp }) {
+type OnboardingScreenRouteProp = RouteProp<RootStackParamList, 'Onboarding'>;
+
+export function OnboardingScreen({ navigation, route }: { navigation: OnboardingScreenNavigationProp; route?: OnboardingScreenRouteProp }) {
+  // Card fa68ea84: the same form edits an existing profile (Settings -> Cégprofil szerkesztése).
+  // Until now a profile could be filled once (onboarding or the profile gate) and never corrected.
+  const { profile: existingProfile, refreshProfile } = useProfile();
+  const editMode = route?.params?.edit === true && !!existingProfile;
   // Edge-to-edge: when no banner is shown (Pro, or the ad failed), the button must still clear the navigation bar.
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
@@ -27,6 +35,18 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     yearly_revenue: '',
     goals: '',
   });
+  useEffect(() => {
+    if (!editMode || !existingProfile) return;
+    setForm({
+      company_name: existingProfile.company_name ?? '',
+      tax_number: existingProfile.tax_number ?? '',
+      industry_code: existingProfile.industry_code ?? '',
+      employee_count: existingProfile.employee_count != null ? String(existingProfile.employee_count) : '',
+      yearly_revenue: existingProfile.yearly_revenue != null ? String(existingProfile.yearly_revenue) : '',
+      goals: existingProfile.goals ?? '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, existingProfile?.id]);
   const [viesHint, setViesHint] = useState<string | null>(null);
   const [viesLookedUp, setViesLookedUp] = useState<string | null>(null);
 
@@ -76,19 +96,30 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('Nincs bejelentkezett felhasználó!');
 
+      const values = {
+        company_name: form.company_name,
+        tax_number: form.tax_number,
+        industry_code: form.industry_code,
+        employee_count: employeeCountStr ? parseInt(employeeCountStr, 10) : null,
+        yearly_revenue: yearlyRevenueStr ? parseInt(yearlyRevenueStr, 10) : null,
+        goals: form.goals,
+      };
+
+      if (editMode && existingProfile) {
+        // Edit: update the user's own row (RLS: own profile only), refresh the context, go back.
+        const { error: updateError } = await supabase
+          .from('business_profiles')
+          .update(values)
+          .eq('id', existingProfile.id);
+        if (updateError) throw updateError;
+        await refreshProfile();
+        if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('Home');
+        return;
+      }
+
       const { data: newProfile, error: dbError } = await supabase
         .from('business_profiles')
-        .insert([
-          {
-            user_id: session.user.id,
-            company_name: form.company_name,
-            tax_number: form.tax_number,
-            industry_code: form.industry_code,
-            employee_count: employeeCountStr ? parseInt(employeeCountStr, 10) : null,
-            yearly_revenue: yearlyRevenueStr ? parseInt(yearlyRevenueStr, 10) : null,
-            goals: form.goals,
-          }
-        ])
+        .insert([{ user_id: session.user.id, ...values }])
         .select()
         .single();
 
@@ -117,9 +148,11 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
-          <Text variant="headlineMedium" style={styles.title}>Cégprofil Létrehozása</Text>
+          <Text variant="headlineMedium" style={styles.title}>{editMode ? 'Cégprofil szerkesztése' : 'Cégprofil Létrehozása'}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!
+            {editMode
+              ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'
+              : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!'}
           </Text>
 
           {error && <HelperText type="error" visible={true}>{error}</HelperText>}
@@ -193,7 +226,7 @@ export function OnboardingScreen({ navigation }: { navigation: OnboardingScreenN
             disabled={loading}
             style={styles.button}
           >
-            Mentés és Keresés Indítása
+            {editMode ? 'Mentés' : 'Mentés és Keresés Indítása'}
           </Button>
         </Surface>
       </ScrollView>

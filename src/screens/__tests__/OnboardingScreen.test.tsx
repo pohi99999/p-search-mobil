@@ -30,6 +30,12 @@ jest.mock('../../components/AdBanner', () => ({
   AdBanner: () => null,
 }));
 
+// Card fa68ea84: the edit mode reads the existing profile from the context.
+const mockProfileContext: { profile: Record<string, unknown> | null; refreshProfile: jest.Mock } = { profile: null, refreshProfile: jest.fn() };
+jest.mock('../../context/ProfileContext', () => ({
+  useProfile: () => mockProfileContext,
+}));
+
 
 jest.mock('../../utils/logger', () => ({
   logger: {
@@ -180,5 +186,64 @@ describe('OnboardingScreen Webhook Handling', () => {
 
     expect(logger.warn).toHaveBeenCalledWith('Edge function hívás hiba:', fetchError);
     expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+  });
+});
+
+// Card fa68ea84 (owner test 2026-10-15): a profile could be filled once and never corrected.
+describe('OnboardingScreen edit mode', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockProfileContext.profile = { id: 'profile-1', company_name: 'Régi Kft', tax_number: '12345678-2-41', industry_code: '6201', employee_count: 12, yearly_revenue: 180000000, goals: 'régi célok' };
+    mockProfileContext.refreshProfile = jest.fn().mockResolvedValue(undefined);
+  });
+
+  it('prefills the form from the existing profile and UPDATES that row instead of inserting a new one', async () => {
+    const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
+    const mockEq = jest.fn().mockResolvedValue({ error: null });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockInsert = jest.fn();
+    (supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate, insert: mockInsert });
+
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = renderer.create(<OnboardingScreen navigation={mockNavigation} route={{ key: 'o', name: 'Onboarding', params: { edit: true } } as any} />);
+    });
+    const root = component!.root;
+    const companyNameInput = root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
+    expect(companyNameInput!.props.value).toBe('Régi Kft');
+    await act(async () => { companyNameInput!.props.onChangeText('Javított Kft'); });
+    const goalsInput = root.findAllByType(TextInput).find((node) => String(node.props.label).startsWith('Fejlesztési'));
+    if (goalsInput) await act(async () => { goalsInput.props.onChangeText('új célok'); });
+
+    await act(async () => { await root.findByType(Button).props.onPress(); });
+
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate.mock.calls[0][0]).toMatchObject({ company_name: 'Javított Kft', industry_code: '6201', employee_count: 12, yearly_revenue: 180000000 });
+    expect(mockEq).toHaveBeenCalledWith('id', 'profile-1');
+    expect(mockProfileContext.refreshProfile).toHaveBeenCalled();
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+    await act(async () => { component!.unmount(); });
+  });
+
+  it('without the edit param the form still creates a profile (insert), even when one exists', async () => {
+    const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
+    const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'new-profile' }, error: null });
+    const mockInsert = jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: mockSingle }) });
+    const mockUpdate = jest.fn();
+    (supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate, insert: mockInsert });
+    supabase.functions.invoke = jest.fn().mockResolvedValue({});
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const root = component!.root;
+    const companyNameInput = root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
+    await act(async () => { companyNameInput!.props.onChangeText('Új Kft'); });
+    await act(async () => { await root.findByType(Button).props.onPress(); });
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    await act(async () => { component!.unmount(); });
   });
 });
