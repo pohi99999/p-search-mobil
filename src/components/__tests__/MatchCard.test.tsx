@@ -216,3 +216,13 @@ describe('MatchCard', () => {
     expect(onPressMock).toHaveBeenCalledTimes(1);
   });
 });
+
+// Card 2428c38f: a match the latest scan did not re-score is labelled, not shown as fresh.
+it('labels a stale match as a result of an earlier search', async () => {
+  const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: 'régi indoklás', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi pályázat', provider: 'X', description: '', amount_min: null, amount_max: null } } as any;
+  let tree: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+  const json = JSON.stringify(tree!.toJSON());
+  expect(json).toContain('Korábbi keresés találata');
+  expect(json).not.toContain('Egyezés: 50%');
+});
