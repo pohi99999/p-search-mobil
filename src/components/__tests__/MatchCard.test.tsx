@@ -159,7 +159,7 @@ describe('MatchCard', () => {
         if (node.type !== 'Text' || !node.props.children) return false;
         let childrenStr = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
         childrenStr = childrenStr.replace(/\s+/g, ' ').replace(/\u00A0/g, ' ');
-        return childrenStr === 'Összeg: 500 000 Ft - ? Ft';
+        return childrenStr === 'Összeg: legalább 500 000 Ft';
       }
     );
     expect(amountInstances.length).toBeGreaterThan(0);
@@ -187,7 +187,7 @@ describe('MatchCard', () => {
         if (node.type !== 'Text' || !node.props.children) return false;
         let childrenStr = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
         childrenStr = childrenStr.replace(/\s+/g, ' ').replace(/\u00A0/g, ' ');
-        return childrenStr === 'Összeg: 0 Ft - 2 000 000 Ft';
+        return childrenStr === 'Összeg: legfeljebb 2 000 000 Ft';
       }
     );
     expect(amountInstances.length).toBeGreaterThan(0);
@@ -215,4 +215,16 @@ describe('MatchCard', () => {
 
     expect(onPressMock).toHaveBeenCalledTimes(1);
   });
+});
+
+// Card 378073ce: the owner's cards said "1 Ft - 138 937 500 000 Ft" (a placeholder minimum and the
+// programme budget as a maximum). The card now says what the data supports.
+it('does not invent a range from a 1 Ft placeholder and a programme budget', async () => {
+  const item = { id: 'm', business_id: 'b', grant_id: 'g', match_score: 70, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'Kombinált keret', provider: 'GINOP Plusz', description: '', amount_min: 1, amount_max: 138937500000 } } as any;
+  let tree: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+  const json = JSON.stringify(tree!.toJSON());
+  // The Text renders ["Összeg: ", "<amount line>"] as two children, so match the amount line itself.
+  expect(json).toContain('keretösszeg 138 937 500 000 Ft');
+  expect(json).not.toContain('1 Ft');
 });
