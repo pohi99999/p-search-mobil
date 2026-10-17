@@ -117,7 +117,7 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 </table></div>
 <p>Az alkalmazás <strong>nem</strong> kér helymeghatározást, névjegyeket, kamerát vagy mikrofont, és nem használ külön analitikai követőt.</p>
 <h2>3. Mesterséges intelligencia használata</h2>
-<p>A pályázat-kereséshez, a Copilot-válaszokhoz és a dokumentumok feldolgozásához a <strong>Google Gemini</strong> nyelvi modellt használjuk. A modell a mi szerverünkön (Supabase Edge Functions) keresztül kapja meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). A Gemini API-n küldött adatokat a Google az API-feltételei szerint nem használja modelltanításra. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.</p>
+<p>A Copilot csevegő válaszait elsődlegesen az <strong>Anthropic Claude</strong> nyelvi modellje állítja elő; ha az nem elérhető, a <strong>Google Gemini</strong>. A pályázat-kereséshez, az akcióterv és a dokumentumok elkészítéséhez és a feltöltött dokumentumok feldolgozásához a <strong>Google Gemini</strong> nyelvi modellt használjuk. A modellek a mi szerverünkön (Supabase Edge Functions) keresztül kapják meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). Az API-n küldött adatokat sem az Anthropic, sem a Google nem használja modelltanításra a saját API-feltételei szerint. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.</p>
 <h2>4. Adatfeldolgozók (akiknek átadjuk az adatot)</h2>
 <div class="table"><table>
 <thead>
@@ -132,6 +132,11 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <td>Supabase Inc.</td>
 <td>adatbázis, bejelentkezés, szerveroldali függvények</td>
 <td>EU (Írország, eu-west-1)</td>
+</tr>
+<tr>
+<td>Anthropic Ireland, Limited – Claude API</td>
+<td>AI-feldolgozás (a Copilot csevegő válaszai)</td>
+<td>Anthropic infrastruktúra, EU-n kívül is</td>
 </tr>
 <tr>
 <td>Google LLC – Gemini API</td>
