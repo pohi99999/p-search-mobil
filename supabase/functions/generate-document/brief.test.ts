@@ -1,9 +1,10 @@
-import { assert, assertEquals, assertStrictEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
+import { assert, assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { NO_MISSING_DATA_RULE } from "../_shared/company-context.ts";
 import { documentBrief, documentSystemPrompt } from "./generation.ts";
 
 // Card e388efe1 (Péter 8603): the document follows the programme type. A loan gets loan-application
 // material (repayment, own funds, collateral, cash flow), a hybrid both, a grant what it got before.
+// Venture capital (Péter 8679) gets investor material: business plan, capital structure, valuation, exit.
 
 // The system prompt generate-document built on master f46792f for every grant, copied verbatim.
 const MASTER_PROMPT = (c: string, g: string) => `Te egy professzionális pályázatíró AI asszisztens vagy.
@@ -46,6 +47,11 @@ Deno.test("a hybrid asks for both parts, kept apart", () => {
   for (const w of ["vissza nem térítendő támogatás", "visszafizetendő hitel", "támogatási rész", "törlesztés", "saját erő", "fedezet", "cash-flow", "válaszd szét"]) assert(p.includes(w), w);
 });
 
-Deno.test("venture capital keeps the grant material until the owner decides", () => {
-  assertStrictEquals(documentBrief("equity"), documentBrief("grant"));
+// Péter 8679: venture capital gets investor material, and is called neither a grant nor a loan.
+Deno.test("venture capital asks for business plan, capital structure, valuation and exit", () => {
+  const b = documentBrief("equity"), p = documentSystemPrompt(b, C, G);
+  for (const w of ["üzleti terv", "Tőkeszerkezet", "tulajdonosi szerkezet", "értékelés", "cégérték", "kilépés", "exit", "Ne nevezd támogatásnak vagy hitelnek", "Tőkeprogram adatai:"]) assert(p.includes(w), w);
+  assert(!p.includes("a pályázati támogatás felhasználása") && !p.includes("a törlesztés forrása"), "no grant or loan wording");
+  assert(b.title.startsWith("Befektetői") && b.headings[2].includes("Kilépési"), "equity title and headings");
+  assert(documentBrief("equity") !== documentBrief("grant"), "not the grant brief");
 });

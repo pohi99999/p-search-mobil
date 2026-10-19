@@ -156,7 +156,7 @@ serve(async (req) => {
           grantData = matchItem.grants;
         }
 
-        // Card e388efe1: the plan knows the programme type; a loan or a hybrid gets its own next steps.
+        // Card e388efe1: the plan knows the programme type; a loan, a hybrid or venture capital gets its own next steps.
         const typeLine = grantData?.grant_type ? `- Típus: ${grantData.grant_type}\n` : '';
         const kindHint = grantData ? actionPlanHint(grantKind(grantData.grant_type)) : '';
 

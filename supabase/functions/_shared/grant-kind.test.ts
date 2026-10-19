@@ -24,5 +24,9 @@ Deno.test("the action-plan hint: loan and hybrid get their steps, a grant gets n
   for (const w of ["hitel", "saját erő", "fedezet", "törlesztési terv"]) assert(loan.includes(w), w);
   assert(hybrid.includes("pályázati teendők") && hybrid.includes("törlesztési terv"), "hybrid: both");
   assertEquals(actionPlanHint("grant"), "");
-  assertEquals(actionPlanHint("equity"), "");
+});
+
+Deno.test("the action-plan hint for venture capital: investor materials, not a grant or loan", () => {
+  const h = actionPlanHint("equity");
+  for (const w of ["pitch deck", "cap table", "due diligence", "nem támogatás és nem hitel"]) assert(h.includes(w), w);
 });
