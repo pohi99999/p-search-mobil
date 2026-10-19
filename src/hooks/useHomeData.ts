@@ -7,8 +7,9 @@ import { logger } from '../utils/logger';
 import { RootStackNavigationProp } from '../types/navigation';
 import { clearStoredChatHistory } from './useCopilotChat';
 
-export type MatchWithGrant = GrantMatch & { grants: Grant };
+import { sortFreshFirst } from '../lib/matchStatus';
 
+export type MatchWithGrant = GrantMatch & { grants: Grant };
 export interface SearchRunResult {
   matchesFound: number;
 }
@@ -131,7 +132,7 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
         if (matchesError) {
           logger.error(matchesError);
         } else if (matchesData) {
-          setMatches(matchesData as unknown as MatchWithGrant[]);
+          setMatches(sortFreshFirst(matchesData as unknown as MatchWithGrant[]));
         }
       } else {
         navigation.replace('Onboarding');
