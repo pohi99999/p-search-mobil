@@ -230,6 +230,18 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         <Card style={styles.card} mode="elevated">
+          {/* Card fa68ea84: the profile could be filled once and never corrected. */}
+          <List.Item
+            title="Cégprofil szerkesztése"
+            description="Cégnév, adószám, TEÁOR, létszám, árbevétel, célok."
+            left={(props) => <List.Icon {...props} icon="office-building-outline" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => navigation.navigate('Onboarding', { edit: true })}
+            testID="settings-profile-edit"
+          />
+        </Card>
+
+        <Card style={styles.card} mode="elevated">
           <Card.Title
             title="Automatikus AI keresés"
             subtitle="Állítsd be, milyen gyakran keressünk új pályázatokat."
