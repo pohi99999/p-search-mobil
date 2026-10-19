@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSubscriptionTier, isPro } from "../_shared/entitlement.ts";
-import { companyContext as buildCompanyContext, grantContext as buildGrantContext, NO_MISSING_DATA_RULE } from "../_shared/company-context.ts";
-import { documentErrorResponse, generateSections } from "./generation.ts";
+import { companyContext as buildCompanyContext, grantContext as buildGrantContext } from "../_shared/company-context.ts";
+import { grantKind } from "../_shared/grant-kind.ts";
+import { documentBrief, documentErrorResponse, documentSystemPrompt, generateSections } from "./generation.ts";
 import { huThousands } from "../_shared/hu-numbers.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
@@ -116,23 +117,10 @@ serve(async (req) => {
     const companyContext = buildCompanyContext(profile);
     const grantContext = buildGrantContext(match.grants);
 
-    // 3. Gemini Prompt összeállítása a tartalmi blokkokhoz
-    const systemPrompt = `Te egy professzionális pályázatíró AI asszisztens vagy.
-A megadott cégprofil és pályázati adatok alapján készíts el egy Üzleti Terv Vázlatot a pályázati felkészüléshez.
-
-Kimeneti formátum: KIZÁRÓLAG egy érvényes JSON formátumot adhatsz vissza, az alábbi kulcsokkal:
-- "executive_summary": Vezetői összefoglaló, a projekt célja és a pályázati támogatás felhasználása (magyarul, kb. 150 szó).
-- "market_analysis": Piacelemzés, célcsoport és versenyelőny bemutatása a TEÁOR kód és cégprofil alapján (magyarul, kb. 150-200 szó).
-- "financial_plan": Pénzügyi terv vázlat, a támogatási összeg elosztása és a várható megtérülés a cégbevétele alapján (magyarul, kb. 150 szó).
-
-Adatok a generáláshoz:
-Cégadatok:
-${companyContext}
-
-Pályázati adatok:
-${grantContext}
-
-${NO_MISSING_DATA_RULE}`;
+    // 3. Gemini Prompt összeállítása a tartalmi blokkokhoz: a program típusa szerint (card e388efe1),
+    // hitelnél hitelkérelem-anyag, hibridnél mindkettő, támogatásnál a korábbi pályázati anyag.
+    const brief = documentBrief(grantKind(match.grants?.grant_type));
+    const systemPrompt = documentSystemPrompt(brief, companyContext, grantContext);
 
     // 4. Gemini (REST, _shared/gemini.ts): one retry on 429/503 and on a cut-off or broken JSON answer,
     // thinking off and a 4096-token cap (DOCUMENT_GENERATION); the finishReason is logged on failure.
@@ -144,7 +132,7 @@ ${NO_MISSING_DATA_RULE}`;
     }
 
     const parsedData = await generateSections(
-      "Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.",
+      brief.userPrompt,
       apiKey,
       systemPrompt,
     );
@@ -218,7 +206,7 @@ ${NO_MISSING_DATA_RULE}`;
 </head>
 <body>
   <div class="header">
-    <h1>Pályázati Felkészülési Üzleti Terv</h1>
+    <h1>${escapeHtml(brief.title)}</h1>
     <p style="margin: 0; color: #757575; font-size: 14px;">AI által generált előkészítő dokumentum</p>
   </div>
 
@@ -228,7 +216,7 @@ ${NO_MISSING_DATA_RULE}`;
       <td><strong>${escapeHtml(companyName)}</strong></td>
     </tr>
     <tr>
-      <td class="meta-label">Célzott Pályázat:</td>
+      <td class="meta-label">${escapeHtml(brief.programLabel)}</td>
       <td>${escapeHtml(grantTitle)}</td>
     </tr>
     <tr>
@@ -237,13 +225,13 @@ ${NO_MISSING_DATA_RULE}`;
     </tr>
   </table>
 
-  <h2>1. Vezetői Összefoglaló</h2>
+  <h2>${escapeHtml(brief.headings[0])}</h2>
   <p>${escapeHtml(executiveSummary)}</p>
 
-  <h2>2. Piacelemzés és Versenyelőny</h2>
+  <h2>${escapeHtml(brief.headings[1])}</h2>
   <p>${escapeHtml(marketAnalysis)}</p>
 
-  <h2>3. Pénzügyi Terv és Megtérülés</h2>
+  <h2>${escapeHtml(brief.headings[2])}</h2>
   <p>${escapeHtml(financialPlan)}</p>
 
   <div class="footer">
