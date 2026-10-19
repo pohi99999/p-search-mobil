@@ -6,6 +6,7 @@ import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
 import { extractNextSteps, stripMarkdownFence } from './tasks.ts';
 import { companyContext, mentionsMissingData, NO_MISSING_DATA_RULE } from '../_shared/company-context.ts';
+import { actionPlanHint, grantKind } from '../_shared/grant-kind.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -155,6 +156,10 @@ serve(async (req) => {
           grantData = matchItem.grants;
         }
 
+        // Card e388efe1: the plan knows the programme type; a loan or a hybrid gets its own next steps.
+        const typeLine = grantData?.grant_type ? `- Típus: ${grantData.grant_type}\n` : '';
+        const kindHint = grantData ? actionPlanHint(grantKind(grantData.grant_type)) : '';
+
         const systemPrompt = `Te egy Professzionális Pályázati és Digitalizációs Szakértő Copilot vagy.
 A feladatod egy strukturált, Markdown formátumú "Pályázati Akcióterv" generálása az alábbi adatok alapján.
 Az akciótervnek tartalmaznia kell:
@@ -165,7 +170,7 @@ Az akciótervnek tartalmaznia kell:
 Cég adatai:
 ${companyContext(businessData ?? {})}
 
-${grantData ? `Kiválasztott pályázat:\n- Cím: ${grantData.title}\n- Leírás: ${grantData.description}\n` : ''}
+${grantData ? `Kiválasztott pályázat:\n- Cím: ${grantData.title}\n- Leírás: ${grantData.description}\n${typeLine}` : ''}${kindHint ? `\n${kindHint}\n` : ''}
 
 Eddigi beszélgetés előzményei (ha van):
 ${chat_history ? JSON.stringify(chat_history) : 'Nincs előzmény'}
