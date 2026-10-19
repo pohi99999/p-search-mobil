@@ -107,10 +107,27 @@ egy része vissza nem térítendő támogatás, egy része visszafizetendő hite
 - "financial_plan": Pénzügyi terv két részben: a támogatási rész felhasználása és várható megtérülése, majd a hitelrész törlesztése, a saját erő, a fedezet (biztosíték) és egy egyszerű cash-flow vázlat (magyarul, kb. 200 szó).`,
 };
 
-/** The brief for a kind. Venture capital keeps the grant material until Péter decides (card e388efe1). */
+// Venture capital (Péter 8679): an investor buys a stake, nothing is paid back and nothing is granted.
+// The investor reads the business plan, the capital structure, the valuation and the exit.
+const EQUITY_BRIEF: DocumentBrief = {
+  title: "Befektetői Előkészítő Üzleti Terv",
+  programLabel: "Célzott Tőkeprogram:",
+  headings: ["1. Vezetői Összefoglaló és Üzleti Terv", "2. Piac, Növekedési Potenciál és Cégérték", "3. Tőkeszerkezet, Értékelés és Kilépési Terv"],
+  userPrompt: "Kérlek, generáld le a tőkeprogramhoz illeszkedő befektetői előkészítő üzleti terv vázlatot a megadott adatok alapján.",
+  intro: `Te egy professzionális pályázatíró és befektetői anyagokat előkészítő AI asszisztens vagy.
+A megadott cégprofil és tőkeprogram-adatok alapján készíts el egy Befektetői Előkészítő Üzleti Terv Vázlatot.
+Ez kockázatitőke-befektetés: a befektető tulajdonrészt szerez a cégben. Ne nevezd támogatásnak vagy hitelnek, és ne írj visszafizetésről vagy törlesztésről.`,
+  dataHeader: "Tőkeprogram adatai:",
+  sections: `- "executive_summary": Vezetői összefoglaló és üzleti terv: a cég, a fejlesztési cél, és mire fordítja a cég a befektetést (magyarul, kb. 150 szó).
+- "market_analysis": Piac, versenyelőny és növekedési potenciál: a cég piaca és skálázhatósága, ami a cégérték növekedését megalapozza, a TEÁOR kód és cégprofil alapján (magyarul, kb. 150-200 szó).
+- "financial_plan": Tőkeszerkezet, értékelés és kilépés: a jelenlegi és a befektetés utáni tulajdonosi szerkezet elvei, a cégérték becslésének szempontjai a cég bevétele alapján, és a befektető kilépésének (exit) lehetséges útjai és időtávja (magyarul, kb. 150-200 szó).`,
+};
+
+/** The brief for a kind (card e388efe1). */
 export function documentBrief(kind: GrantKind): DocumentBrief {
   if (kind === "loan") return LOAN_BRIEF;
   if (kind === "hybrid") return HYBRID_BRIEF;
+  if (kind === "equity") return EQUITY_BRIEF;
   return GRANT_BRIEF;
 }
 
