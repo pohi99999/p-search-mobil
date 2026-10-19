@@ -8,6 +8,7 @@ import {
   describeJsonText,
   describeParseError,
 } from '../_shared/request-log.ts';
+import { validateChatInput } from '../_shared/input-limits.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -74,8 +75,21 @@ serve(async (req) => {
     // kontextusa) NEM kerulhet a szolgaltatoi naplóba (2026-09-08, merve).
     console.log('Beolvasott adatok (kulcsok es meretek):', describeRequestData(requestData));
 
-    const message = requestData.prompt || requestData.message || requestData.text || '';
-    const history = requestData.history || [];
+    // Size caps before any paid AI call (SECURITY_AUDIT.md H1): bounded message, at most the
+    // last 10 well-formed history turns, each truncated.
+    const input = validateChatInput(
+      requestData.prompt || requestData.message || requestData.text || '',
+      requestData.history,
+    );
+    if (!input.ok) {
+      console.error('Hiba: érvénytelen üzenet:', input.status);
+      return new Response(JSON.stringify({ error: input.error }), {
+        status: input.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const message = input.message;
+    const history = input.history;
     const business_profile_id =
       requestData.business_profile_id || requestData.businessProfileId || null;
     const match_id = requestData.match_id || requestData.matchId || null;
@@ -83,14 +97,6 @@ serve(async (req) => {
     console.log('Kinyert prompt/üzenet:', describeText(message));
     console.log(`Profil ID: ${business_profile_id}, Match ID: ${match_id}`);
     console.log(`Előzmények száma: ${history.length}`);
-
-    if (!message) {
-      console.error('Hiba: message/prompt paraméter hiányzik');
-      return new Response(JSON.stringify({ error: 'message paraméter megadása kötelező' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // 1. Cégprofil adatainak lekérdezése (ha van ID)
     let companyContext = '';
@@ -333,17 +339,14 @@ Példa a kimenetre:
     console.log('Beszélgetési előzmények leképezése a Gemini formátumára...');
     // 7. Előzmények leképezése a Gemini API formátumára
     const geminiContents: { role: string; parts: { text: string }[] }[] = [];
-    if (history && Array.isArray(history)) {
-      const recentHistory = history.slice(-10);
-      for (const msg of recentHistory) {
-        if (msg.id === 'welcome' || msg.id.startsWith('err-')) continue;
+    for (const msg of history) {
+      if (msg.id === 'welcome' || msg.id.startsWith('err-')) continue;
 
-        const role = msg.sender === 'user' ? 'user' : 'model';
-        geminiContents.push({
-          role: role,
-          parts: [{ text: msg.text }],
-        });
-      }
+      const role = msg.sender === 'user' ? 'user' : 'model';
+      geminiContents.push({
+        role: role,
+        parts: [{ text: msg.text }],
+      });
     }
 
     geminiContents.push({

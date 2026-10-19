@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 import { extractJson } from "../_shared/llm.ts";
+import { documentSizeError } from "../_shared/input-limits.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -159,6 +160,15 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // Size cap before the paid vision call (SECURITY_AUDIT.md H1).
+    const sizeError = documentSizeError(file_base64);
+    if (sizeError) {
+      return new Response(JSON.stringify({ error: sizeError }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ------------------------------------------------------------------
