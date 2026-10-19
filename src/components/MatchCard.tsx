@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card, Text, Button } from 'react-native-paper';
 import type { MatchWithGrant } from '../hooks/useHomeData';
+import { formatGrantAmount } from '../lib/grantAmount';
 import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 
 interface MatchCardProps {
@@ -10,6 +11,8 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ item, onPress }: MatchCardProps) {
+  // Card 378073ce: no invented ranges (placeholder 1 Ft minimum, programme budget as maximum).
+  const amountLine = formatGrantAmount(item.grants?.amount_min, item.grants?.amount_max);
   // Card 2428c38f: a match the latest scan did not re-score says so, instead of showing an old
   // reasoning (written for an older profile) next to the fresh ones.
   const stale = item.status === STALE_MATCH_STATUS;
@@ -27,9 +30,9 @@ export function MatchCard({ item, onPress }: MatchCardProps) {
         <Text variant="bodySmall">
           {item.match_reasoning || item.grants?.description}
         </Text>
-        {(item.grants?.amount_min || item.grants?.amount_max) && (
+        {amountLine && (
           <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
-            Összeg: {item.grants.amount_min ? `${item.grants.amount_min.toLocaleString('hu-HU')} Ft` : '0 Ft'} - {item.grants.amount_max ? `${item.grants.amount_max.toLocaleString('hu-HU')} Ft` : '? Ft'}
+            Összeg: {amountLine}
           </Text>
         )}
       </Card.Content>
