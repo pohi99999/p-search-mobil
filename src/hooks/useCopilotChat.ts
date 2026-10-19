@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { formatChatErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
+import { newMessageId } from '../utils/messageId';
 
 export interface Message {
   id: string;
@@ -102,18 +103,22 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
     if (!inputText.trim()) return;
 
     const userText = inputText.trim();
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      text: userText,
-      sender: 'user',
-      created_at: new Date().toISOString()
-    };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsTyping(true);
-
+    // The whole send runs inside try: anything that throws (2026-10-19 it was a missing global
+    // `crypto` on the device, before the request even left) must surface as an error message in
+    // the chat, never as a silently swallowed rejection that leaves the text in the input.
     try {
+      const userMessage: Message = {
+        id: newMessageId(),
+        text: userText,
+        sender: 'user',
+        created_at: new Date().toISOString()
+      };
+
+      setMessages(prev => [...prev, userMessage]);
+      setInputText('');
+      setIsTyping(true);
+
       // Supabase Edge Function meghívása a valós AI válaszért
       const { data, error: invokeError } = await supabase.functions.invoke('chat-with-gemini', {
         body: {
@@ -136,7 +141,7 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
       const sources = Array.isArray(data?.sources) ? data.sources : undefined;
 
       const aiResponse: Message = {
-        id: crypto.randomUUID(),
+        id: newMessageId(),
         text: replyText,
         sender: 'ai',
         created_at: new Date().toISOString(),
@@ -149,7 +154,7 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
       const errorMessageText = formatChatErrorMessage(err);
 
       const errorMessage: Message = {
-        id: `err-${crypto.randomUUID()}`,
+        id: newMessageId('err-'),
         text: errorMessageText,
         sender: 'ai',
         created_at: new Date().toISOString()
