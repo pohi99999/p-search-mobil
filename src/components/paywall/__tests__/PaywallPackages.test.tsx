@@ -127,6 +127,7 @@ describe('PaywallPackages', () => {
   });
 
   // Common test 2026-10-07 (card a96dd8e2 #3): "LEGNÉPSZERŰBB" on the only package means nothing.
+  // Péter 10518: with no data behind it, it is not shown at all, also when there are several packages.
   describe('the LEGNÉPSZERŰBB badge', () => {
     const badges = (pkgs: PurchasesPackage[]) => {
       let root: renderer.ReactTestRenderer | undefined;
@@ -138,8 +139,8 @@ describe('PaywallPackages', () => {
     it('is not shown when there is a single package', () => {
       expect(badges([mockPackages[0]])).toBe(0);
     });
-    it('is shown on exactly one package when there are two or more', () => {
-      expect(badges(mockPackages)).toBe(1);
+    it('is not shown when there are two or more packages either', () => {
+      expect(badges(mockPackages)).toBe(0);
     });
   });
 

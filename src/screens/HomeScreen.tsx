@@ -13,7 +13,7 @@ import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
 
 /** FAB labels; the searching one must not be wider than the idle one (see the FAB below). */
-export const FAB_IDLE_LABEL = 'Új AI Keresés';
+export const FAB_IDLE_LABEL = 'Új AI-keresés';
 export const FAB_SEARCHING_LABEL = 'Keresés…';
 
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {

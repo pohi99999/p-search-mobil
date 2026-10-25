@@ -205,12 +205,15 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card} mode="elevated">
           <Card.Title
-            title="Master Document Base"
+            title="Pénzügyi beszámoló feltöltése"
             subtitle="Tölts fel mérleget, főkönyvet vagy éves beszámolót."
+            subtitleNumberOfLines={2}
+            // Card [J]: a 2-line subtitle no longer fits Card.Title's fixed 72 px row without padding.
+            style={styles.cardTitle}
           />
           <Card.Content>
             <Text variant="bodyMedium" style={styles.description}>
-              Az AI OCR kiolvassa a fő pénzügyi mutatókat, majd frissíti a cégprofilodat.
+              Az AI kiolvassa a fő pénzügyi mutatókat, és frissíti velük a cégprofilodat.
             </Text>
             {selectedFileName && (
               <Text variant="bodySmall" style={styles.fileName}>
@@ -292,6 +295,9 @@ function ResultRow({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  cardTitle: {
+    paddingVertical: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

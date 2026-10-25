@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { track, type ErrorCode } from '../services/events';
 import { formatChatErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 import { newMessageId } from '../utils/messageId';
@@ -129,7 +130,16 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
         }
       });
 
-      if (invokeError) throw invokeError;
+      if (invokeError) {
+        // Card [L]: the free daily chat cap answers 403 {code:'chat_daily_limit', error}; the server's Hungarian
+        // text is shown as it is instead of the generic failure.
+        const ctx = (invokeError as { context?: { status?: number; json?: () => Promise<{ code?: string; error?: string }> } }).context;
+        if (ctx?.status === 403 && ctx.json) {
+          const body = await ctx.json().catch(() => null);
+          if (body?.code === 'chat_daily_limit' && body.error) throw new Error(body.error);
+        }
+        throw invokeError;
+      }
       if (data?.error) throw new Error(data.error);
 
       const replyText = data?.reply || data?.text || data?.response || '';
@@ -149,8 +159,13 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
       };
 
       setMessages(prev => [...prev, aiResponse]);
+      track('chat_message_sent', { ok: true });
     } catch (err: unknown) {
       logger.error('Chat error details:', err);
+      // Only a code, never the text: the message body stays out of the event log (card [G]).
+      const status = (err as { context?: { status?: number } })?.context?.status;
+      const code: ErrorCode = status === 429 ? 'gemini_quota' : status === 503 ? 'gemini_busy' : status ? 'server' : 'network';
+      track('chat_message_sent', { ok: false, error_code: code });
       const errorMessageText = formatChatErrorMessage(err);
 
       const errorMessage: Message = {

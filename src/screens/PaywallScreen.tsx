@@ -65,6 +65,7 @@ export const PaywallScreen = () => {
             size={24}
             onPress={() => navigation.goBack()}
             style={styles.closeButton}
+            accessibilityLabel="Bezárás"
           />
         </View>
 
@@ -76,7 +77,7 @@ export const PaywallScreen = () => {
         </Text>
 
         <Text variant="bodyLarge" style={styles.subtitle}>
-          Maximalizáld a pályázati sikereidet a legfejlettebb AI asszisztenssel és korlátlan lehetőségekkel.
+          Készülj fel a kiválasztott pályázatra: akcióterv, dokumentum-vázlat PDF-ben, hirdetések nélkül.
         </Text>
 
         <PaywallFeatures />

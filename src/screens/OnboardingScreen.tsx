@@ -26,6 +26,11 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Field-level errors: one message under the field it belongs to (until now a bad number gave the generic
+  // "Hiba történt a mentés során." at the top of the form, far from the button and naming no field).
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const clearFieldError = (key: keyof FieldErrors) =>
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
 
   const [form, setForm] = useState({
     company_name: '',
@@ -74,18 +79,13 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
 
   const handleSave = async () => {
-    if (!form.company_name) {
-      setError('A cégnév megadása kötelező!');
-      return;
-    }
-
-    const employeeCountStr = form.employee_count ? form.employee_count.trim() : '';
-    const yearlyRevenueStr = form.yearly_revenue ? form.yearly_revenue.trim() : '';
-    const digitsOnly = /^\d+$/;
-
-    if ((employeeCountStr && !digitsOnly.test(employeeCountStr)) ||
-        (yearlyRevenueStr && !digitsOnly.test(yearlyRevenueStr))) {
-      setError('Hiba történt a mentés során.');
+    // Spaces are allowed in the numbers ("50 000 000"); anything else is reported at its field.
+    const employeeCountStr = form.employee_count ? form.employee_count.replace(/\s/g, '') : '';
+    const yearlyRevenueStr = form.yearly_revenue ? form.yearly_revenue.replace(/\s/g, '') : '';
+    const errors = validateProfileForm(form.company_name, employeeCountStr, yearlyRevenueStr);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError(null);
       return;
     }
 
@@ -148,22 +148,25 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
-          <Text variant="headlineMedium" style={styles.title}>{editMode ? 'Cégprofil szerkesztése' : 'Cégprofil Létrehozása'}</Text>
+          <Text variant="headlineMedium" style={styles.title}>{editMode ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
             {editMode
               ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'
               : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!'}
           </Text>
 
-          {error && <HelperText type="error" visible={true}>{error}</HelperText>}
-
           <TextInput
             label="Cégnév *"
             value={form.company_name}
-            onChangeText={(text) => setForm({ ...form, company_name: text })}
+            onChangeText={(text) => {
+              setForm({ ...form, company_name: text });
+              clearFieldError('company_name');
+            }}
             style={styles.input}
             mode="outlined"
+            error={!!fieldErrors.company_name}
           />
+          <FieldError message={fieldErrors.company_name} />
 
           <TextInput
             label="Adószám"
@@ -194,20 +197,30 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           <TextInput
             label="Alkalmazottak száma"
             value={form.employee_count}
-            onChangeText={(text) => setForm({ ...form, employee_count: text })}
+            onChangeText={(text) => {
+              setForm({ ...form, employee_count: text });
+              clearFieldError('employee_count');
+            }}
             style={styles.input}
             keyboardType="numeric"
             mode="outlined"
+            error={!!fieldErrors.employee_count}
           />
+          <FieldError message={fieldErrors.employee_count} />
 
           <TextInput
             label="Éves árbevétel (HUF)"
             value={form.yearly_revenue}
-            onChangeText={(text) => setForm({ ...form, yearly_revenue: text })}
+            onChangeText={(text) => {
+              setForm({ ...form, yearly_revenue: text });
+              clearFieldError('yearly_revenue');
+            }}
             style={styles.input}
             keyboardType="numeric"
             mode="outlined"
+            error={!!fieldErrors.yearly_revenue}
           />
+          <FieldError message={fieldErrors.yearly_revenue} />
 
           <TextInput
             label="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
@@ -219,6 +232,14 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
             mode="outlined"
           />
 
+          {/* Next to the button the user just pressed: a summary when a field is wrong, or the save error. */}
+          {Object.keys(fieldErrors).some((k) => fieldErrors[k as keyof FieldErrors]) ? (
+            <HelperText type="error" visible testID="onboarding-fix-fields">
+              Javítsd a pirossal jelölt mezőt, és mentsd újra.
+            </HelperText>
+          ) : null}
+          {error && <HelperText type="error" visible={true}>{error}</HelperText>}
+
           <Button 
             mode="contained" 
             onPress={handleSave} 
@@ -226,12 +247,33 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
             disabled={loading}
             style={styles.button}
           >
-            {editMode ? 'Mentés' : 'Mentés és Keresés Indítása'}
+            {editMode ? 'Mentés' : 'Mentés és keresés indítása'}
           </Button>
         </Surface>
       </ScrollView>
       <AdBanner />
     </View>
+  );
+}
+
+type FieldErrors = Partial<Record<'company_name' | 'employee_count' | 'yearly_revenue', string>>;
+
+/** Field-level validation of the company form; the numbers come in without spaces. */
+export function validateProfileForm(companyName: string, employeeCount: string, yearlyRevenue: string): FieldErrors {
+  const digitsOnly = /^\d+$/;
+  const errors: FieldErrors = {};
+  if (!companyName.trim()) errors.company_name = 'A cégnév megadása kötelező!';
+  if (employeeCount && !digitsOnly.test(employeeCount)) errors.employee_count = 'Csak számot írj, például 5.';
+  if (yearlyRevenue && !digitsOnly.test(yearlyRevenue)) errors.yearly_revenue = 'Csak számot írj forintban, például 50000000.';
+  return errors;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <HelperText type="error" visible style={styles.fieldError}>
+      {message}
+    </HelperText>
   );
 }
 
@@ -259,6 +301,10 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
+  },
+  fieldError: {
+    marginTop: -14,
+    marginBottom: 8,
   },
   viesHint: {
     color: '#2E7D32',

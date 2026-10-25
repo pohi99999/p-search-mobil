@@ -93,10 +93,11 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           size={24}
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="copilot-chat-back-button"
+          accessibilityLabel="Vissza"
         />
         <View style={styles.headerTextContainer}>
-          <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
-          <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+          <Text variant="titleMedium" style={styles.headerTitle}>AI pályázati Copilot</Text>
+          <Text variant="bodySmall" style={styles.headerSubtitle}>Kérdezz a kiválasztott pályázatról</Text>
         </View>
       </View>
 
@@ -134,6 +135,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
               color={inputText.trim() ? '#1A237E' : '#9E9E9E'}
               onPress={handleSend}
               disabled={!inputText.trim() || isTyping}
+              accessibilityLabel="Üzenet küldése"
             />
           }
           disabled={isTyping}
@@ -165,8 +167,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1A237E',
   },
+  // #4CAF50 was 2.78:1 on white; #2E7D32 keeps the green and is 5.13:1.
   headerSubtitle: {
-    color: '#4CAF50',
+    color: '#2E7D32',
     fontWeight: '600',
   },
   listContent: {

@@ -275,7 +275,7 @@ describe('ActionPlanScreen', () => {
 
     // Find the Generate button
     const generateButton = root.find(el =>
-      el.props.children === 'Akcióterv Generálása'
+      el.props.children === 'Akcióterv készítése'
     );
 
     await renderer.act(async () => {
@@ -290,7 +290,7 @@ describe('ActionPlanScreen', () => {
     // Find Snackbar
     const snackbar = root.findByType(require('react-native-paper').Snackbar);
     expect(snackbar.props.visible).toBe(true);
-    expect(snackbar.props.children).toBe('Hiba történt a generálás során. Kérjük, próbálja újra később.');
+    expect(snackbar.props.children).toBe('Nem sikerült elkészíteni az akciótervet. Kérlek, próbáld újra később.');
 
     await renderer.act(async () => {
       component!.unmount();
