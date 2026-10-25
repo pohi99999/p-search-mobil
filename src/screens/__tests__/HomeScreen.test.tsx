@@ -207,6 +207,27 @@ describe('HomeScreen', () => {
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Onboarding', { edit: true });
   });
 
+  // Card [B]: "Részletek" opens the grant's detail view, not the action plan.
+  it('the card opens the grant detail view with the match', () => {
+    const match = { id: '1', match_score: 80, grants: { title: 'Pályázat' } };
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test Company' },
+      matches: [match],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+
+    const root = renderScreen();
+    const list = root.root.findByType('FlatList');
+    const card = list.props.renderItem({ item: match });
+    act(() => { card.props.onPress(); });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match });
+    expect(mockNavigation.navigate).not.toHaveBeenCalledWith('ActionPlan', expect.anything());
+  });
+
   // Owner decision 2026-10-04 (card bc8e4135): no ad inside the list, only the bottom banner.
   it.each([false, true])('never inserts an ad into the list (isPro=%s)', (isPro) => {
     const mockMatches = [
