@@ -38,12 +38,24 @@ export const GEMINI_USER_MESSAGES: Record<GeminiUnavailableCode | GeminiOutputCo
 export class GeminiUnavailableError extends Error {
   readonly code: GeminiUnavailableCode;
   readonly status: 429 | 503;
-  constructor(status: 429 | 503) {
+  /**
+   * Google's quotaId from the 429 body, when it names one (e.g. "EmbedContentRequestsPerMinutePerProjectPerModel-FreeTier").
+   * It tells a per-minute limit from a daily one; our user text says "napi" for every lasting 429 (Brunella 4908).
+   */
+  readonly quotaId: string | null;
+  constructor(status: 429 | 503, quotaId: string | null = null) {
     const code: GeminiUnavailableCode = status === 429 ? 'gemini_quota' : 'gemini_busy';
     super(GEMINI_USER_MESSAGES[code]);
     this.code = code;
     this.status = status;
+    this.quotaId = quotaId;
   }
+}
+
+/** The first quotaId in a Google error body (QuotaFailure violations), or null. */
+export function quotaIdOf(bodyText: string): string | null {
+  const m = bodyText.match(/"quotaId"\s*:\s*"([^"]+)"/);
+  return m ? m[1] : null;
 }
 
 export class GeminiOutputError extends Error {
@@ -98,7 +110,7 @@ async function fetchWithGeminiRetry(url: string, init: RequestInit, deps: Gemini
     const detail = await res.text();
     console.error(`Gemini ${label} hiba (${res.status}, próbálkozás ${attempt + 1}/2):`, detail);
     const wait = retryWaitMs(res, detail);
-    if (attempt === 1 || wait === null) throw new GeminiUnavailableError(res.status as 429 | 503);
+    if (attempt === 1 || wait === null) throw new GeminiUnavailableError(res.status as 429 | 503, quotaIdOf(detail));
     await deps.sleep(wait);
   }
   throw new Error('unreachable');

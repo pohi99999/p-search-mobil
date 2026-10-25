@@ -88,10 +88,12 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
 const GRANT_COLUMNS = "id,title,provider,grant_type,amount_min,amount_max,deadline,description,eligibility_criteria";
 export const REGENERATE_MAX_GRANTS = 100;
 /**
- * Embedding calls one regenerate run may spend (Brunella 4897, Irisz 4895). On 2026-10-25 the 100th call got 429; whether
- * that limit is daily or per minute is not measured yet (Irisz 4904). The users' searches share it, so a run takes a slice.
+ * Embedding calls one regenerate run may spend (Brunella 4897/4908, Irisz 4895). Measured 2026-10-25: the limit is per
+ * minute, quotaId EmbedContentRequestsPerMinutePerProjectPerModel-FreeTier, 100 (function_logs 13:24:59Z), and the users'
+ * searches share it. One call stays under it; the next call can follow after a minute.
  */
-export const REGENERATE_DEFAULT_MAX_EMBEDS = 40;
+export const REGENERATE_DEFAULT_MAX_EMBEDS = 90;
+export const REGENERATE_MAX_EMBEDS_LIMIT = 100;
 
 async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown, rawMaxEmbeds: unknown, dryRun: boolean): Promise<Response> {
   if (!Array.isArray(rawIds) || rawIds.length === 0 || !rawIds.every((x) => typeof x === "string" && x.length > 0)) {
@@ -100,8 +102,8 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
   const ids = Array.from(new Set(rawIds as string[]));
   if (ids.length > REGENERATE_MAX_GRANTS) return json({ error: `at most ${REGENERATE_MAX_GRANTS} grant_ids per call` }, 400);
   const maxEmbeds = rawMaxEmbeds === undefined ? REGENERATE_DEFAULT_MAX_EMBEDS : rawMaxEmbeds;
-  if (typeof maxEmbeds !== "number" || !Number.isInteger(maxEmbeds) || maxEmbeds < 1 || maxEmbeds > 500) {
-    return json({ error: "max_embeds must be a whole number from 1 to 500" }, 400);
+  if (typeof maxEmbeds !== "number" || !Number.isInteger(maxEmbeds) || maxEmbeds < 1 || maxEmbeds > REGENERATE_MAX_EMBEDS_LIMIT) {
+    return json({ error: `max_embeds must be a whole number from 1 to ${REGENERATE_MAX_EMBEDS_LIMIT}` }, 400);
   }
 
   const { data: grants, error: grantsErr } = await supabase.from("grants").select(GRANT_COLUMNS).in("id", ids);
@@ -142,11 +144,12 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
   if (!geminiApiKey) return json({ error: "GEMINI_API_KEY missing" }, 500);
   let inserted = 0, deleted = 0;
   const failed: { grant_id: string; stage: string; error: string }[] = [];
-  // Brunella 4894: on 2026-10-25 the embedding quota (daily or per minute, not measured) ran out mid-run (429), and every later grant would
+  // Brunella 4894/4908: on 2026-10-25 the per-minute embedding quota ran out mid-run (429), and every later grant would
   // only have hit 429 again. The run stops at the first quota error; remaining_grant_ids (that grant and the ones
   // not reached) is the list for the next call.
   let remaining: string[] = summary.grants_over_budget;
   let stoppedReason: string | null = remaining.length > 0 ? "max_embeds" : null;
+  let quotaId: string | null = null;
   for (const [index, p] of plan.slice(0, overAt).entries()) {
     // A grant whose row gives no chunk keeps the old ones: deleting them would leave it unsearchable.
     if (p.new_chunks.length === 0) { failed.push({ grant_id: p.grant_id, stage: "chunk", error: "no chunk from the current row, old chunks kept" }); continue; }
@@ -171,6 +174,7 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
       failed.push({ grant_id: p.grant_id, stage, error: (e as Error).message });
       if (e instanceof GeminiUnavailableError && e.status === 429) {
         stoppedReason = "gemini_quota";
+        quotaId = e.quotaId;
         remaining = plan.slice(index).map((r) => r.grant_id);  // includes the over-budget ones
         break;
       }
@@ -178,7 +182,7 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
   }
   return json({
     dry_run: false, ...summary, chunks_inserted: inserted, chunks_deleted: deleted, failed,
-    stopped_reason: stoppedReason, remaining_grant_ids: remaining,
+    stopped_reason: stoppedReason, quota_id: quotaId, remaining_grant_ids: remaining,
   });
 }
 

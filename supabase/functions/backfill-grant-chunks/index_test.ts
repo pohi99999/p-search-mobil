@@ -47,7 +47,7 @@ function fake(opts: {
     embed: async (t) => {
       embedCalls++;
       if (opts.failEmbed) throw new Error("embed down");
-      if (opts.quotaAfter !== undefined && embedCalls > opts.quotaAfter) throw new GeminiUnavailableError(429);
+      if (opts.quotaAfter !== undefined && embedCalls > opts.quotaAfter) throw new GeminiUnavailableError(429, "EmbedContentRequestsPerMinutePerProjectPerModel-FreeTier");
       return Array(768).fill(t.length / 1000);
     },
     env,
@@ -166,6 +166,7 @@ Deno.test("regenerate write: the first quota error (429) stops the run and names
   const f = fake({ grants, chunks: [{ id: "o1", grant_id: "g1" }, { id: "o2", grant_id: "g2" }, { id: "o3", grant_id: "g3" }], quotaAfter: 2 });
   const body = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], dry_run: false }), f.deps)).json();
   assertEquals(body.stopped_reason, "gemini_quota");
+  assertEquals(body.quota_id, "EmbedContentRequestsPerMinutePerProjectPerModel-FreeTier");
   assertEquals(body.remaining_grant_ids, ["g2", "g3"]);
   assertEquals(f.embedCalls(), 3, "g3 is not tried");
   assertEquals(f.deleted, ["o1"], "only the finished grant lost its old chunks");
@@ -188,11 +189,12 @@ Deno.test("regenerate: max_embeds takes whole grants in order, the rest is named
   assertEquals([dry.max_embeds, dry.embeds_in_this_run, dry.grants_in_this_run, dry.grants_over_budget], [3, 2, ["g1"], ["g2", "g3"]]);
   const body = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], max_embeds: 3, dry_run: false }), f.deps)).json();
   assertEquals([body.stopped_reason, body.remaining_grant_ids, f.embedCalls(), f.deleted], ["max_embeds", ["g2", "g3"], 2, ["o1"]]);
-  // The default budget is 40; a grant bigger than the budget alone is not started.
+  // The default budget is 90 (at most 100, the per-minute quota); a grant bigger than the budget alone is not started.
   const d = await (await handler(req({ mode: "regenerate", grant_ids: ["g1"], max_embeds: 1 }), f.deps)).json();
   assertEquals([d.grants_in_this_run, d.grants_over_budget], [[], ["g1"]]);
-  assertEquals((await (await handler(req({ mode: "regenerate", grant_ids: ["g1"] }), f.deps)).json()).max_embeds, 40);
-  for (const bad of [0, 501, 2.5, "40", null]) {
+  assertEquals((await (await handler(req({ mode: "regenerate", grant_ids: ["g1"] }), f.deps)).json()).max_embeds, 90);
+  assertEquals((await handler(req({ mode: "regenerate", grant_ids: ["g1"], max_embeds: 100 }), f.deps)).status, 200);
+  for (const bad of [0, 101, 2.5, "40", null]) {
     assertEquals((await handler(req({ mode: "regenerate", grant_ids: ["g1"], max_embeds: bad }), f.deps)).status, 400, String(bad));
   }
 });
