@@ -110,6 +110,20 @@ describe('SettingsScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'settings' });
   });
 
+  // Card [G5] (vc 18 E2E): a new account's next scan is its signup moment; the row says "soon", not a past date.
+  it('a next scan in the past reads as soon', async () => {
+    const past = '2026-01-01T08:00:00Z';
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { search_frequency: 'weekly', last_scan_at: null, next_scan_at: past }, error: null }),
+    });
+    const component = await renderSettingsScreen();
+    const text = JSON.stringify(component.toJSON());
+    expect(text).toContain('Hamarosan, a következő órán belül');
+    expect(text).not.toContain(new Date(past).toLocaleString('hu-HU'));
+  });
+
   // Card fa68ea84: the profile could be filled once and never corrected; this row opens the form in edit mode.
   it('opens the company profile form in edit mode from the settings row', async () => {
     const navigation = createNavigationMock();

@@ -14,6 +14,7 @@ import {
 } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
+import { formatNextScan } from '../lib/scheduleLabel';
 import { getErrorMessage } from '../utils/error';
 import { getAppVersionLabel } from '../lib/appVersion';
 import { useBilling } from '../context/BillingContext';
@@ -294,7 +295,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               Következő keresés
             </Text>
             <Text variant="bodyMedium" style={styles.infoValue}>
-              {formatScheduleDate(nextScanAt, 'Nincs ütemezve')}
+              {formatNextScan(nextScanAt)}
             </Text>
           </View>
         </Surface>
