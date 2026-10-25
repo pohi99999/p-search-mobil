@@ -103,6 +103,47 @@ describe('useHomeData', () => {
     (supabase.from as jest.Mock).mockImplementation(mockFrom);
   };
 
+  describe('empty home and the first search (card [D])', () => {
+    const matchGrantsCalls = () =>
+      (supabase.functions.invoke as jest.Mock).mock.calls.filter(([fn]: [string]) => fn === 'match-grants').length;
+
+    it('a company never scanned gets its first search started once, by itself', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, { id: 'test-user-id', last_scan_at: null }, null, []);
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        Promise.resolve(fn === 'match-grants' ? { data: { matches_found: 0 }, error: null } : { data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(matchGrantsCalls()).toBe(1));
+      expect(result.current.hasSearched).toBe(false);
+      // The no-match message promises no notification any more.
+      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.any(String)));
+      const text = (Alert.alert as jest.Mock).mock.calls.find(([t]: [string]) => t === 'AI keresés kész')[1];
+      expect(text).not.toMatch(/értesítünk/);
+      await act(async () => { await result.current.fetchData(); });
+      expect(matchGrantsCalls()).toBe(1);
+    });
+
+    it('a failed first search is not retried in a loop', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, { id: 'test-user-id', last_scan_at: null }, null, []);
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        Promise.resolve(fn === 'match-grants' ? { data: null, error: { message: 'boom' } } : { data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(matchGrantsCalls()).toBe(1));
+      await waitFor(() => expect(result.current.searching).toBe(false));
+      await act(async () => { await result.current.fetchData(); });
+      expect(matchGrantsCalls()).toBe(1);
+    });
+
+    it('a company already scanned starts nothing and counts as searched', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, { id: 'test-user-id', last_scan_at: '2026-10-20T08:00:00Z' }, null, []);
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.hasSearched).toBe(true);
+      expect(matchGrantsCalls()).toBe(0);
+    });
+  });
+
   describe('expired grants (card [C])', () => {
     const past = { deadline: '2020-01-01T00:00:00Z' };
     const future = { deadline: '2999-01-01T00:00:00Z' };

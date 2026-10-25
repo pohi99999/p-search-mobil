@@ -1,4 +1,4 @@
-import { isOpenGrant, sortFreshFirst, withoutExpired } from '../matchStatus';
+import { hasSearchedBefore, isOpenGrant, sortFreshFirst, withoutExpired } from '../matchStatus';
 
 // Card 2428c38f: the owner's list (2026-10-15) mixed 4 fresh and 5 older, not re-scored matches.
 it('stale matches go after the fresh ones, score order kept inside each group', () => {
@@ -45,4 +45,11 @@ describe('expired grants (card [C])', () => {
       'no-deadline',
     ]);
   });
+});
+
+it('searched once a scan ran or there is any match (card [D])', () => {
+  expect(hasSearchedBefore(null, 0)).toBe(false);
+  expect(hasSearchedBefore(undefined, 0)).toBe(false);
+  expect(hasSearchedBefore('2026-10-20T08:00:00Z', 0)).toBe(true);
+  expect(hasSearchedBefore(null, 2)).toBe(true);
 });
