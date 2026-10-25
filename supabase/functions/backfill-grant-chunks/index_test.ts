@@ -6,20 +6,44 @@ import { buildGrantText, chunkGrant, splitParagraphs } from "../_shared/grant-ch
 const SERVICE = "service-key-x";
 const env = (n: string) => ({ SUPABASE_SERVICE_ROLE_KEY: SERVICE, SUPABASE_URL: "http://x", GEMINI_API_KEY: "g" } as Record<string, string>)[n];
 
-function fake(opts: { grants: Record<string, unknown>[]; covered: string[] }) {
+// The client's chain as the function uses it: select(...) awaited directly or narrowed with .in(col, values),
+// insert(rows), delete().in("id", ids). `chunks` are the existing rows ({id, grant_id}); `failInsert` /
+// `failEmbed` make that step fail.
+function fake(opts: {
+  grants: Record<string, unknown>[];
+  covered?: string[];
+  chunks?: { id: string; grant_id: string }[];
+  failInsert?: boolean;
+  failEmbed?: boolean;
+}) {
   const inserted: Record<string, unknown>[] = [];
+  const deleted: string[] = [];
+  const chunks = opts.chunks ?? (opts.covered ?? []).map((grant_id, i) => ({ id: `c${i}`, grant_id }));
+  const rowsOf = (table: string) => (table === "grant_chunks" ? chunks : opts.grants) as Record<string, unknown>[];
   const client = {
     from(table: string) {
       return {
-        select: async (_cols: string) => table === "grant_chunks"
-          ? { data: opts.covered.map((grant_id) => ({ grant_id })), error: null }
-          : { data: opts.grants, error: null },
-        insert: async (rows: Record<string, unknown>[]) => { inserted.push(...rows); return { error: null }; },
+        select: (_cols: string) => {
+          const all = { data: rowsOf(table), error: null };
+          return Object.assign(Promise.resolve(all), {
+            in: async (col: string, values: string[]) => ({ data: rowsOf(table).filter((r) => values.includes(r[col] as string)), error: null }),
+          });
+        },
+        insert: async (rows: Record<string, unknown>[]) => {
+          if (opts.failInsert) return { error: { message: "insert refused" } };
+          inserted.push(...rows);
+          return { error: null };
+        },
+        delete: () => ({ in: async (_col: string, ids: string[]) => { deleted.push(...ids); return { error: null }; } }),
       };
     },
   };
-  const deps: Deps = { createClient: () => client as unknown as ReturnType<Deps["createClient"]>, embed: async (t) => Array(768).fill(t.length / 1000), env };
-  return { deps, inserted };
+  const deps: Deps = {
+    createClient: () => client as unknown as ReturnType<Deps["createClient"]>,
+    embed: async (t) => { if (opts.failEmbed) throw new Error("embed down"); return Array(768).fill(t.length / 1000); },
+    env,
+  };
+  return { deps, inserted, deleted };
 }
 const req = (body: unknown, bearer = SERVICE, method = "POST") =>
   new Request("http://x/backfill-grant-chunks", { method, headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" }, body: method === "POST" ? JSON.stringify(body) : undefined });
@@ -32,7 +56,17 @@ Deno.test("chunker: blank-line paragraphs, header first, empty grant gives no ch
   assertEquals(chunks[0].startsWith("GINOP Plusz"), true);
   assertEquals(chunks[3], "Jogosultság: KKV");
   assertEquals(chunkGrant({ id: "2" }), []);
-  assertEquals(buildGrantText({ id: "3", title: "T", amount_min: 1, amount_max: null }).includes("Összeg: 1 - ? Ft"), true);
+});
+
+// Irisz 4868 (b), Brunella 4872: the header carries the app's deadline and amount, not the raw values.
+Deno.test("chunker header: the Budapest day and the app's amount line", () => {
+  const bay = buildGrantText({ id: "bay", title: "KKV-k számára nyújtandó K+F+I szolgáltatások", deadline: "2026-12-01T23:00:00+00:00", amount_min: 1, amount_max: 138937500000 });
+  assertEquals(bay.includes("Határidő: 2026. 12. 02."), true, bay);
+  assertEquals(bay.includes("Összeg: keretösszeg 138 937 500 000 Ft"), true, bay);
+  assertEquals(/T23:00|Összeg: 1 /.test(bay), false, bay);
+  assertEquals(buildGrantText({ id: "a", title: "T", amount_min: 5000000, amount_max: 40000000 }).includes("Összeg: 5 000 000 Ft - 40 000 000 Ft"), true);
+  // A 1 Ft placeholder alone says nothing honest: no amount line.
+  assertEquals(buildGrantText({ id: "3", title: "T", amount_min: 1, amount_max: null }).includes("Összeg"), false);
 });
 
 Deno.test("gate: wrong bearer 401, no writes; right bearer passes", async () => {
@@ -61,4 +95,54 @@ Deno.test("live run inserts embedded chunks for uncovered grants only, idempoten
   assertEquals(f.inserted.length, 3);
   assertEquals(f.inserted.every((r) => r.grant_id === "g1" && (r.embedding as number[]).length === 768), true);
   assertEquals((f.inserted[0].metadata as { source: string }).source, "backfill-grant-chunks");
+});
+
+// Regenerate (Irisz 4868 (a), Brunella 4872).
+const BAY = { id: "bay", title: "BAY", deadline: "2026-12-01T23:00:00+00:00", description: "Leírás." };
+const OTHER = { id: "other", title: "Másik", description: "x" };
+const regen = (extra: Record<string, unknown> = {}) => req({ mode: "regenerate", grant_ids: ["bay"], ...extra });
+
+Deno.test("regenerate: a dry run by default, listing the chunk ids to delete and the texts to write, nothing written", async () => {
+  const f = fake({ grants: [BAY, OTHER], chunks: [{ id: "old1", grant_id: "bay" }, { id: "old2", grant_id: "bay" }, { id: "keep", grant_id: "other" }] });
+  const body = await (await handler(regen(), f.deps)).json();
+  assertEquals(body.dry_run, true);
+  assertEquals(body.chunks_to_delete, 2);
+  assertEquals(body.plan[0].delete_chunk_ids, ["old1", "old2"]);
+  assertEquals(body.plan[0].new_chunks[0], "BAY\nHatáridő: 2026. 12. 02.");
+  assertEquals(body.chunks_to_write, 2);
+  assertEquals([f.inserted.length, f.deleted.length], [0, 0]);
+});
+
+Deno.test("regenerate write: new chunks in, then only that grant's old ids out", async () => {
+  const f = fake({ grants: [BAY, OTHER], chunks: [{ id: "old1", grant_id: "bay" }, { id: "keep", grant_id: "other" }] });
+  const body = await (await handler(regen({ dry_run: false }), f.deps)).json();
+  assertEquals([body.chunks_inserted, body.chunks_deleted, body.failed.length], [2, 1, 0]);
+  assertEquals(f.deleted, ["old1"]);
+  assertEquals(f.inserted.every((r) => r.grant_id === "bay"), true);
+  assertEquals((f.inserted[0].metadata as { source: string }).source, "backfill-grant-chunks:regenerate");
+});
+
+Deno.test("regenerate write: a failed embed or insert deletes nothing; a row with no chunk keeps its old ones", async () => {
+  for (const fail of [{ failEmbed: true }, { failInsert: true }]) {
+    const f = fake({ grants: [BAY], chunks: [{ id: "old1", grant_id: "bay" }], ...fail });
+    const body = await (await handler(regen({ dry_run: false }), f.deps)).json();
+    assertEquals(f.deleted, [], JSON.stringify(fail));
+    assertEquals(body.failed[0].stage, fail.failEmbed ? "embed" : "insert");
+  }
+  const empty = fake({ grants: [{ id: "bay" }], chunks: [{ id: "old1", grant_id: "bay" }] });
+  const body = await (await handler(regen({ dry_run: false }), empty.deps)).json();
+  assertEquals([empty.deleted.length, empty.inserted.length, body.failed[0].stage], [0, 0, "chunk"]);
+});
+
+Deno.test("regenerate: bad input is a 400, unknown ids are reported, the gate still holds", async () => {
+  const f = fake({ grants: [BAY] });
+  for (const ids of [undefined, [], [""], [1], "bay"]) {
+    assertEquals((await handler(req({ mode: "regenerate", grant_ids: ids }), f.deps)).status, 400, JSON.stringify(ids));
+  }
+  assertEquals((await handler(req({ mode: "regenerate", grant_ids: Array.from({ length: 101 }, (_, i) => `g${i}`) }), f.deps)).status, 400);
+  assertEquals((await handler(req({ mode: "nope" }), f.deps)).status, 400);
+  const body = await (await handler(req({ mode: "regenerate", grant_ids: ["bay", "nincs", "bay"] }), f.deps)).json();
+  assertEquals([body.grants_requested, body.not_found], [2, ["nincs"]]);
+  assertEquals((await handler(req({ mode: "regenerate", grant_ids: ["bay"], dry_run: false }, "wrong"), f.deps)).status, 401);
+  assertEquals([f.inserted.length, f.deleted.length], [0, 0]);
 });
