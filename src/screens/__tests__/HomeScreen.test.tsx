@@ -1,5 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { contrastRatio } from '../../test-utils/contrast';
 import { HomeScreen } from '../HomeScreen';
 import { useHomeData } from '../../hooks/useHomeData';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -226,6 +227,22 @@ describe('HomeScreen', () => {
     act(() => { card.props.onPress(); });
     expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match });
     expect(mockNavigation.navigate).not.toHaveBeenCalledWith('ActionPlan', expect.anything());
+  });
+
+  // Card [I]: the FAB label was the MD3 default #21005D on #1976D2, 3.73:1.
+  it('the search button label meets WCAG AA on the button blue', () => {
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test Company' },
+      matches: [{ id: '1', grants: {} }],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+    const root = renderScreen();
+    const fab = root.root.findByProps({ testID: 'new-search-fab' });
+    expect(contrastRatio(fab.props.color, '#1976D2')).toBeGreaterThanOrEqual(4.5);
   });
 
   // Owner decision 2026-10-04 (card bc8e4135): no ad inside the list, only the bottom banner.
