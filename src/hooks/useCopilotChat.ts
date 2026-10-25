@@ -130,7 +130,16 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
         }
       });
 
-      if (invokeError) throw invokeError;
+      if (invokeError) {
+        // Card [L]: the free daily chat cap answers 403 {code:'chat_daily_limit', error}; the server's Hungarian
+        // text is shown as it is instead of the generic failure.
+        const ctx = (invokeError as { context?: { status?: number; json?: () => Promise<{ code?: string; error?: string }> } }).context;
+        if (ctx?.status === 403 && ctx.json) {
+          const body = await ctx.json().catch(() => null);
+          if (body?.code === 'chat_daily_limit' && body.error) throw new Error(body.error);
+        }
+        throw invokeError;
+      }
       if (data?.error) throw new Error(data.error);
 
       const replyText = data?.reply || data?.text || data?.response || '';

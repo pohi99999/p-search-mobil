@@ -9,6 +9,8 @@ import {
   describeParseError,
 } from '../_shared/request-log.ts';
 import { validateChatInput } from '../_shared/input-limits.ts';
+import { consumeDailyChat } from '../_shared/daily-chat.ts';
+import { refundDailyChat } from '../_shared/daily-search-refund.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -29,6 +31,12 @@ serve(async (req) => {
       headers: corsHeaders,
     });
   }
+
+  // Card [L]: the daily chat cap is consumed before the paid AI call and given back if that call fails.
+  let capConsumedFor: string | null = null;
+  let aiAnswered = false;
+  // deno-lint-ignore no-explicit-any
+  let capClient: any = null;
 
   try {
     console.log('Authorization fejléc ellenőrzése...');
@@ -90,6 +98,16 @@ serve(async (req) => {
     }
     const message = input.message;
     const history = input.history;
+
+    const gate = await consumeDailyChat(supabaseClient, user.id);
+    if (!gate.allowed) {
+      return new Response(JSON.stringify(gate.body), {
+        status: gate.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    capConsumedFor = user.id;
+    capClient = supabaseClient;
     const business_profile_id =
       requestData.business_profile_id || requestData.businessProfileId || null;
     const match_id = requestData.match_id || requestData.matchId || null;
@@ -115,6 +133,8 @@ serve(async (req) => {
       if (profile) {
         if (profile.user_id !== user.id) {
           console.error('Jogosulatlan hozzáférés a cégprofilhoz');
+          // Card [L]: no AI call happens on this path, so the consumed chat message is given back.
+          await refundDailyChat(supabaseClient, user.id);
           return new Response(JSON.stringify({ error: 'Nincs jogosultság a megadott profilhoz' }), {
             status: 403,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -377,6 +397,7 @@ Példa a kimenetre:
       });
       return result.response.text();
     }, 1000)) || '{}';
+    aiAnswered = true;
     console.log('Modell-hívás sikeresen lefutott.');
     console.log('Gemini nyers JSON válasz:', describeJsonText(replyJSONText));
 
@@ -470,6 +491,10 @@ Példa a kimenetre:
     );
   } catch (err: any) {
     console.error('Végzetes hiba az Edge Function futása során:', err);
+    if (capConsumedFor && !aiAnswered) {
+      const refunded = await refundDailyChat(capClient, capConsumedFor);
+      console.warn('A napi chat-keret visszaadva (AI-hiba):', refunded);
+    }
     return new Response(
       JSON.stringify({
         error: err.message || 'Ismeretlen hiba történt a szerveren.',
