@@ -13,7 +13,7 @@ Deno.test("the cut is the start of the Budapest day, summer and winter time alik
 
 type Grant = { id: string; deadline: string | null; created_at: string };
 
-// Applies the same `deadline.is.null,deadline.gte.<iso>` filter PostgREST would.
+// Applies the same `deadline.is.null,deadline.gte.<iso>`, `in`, order and limit filters PostgREST would.
 function fakeSupabase(grants: Grant[], chunkGrantIds: string[]) {
   const seen: string[] = [];
   return {
@@ -23,14 +23,16 @@ function fakeSupabase(grants: Grant[], chunkGrantIds: string[]) {
       let rows = [...grants];
       const b = {
         select: (_c: string) => b,
+        in(_col: string, ids: string[]) { seen.push(`in ${ids.length}`); rows = rows.filter((g) => ids.includes(g.id)); return b; },
         or(expr: string) {
           seen.push(expr);
           const iso = expr.match(/deadline\.gte\.(.+)$/)![1];
           rows = rows.filter((g) => g.deadline === null || g.deadline >= iso);
           return b;
         },
-        order: (_c: string, _o: unknown) => b,
-        limit: (_n: number) => Promise.resolve({ data: rows, error: null }),
+        order: (_c: string, _o: unknown) => { rows.sort((a, z) => z.created_at.localeCompare(a.created_at)); return b; },
+        limit: (n: number) => { rows = rows.slice(0, n); return b; },
+        then: (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(ok, ko),
       };
       return b;
     },
@@ -51,5 +53,15 @@ Deno.test("expired grants are left out, the semantic hits too; no deadline and t
   assertEquals(ids.includes("expired"), false);
   assertEquals(ids.slice(0, 1), ["open"]); // the semantic hit comes first
   assertEquals(new Set(ids), new Set(["open", "today", "no-deadline"]));
-  assertEquals(sb.seen.length, 1);
+});
+
+Deno.test("an older semantic hit is kept even with more than 60 newer open grants", async () => {
+  const newer: Grant[] = Array.from({ length: 70 }, (_, i) => ({
+    id: `newer-${i}`, deadline: null, created_at: `2026-10-${String(10 + (i % 15)).padStart(2, "0")}T${String(i % 24).padStart(2, "0")}:00`,
+  }));
+  const old: Grant = { id: "old-but-relevant", deadline: "2999-01-01T00:00:00+00:00", created_at: "2025-01-01" };
+  const sb = fakeSupabase([old, ...newer], ["old-but-relevant"]);
+  // deno-lint-ignore no-explicit-any
+  const out = await collectCandidateGrants(sb as any, "profil", "key", () => Promise.resolve([0.1]));
+  assertEquals(out[0].id, "old-but-relevant");
 });

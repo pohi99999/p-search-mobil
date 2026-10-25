@@ -146,22 +146,25 @@ export async function collectCandidateGrants(
     console.warn('Embedding alapú keresés sikertelen, fallback ág következik:', err);
   }
 
-  // Only grants that are still open are ever considered.
-  const { data: openGrants, error: grantsError } = await supabase
-    .from('grants')
-    .select(
-      'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria',
-    )
-    .or(`deadline.is.null,deadline.gte.${nowIso}`)
-    .order('created_at', { ascending: false })
-    .limit(60);
+  // Only grants that are still open are ever considered. The semantic hits are fetched by id: reading them
+  // only out of the newest 60 open grants dropped every older relevant one once there were more than 60
+  // (review 2026-10-25, Irisz). The newest 60 stay as the fallback order behind them.
+  const columns = 'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria';
+  const openFilter = `deadline.is.null,deadline.gte.${nowIso}`;
+  const [semantic, recent] = await Promise.all([
+    orderedIds.length
+      ? supabase.from('grants').select(columns).in('id', orderedIds).or(openFilter)
+      : Promise.resolve({ data: [] as GrantRow[], error: null }),
+    supabase.from('grants').select(columns).or(openFilter).order('created_at', { ascending: false }).limit(60),
+  ]);
 
+  const grantsError = semantic.error ?? recent.error;
   if (grantsError) {
     throw new Error(`Nem sikerült lekérdezni a pályázatokat: ${grantsError.message}`);
   }
 
   const byId = new Map<string, GrantRow>();
-  for (const grant of (openGrants ?? []) as GrantRow[]) {
+  for (const grant of [...(semantic.data ?? []), ...(recent.data ?? [])] as GrantRow[]) {
     byId.set(grant.id, grant);
   }
 
