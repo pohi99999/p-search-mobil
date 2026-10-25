@@ -31,13 +31,11 @@ export const PaywallPackages = ({ packages, purchasing, handlePurchase }: Paywal
           </Card.Content>
         </Card>
       ) : (
-        packages.map((pkg, index) => (
+        packages.map((pkg) => (
           <Card key={pkg.identifier} style={styles.packageCard} mode="elevated">
             <Card.Content style={styles.packageContent}>
-              {/* Only when there is a choice, and on one package (card a96dd8e2 #3). */}
-              {packages.length >= 2 && index === 0 ? (
-                <Text variant="labelMedium" style={styles.popularBadge}>⭐ LEGNÉPSZERŰBB</Text>
-              ) : null}
+              {/* No "LEGNÉPSZERŰBB" badge: it sat on the first package without any data behind it (Péter 10518;
+                  an unsupported claim on a paywall is also a Play policy risk). Packages, prices and order unchanged. */}
               {/* Own labels: the store title is the raw Play product name with the
                   package id and review state, never shown to the user. */}
               <Text variant="titleLarge" style={styles.packageName}>
@@ -95,13 +93,6 @@ const styles = StyleSheet.create({
   packageContent: {
     paddingVertical: 16,
     alignItems: 'center',
-  },
-  popularBadge: {
-    color: '#FF6F00',
-    fontWeight: 'bold',
-    marginBottom: 4,
-    fontSize: 11,
-    letterSpacing: 0.5,
   },
   packageName: {
     fontWeight: 'bold',
