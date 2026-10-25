@@ -6,11 +6,10 @@ copied in unchanged). Output, served by Vercel with cleanUrls:
   public/adatvedelem.html  -> /adatvedelem   (Hungarian notice)
   public/privacy.html      -> /privacy       (English notice)
 
-The notice text is NOT edited here. The only substitutions are the ones the owner
-asked for (2026-09-23): the effective date, the square brackets around the in-app
-path (the feature now exists), and the version label: the source still reads
-"1.0 (draft)", the published notice is "1.1" since the VIES tax-number check was
-added (2026-09-23). Every substitution asserts that it hit
+The notice text is NOT edited here. Since 1.3 (2026-10-25, owner GO Telegram 10617; 1.3 because the site already showed a different 1.2) the source
+carries the published header itself (effective date, version, no draft marks, no square brackets),
+the same text as on pohankaestarsa.com/p-search/adatvedelem, so there is nothing left to substitute.
+EDITS stays as the place for a future owner-approved substitution; each one asserts that it hit
 exactly once, so a changed source fails loudly instead of publishing half-edited.
 
 The account-deletion page (public/fiok-torlese.html) is hand-written, not generated:
@@ -25,18 +24,7 @@ from markdown_it import MarkdownIt
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "docs/legal/adatvedelmi-tajekoztato.md"
 
-EDITS = {
-    "hu": [
-        ("**Hatályos:** 2026. szeptember [nap].", "**Hatályos:** 2026. szeptember 23."),
-        ("[az alkalmazásban: Beállítások → Fiók törlése]", "az alkalmazásban: Beállítások → Fiók törlése"),
-        ("**Verzió:** 1.0 (tervezet)", "**Verzió:** 1.1"),
-    ],
-    "en": [
-        ("**Effective:** September [day], 2026", "**Effective:** September 23, 2026"),
-        ("[in the app: Settings → Delete account]", "in the app: Settings → Delete account"),
-        ("**Version:** 1.0 (draft)", "**Version:** 1.1"),
-    ],
-}
+EDITS: dict[str, list[tuple[str, str]]] = {"hu": [], "en": []}
 
 PAGES = {
     "hu": {"file": "adatvedelem.html", "lang": "hu", "title": "P-Search – Adatvédelmi tájékoztató",
