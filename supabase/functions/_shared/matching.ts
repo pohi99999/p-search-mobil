@@ -146,16 +146,17 @@ export async function collectCandidateGrants(
     console.warn('Embedding alapú keresés sikertelen, fallback ág következik:', err);
   }
 
-  // Only grants that are still open are ever considered. The semantic hits are fetched by id: reading them
+  // Only grants that are still open are ever considered: not past their deadline, and not closed at the source
+  // (source_closed_at, card [H2]). The semantic hits are fetched by id: reading them
   // only out of the newest 60 open grants dropped every older relevant one once there were more than 60
   // (review 2026-10-25, Irisz). The newest 60 stay as the fallback order behind them.
   const columns = 'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria';
   const openFilter = `deadline.is.null,deadline.gte.${nowIso}`;
   const [semantic, recent] = await Promise.all([
     orderedIds.length
-      ? supabase.from('grants').select(columns).in('id', orderedIds).or(openFilter)
+      ? supabase.from('grants').select(columns).in('id', orderedIds).or(openFilter).is('source_closed_at', null)
       : Promise.resolve({ data: [] as GrantRow[], error: null }),
-    supabase.from('grants').select(columns).or(openFilter).order('created_at', { ascending: false }).limit(60),
+    supabase.from('grants').select(columns).or(openFilter).is('source_closed_at', null).order('created_at', { ascending: false }).limit(60),
   ]);
 
   const grantsError = semantic.error ?? recent.error;

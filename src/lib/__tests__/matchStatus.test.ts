@@ -53,3 +53,16 @@ it('searched once a scan ran or there is any match (card [D])', () => {
   expect(hasSearchedBefore('2026-10-20T08:00:00Z', 0)).toBe(true);
   expect(hasSearchedBefore(null, 2)).toBe(true);
 });
+
+it('a call closed at the source drops like an expired one, unless a plan or a status keeps it (card [H2])', () => {
+  const now = new Date(2026, 9, 25, 15, 0);
+  const open = { deadline: '2999-01-01T00:00:00Z', source_closed_at: null };
+  const closed = { deadline: '2999-01-01T00:00:00Z', source_closed_at: '2026-10-25T10:00:00Z' };
+  const rows = [
+    { id: 'open', status: 'new', grants: open },
+    { id: 'closed-new', status: 'new', grants: closed },
+    { id: 'closed-interested', status: 'interested', grants: closed },
+    { id: 'closed-with-plan', status: 'new', grants: closed },
+  ];
+  expect(withoutExpired(rows, new Set(['closed-with-plan']), now).map((r) => r.id)).toEqual(['open', 'closed-interested', 'closed-with-plan']);
+});

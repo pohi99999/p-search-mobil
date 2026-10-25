@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { fetchActiveTenders, type TendersPage } from './fetchTenders.ts';
-import { selectGrantsToIngest, type GrantRecord } from './mapTender.ts';
+import { loaderCode, planGrantSync, type ExistingGrant, type GrantRecord } from './mapTender.ts';
 
 function loadDotEnv() {
   try {
@@ -33,19 +33,20 @@ function loadDotEnv() {
   } catch { /* best effort */ }
 }
 
-async function readExistingSourceUrls(sb: ReturnType<typeof createClient>): Promise<Set<string>> {
-  const urls = new Set<string>();
+// Card [H2]: the deadline and source_closed_at too, so a run can update the rows it loaded before.
+async function readExistingGrants(sb: ReturnType<typeof createClient>): Promise<ExistingGrant[]> {
+  const rows: ExistingGrant[] = [];
   const pageSize = 1000;
   let from = 0;
   for (;;) {
-    const { data, error } = await sb.from('grants').select('source_url').range(from, from + pageSize - 1);
+    const { data, error } = await sb.from('grants').select('source_url, deadline, source_closed_at').range(from, from + pageSize - 1);
     if (error) throw new Error(`select grants: ${error.message}`);
     if (!data || data.length === 0) break;
-    for (const r of data as { source_url: string | null }[]) if (r.source_url) urls.add(r.source_url);
+    for (const r of data as ExistingGrant[]) if (r.source_url) rows.push(r);
     if (data.length < pageSize) break;
     from += pageSize;
   }
-  return urls;
+  return rows;
 }
 
 const realFetch = async (url: string, init: { method: string; headers: Record<string, string>; body: string }) => {
@@ -63,14 +64,16 @@ async function main() {
   const sb = createClient(url, key, { auth: { persistSession: false } });
 
   console.log(`[ingest] mode=${write ? 'WRITE' : 'DRY-RUN'} kkvOnly=${kkvOnly}`);
-  const existing = await readExistingSourceUrls(sb);
-  console.log(`[ingest] existing grants in DB: ${existing.size}`);
+  const existing = await readExistingGrants(sb);
+  console.log(`[ingest] existing grants in DB: ${existing.length}`);
 
   const tenders = await fetchActiveTenders({ fetchImpl: realFetch });
   console.log(`[ingest] fetched Aktív tenders: ${tenders.length}`);
 
-  const sel = selectGrantsToIngest(tenders, { existingSourceUrls: existing, kkvOnly });
+  const sel = planGrantSync(tenders, existing, { kkvOnly });
   console.log(`[ingest] toInsert=${sel.toInsert.length} (open=${sel.openCount}, undated=${sel.undatedCount}), skippedExisting=${sel.skippedExisting}`);
+  console.log(`[ingest] toUpdate=${sel.toUpdate.length} (deadline changed or Aktív again): ${sel.toUpdate.map((u) => `${loaderCode(u.source_url)} -> ${u.deadline}`).join(', ') || '-'}`);
+  console.log(`[ingest] toClose=${sel.toClose.length} (no longer Aktív at the source)${sel.closingSkipped ? ' SKIPPED: the Aktív list is too short to trust' : ''}: ${sel.toClose.map(loaderCode).join(', ') || '-'}`);
   if (sel.toInsert[0]) {
     const s = sel.toInsert[0];
     console.log(`[ingest] sample: ${JSON.stringify({ title: s.title.slice(0, 60), deadline: s.deadline, amount_max: s.amount_max, source_url: s.source_url.slice(0, 70) })}`);
@@ -94,8 +97,22 @@ async function main() {
     if (error) throw new Error(`insert batch ${i}: ${error.message}`);
     inserted += data?.length ?? 0;
   }
+  // Card [H2]: existing rows, one by one (a handful per run). Never a delete: grant_matches point at these rows.
+  let updated = 0;
+  for (const u of sel.toUpdate) {
+    const { error } = await sb.from('grants').update({ deadline: u.deadline, source_closed_at: null }).eq('source_url', u.source_url);
+    if (error) throw new Error(`update ${u.source_url}: ${error.message}`);
+    updated++;
+  }
+  let closed = 0;
+  const closedAt = new Date().toISOString();
+  for (const url of sel.toClose) {
+    const { error } = await sb.from('grants').update({ source_closed_at: closedAt }).eq('source_url', url).is('source_closed_at', null);
+    if (error) throw new Error(`close ${url}: ${error.message}`);
+    closed++;
+  }
   const { count: total } = await sb.from('grants').select('*', { count: 'exact', head: true });
-  console.log(`[ingest] WRITE done. upserted≈${inserted}. grants total now: ${total}`);
+  console.log(`[ingest] WRITE done. inserted=${inserted} updated=${updated} closed=${closed}. grants total now: ${total}`);
 }
 
 main().catch((e) => { console.error('[ingest] FAILED:', e.message); process.exit(1); });

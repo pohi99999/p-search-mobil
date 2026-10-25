@@ -1,4 +1,5 @@
--- Card [H2] (review 2026-10-25): three grants with a wrong deadline, read against palyazat.gov.hu (Brunella 4741).
+-- Card [H2] (review 2026-10-25): five grants with a wrong deadline, read against palyazat.gov.hu and the source API's
+-- endTime (Brunella 4741/4750, Irisz's table in irisz-hatarido-forras.md).
 -- The convention is the Budapest midnight that starts the last day (see _shared/deadline-normalize.ts). Each row is
 -- matched by its exact current values, so the migration is idempotent and leaves a row alone that was changed since.
 
@@ -35,4 +36,24 @@ BEGIN
      AND deadline = '2030-12-30 22:00:00+00';
   GET DIAGNOSTICS n = ROW_COUNT;
   RAISE NOTICE 'GINOP_PLUSZ-1.4.8-24: % row(s) fixed', n;
+
+  -- 4. GINOP_PLUSZ-1.4.3-24: the source extended it to 2027-06-30 (endTime 2027-06-29T22:00Z); the loader never
+  --    updated an existing row, so it kept 2026-12-31. Matched by its code (a regex: "_" would be a LIKE wildcard).
+  UPDATE public.grants
+     SET deadline = '2027-06-29 22:00:00+00'
+   WHERE source_url ~ 'code=GINOP_PLUSZ-1\.4\.3-24($|&)'
+     AND deadline = '2026-12-30 23:00:00+00';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n > 1 THEN RAISE EXCEPTION 'GINOP_PLUSZ-1.4.3-24 matched % rows, expected at most 1', n; END IF;
+  RAISE NOTICE 'GINOP_PLUSZ-1.4.3-24: % row(s) fixed', n;
+
+  -- 5. EFOP_PLUSZ-TEF-3.1.3/TEF-25 ("Nő az esély"): active at the source until 2026-11-30 (endTime 2026-11-29T23:00Z),
+  --    here an old 2026-09-25, so the app hid it as expired.
+  UPDATE public.grants
+     SET deadline = '2026-11-29 23:00:00+00'
+   WHERE source_url ~ 'code=EFOP_PLUSZ-TEF-3\.1\.3(%2F|/)TEF-25($|&)'
+     AND deadline = '2026-09-24 22:00:00+00';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n > 1 THEN RAISE EXCEPTION 'EFOP_PLUSZ-TEF-3.1.3/TEF-25 matched % rows, expected at most 1', n; END IF;
+  RAISE NOTICE 'EFOP_PLUSZ-TEF-3.1.3/TEF-25: % row(s) fixed', n;
 END $$;

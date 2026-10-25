@@ -147,3 +147,83 @@ export function selectGrantsToIngest(tenders: Tender[], opts: SelectOptions): Se
   }
   return { toInsert, openCount, undatedCount, skippedExisting };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Card [H2] (review 2026-10-25, Brunella 4750): the loader only ever inserted, so a deadline the source extended
+// (GINOP_PLUSZ-1.4.3-24) or a call it closed (GINOP_PLUSZ-1.2.1-21, suspended) never reached the DB. planGrantSync
+// also updates the rows it loaded before. Rows are never deleted (grant_matches point at them).
+
+const LOADER_URL_PREFIX = 'https://www.palyazat.gov.hu/palyazatok/redirect?';
+/** Below this many Aktív tenders the fetch is treated as broken, and nothing is closed. */
+export const MIN_ACTIVE_FOR_CLOSING = 20;
+
+export interface ExistingGrant {
+  source_url: string;
+  deadline: string | null;
+  source_closed_at: string | null;
+}
+
+export interface GrantUpdate {
+  source_url: string;
+  deadline: string | null;
+  source_closed_at: null;
+}
+
+export interface SyncPlan extends SelectResult {
+  /** Loaded rows whose deadline changed at the source, or that are Aktív again after being closed. */
+  toUpdate: GrantUpdate[];
+  /** Loaded rows no longer in the source's Aktív list: to be stamped source_closed_at. */
+  toClose: string[];
+  /** True when the Aktív list was too short to trust, so toClose was left empty. */
+  closingSkipped: boolean;
+}
+
+/** The call code of a URL this loader built, or null for any other URL (kavosz.hu, a hand seed's page...). */
+export function loaderCode(url: string | null | undefined): string | null {
+  if (!url || !url.startsWith(LOADER_URL_PREFIX)) return null;
+  try {
+    return new URL(url).searchParams.get('code');
+  } catch {
+    return null;
+  }
+}
+
+const sameInstant = (a: string | null, b: string | null) =>
+  a === b || (a !== null && b !== null && new Date(a).getTime() === new Date(b).getTime());
+
+/**
+ * What a run should write: the new open/undated calls (as selectGrantsToIngest), the deadline of every loaded row
+ * that changed at the source, and the loaded rows that dropped out of the Aktív list. Rows are matched by call code.
+ * `tenders` must be the source's full Aktív list (fetchActiveTenders), not a filtered subset.
+ */
+export function planGrantSync(tenders: Tender[], existing: ExistingGrant[], opts: { now?: Date; kkvOnly?: boolean } = {}): SyncPlan {
+  const byCode = new Map<string, ExistingGrant>();
+  for (const row of existing) {
+    const code = loaderCode(row.source_url);
+    if (code) byCode.set(code, row);
+  }
+  const existingUrls = new Set(existing.map((r) => r.source_url));
+  const knownCodes = new Set(byCode.keys());
+  const fresh = tenders.filter((t) => !knownCodes.has(t.code));
+  const insert = selectGrantsToIngest(fresh, { existingSourceUrls: existingUrls, now: opts.now, kkvOnly: opts.kkvOnly });
+
+  const toUpdate: GrantUpdate[] = [];
+  const activeCodes = new Set<string>();
+  for (const t of tenders) {
+    if ((t.status ?? '') !== ACTIVE_STATUS) continue;
+    activeCodes.add(t.code);
+    const row = byCode.get(t.code);
+    if (!row) continue;
+    const deadline = normalizeDeadline(t.endTime);
+    if (!sameInstant(row.deadline, deadline) || row.source_closed_at !== null) {
+      toUpdate.push({ source_url: row.source_url, deadline, source_closed_at: null });
+    }
+  }
+
+  const closingSkipped = activeCodes.size < MIN_ACTIVE_FOR_CLOSING;
+  const toClose = closingSkipped
+    ? []
+    : [...byCode.entries()].filter(([code, row]) => !activeCodes.has(code) && row.source_closed_at === null).map(([, row]) => row.source_url);
+
+  return { ...insert, skippedExisting: insert.skippedExisting + (tenders.length - fresh.length), toUpdate, toClose, closingSkipped };
+}

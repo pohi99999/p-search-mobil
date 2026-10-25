@@ -11,7 +11,7 @@ Deno.test("the cut is the start of the Budapest day, summer and winter time alik
   assertEquals(openGrantCutoffIso(new Date("2026-06-30T22:30:00Z")), "2026-06-30T22:00:00.000Z");
 });
 
-type Grant = { id: string; deadline: string | null; created_at: string };
+type Grant = { id: string; deadline: string | null; created_at: string; source_closed_at?: string | null };
 
 // Applies the same `deadline.is.null,deadline.gte.<iso>`, `in`, order and limit filters PostgREST would.
 function fakeSupabase(grants: Grant[], chunkGrantIds: string[]) {
@@ -24,6 +24,7 @@ function fakeSupabase(grants: Grant[], chunkGrantIds: string[]) {
       const b = {
         select: (_c: string) => b,
         in(_col: string, ids: string[]) { seen.push(`in ${ids.length}`); rows = rows.filter((g) => ids.includes(g.id)); return b; },
+        is(col: string, v: null) { seen.push(`is ${col}`); rows = rows.filter((g) => (g as Record<string, unknown>)[col] == v); return b; },
         or(expr: string) {
           seen.push(expr);
           const iso = expr.match(/deadline\.gte\.(.+)$/)![1];
@@ -64,4 +65,16 @@ Deno.test("an older semantic hit is kept even with more than 60 newer open grant
   // deno-lint-ignore no-explicit-any
   const out = await collectCandidateGrants(sb as any, "profil", "key", () => Promise.resolve([0.1]));
   assertEquals(out[0].id, "old-but-relevant");
+});
+
+Deno.test("a call closed at the source is never a candidate, not even as a semantic hit (card [H2])", async () => {
+  const grants: Grant[] = [
+    { id: "closed-at-source", deadline: "2999-01-01T00:00:00+00:00", created_at: "2026-01-01", source_closed_at: "2026-10-25T10:00:00Z" },
+    { id: "open", deadline: "2999-01-01T00:00:00+00:00", created_at: "2026-01-02", source_closed_at: null },
+  ];
+  const sb = fakeSupabase(grants, ["closed-at-source", "open"]);
+  // deno-lint-ignore no-explicit-any
+  const out = await collectCandidateGrants(sb as any, "profil", "key", () => Promise.resolve([0.1]));
+  assertEquals(out.map((g) => g.id), ["open"]);
+  assertEquals(sb.seen.filter((x) => x === "is source_closed_at").length, 2);
 });
