@@ -13,8 +13,15 @@ describe('formatDeadline (card [A])', () => {
 
   it('a past deadline is expired, with its date', () => {
     expect(formatDeadline(at(2026, 10, 1), NOW)).toEqual({ tone: 'expired', label: 'Lejárt: 2026. 10. 01.' });
-    // Earlier today is already past.
-    expect(formatDeadline(at(2026, 10, 25, 8), NOW).tone).toBe('expired');
+    // Yesterday 23:00 is past.
+    expect(formatDeadline(at(2026, 10, 24, 23), NOW).tone).toBe('expired');
+  });
+
+  it('the deadline day itself is still open, even past the stored hour (same rule as isOpenGrant, [C])', () => {
+    // Deadlines are mostly stored as midnight: today 00:00 seen at 15:00 is "ma jár le", not expired.
+    const afternoon = new Date(2026, 9, 25, 15, 0, 0);
+    expect(formatDeadline(new Date(2026, 9, 25, 0, 0, 0).toISOString(), afternoon)).toEqual({ tone: 'soon', label: 'Beadás: 2026. 10. 25. (ma jár le)' });
+    expect(formatDeadline(at(2026, 10, 25, 8), NOW).tone).toBe('soon');
   });
 
   it('later today is not expired yet', () => {

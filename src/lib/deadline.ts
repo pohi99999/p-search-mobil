@@ -26,10 +26,13 @@ export function formatDeadline(deadline: string | null | undefined, now: Date = 
     return { tone: 'unknown', label: 'Beadási határidő: nincs megadva' };
   }
   const day = date.toLocaleDateString('hu-HU');
-  if (date.getTime() < now.getTime()) {
+  // Open through the deadline's own day, expired from the next day on: the same rule as isOpenGrant
+  // in matchStatus.ts ([C]). Deadlines are mostly stored as midnight, so a moment check said
+  // "Lejárt" all day on the last day while [C] still kept the grant on the list.
+  const days = calendarDaysUntil(date, now);
+  if (days < 0) {
     return { tone: 'expired', label: `Lejárt: ${day}` };
   }
-  const days = calendarDaysUntil(date, now);
   const left = days === 0 ? 'ma jár le' : `még ${days} nap`;
   return { tone: days < DEADLINE_SOON_DAYS ? 'soon' : 'normal', label: `Beadás: ${day} (${left})` };
 }
