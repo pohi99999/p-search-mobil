@@ -125,17 +125,15 @@ serve(async (req) => {
             "GEMINI_API_KEY hiányzik, az embedding generálás sikertelen lesz.",
           );
         } else {
-          const chunksToInsert = [];
-
-          for (const chunkText of paragraphs) {
+          const chunkPromises = paragraphs.map(async (chunkText) => {
             try {
               const embedding = await generateEmbedding(chunkText, geminiApiKey);
 
-              chunksToInsert.push({
+              return {
                 grant_id: grantId,
                 content: chunkText,
                 embedding: embedding,
-              });
+              };
             } catch (embedError: any) {
               // Handle specific Google API errors
               console.error(
@@ -152,8 +150,12 @@ serve(async (req) => {
                 );
               }
               // Folytatjuk a többi chunk-kal, nem szakítjuk meg teljesen
+              return null;
             }
-          }
+          });
+
+          const chunksResults = await Promise.all(chunkPromises);
+          const chunksToInsert = chunksResults.filter((chunk) => chunk !== null);
 
           if (chunksToInsert.length > 0) {
             const { error: chunkError } = await supabaseClient
