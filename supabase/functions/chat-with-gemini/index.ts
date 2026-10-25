@@ -13,6 +13,7 @@ import { consumeDailyChat } from '../_shared/daily-chat.ts';
 import { refundDailyChat } from '../_shared/daily-search-refund.ts';
 import { openGrantCutoffIso } from '../_shared/matching.ts';
 import { companyContext as buildCompanyContext, type CompanyFields } from '../_shared/company-context.ts';
+import { chatProfileDecision, chatProfileId } from '../_shared/chat-profile.ts';
 import {
   buildChatSystemPrompt,
   buildRagContext,
@@ -129,22 +130,45 @@ serve(async (req) => {
     console.log(`Előzmények száma: ${history.length}`);
 
     // 1. Cégprofil adatainak lekérdezése (ha van ID)
+    // Installed builds can send no profile id (live 2026-10-25, see _shared/chat-profile.ts): then the discussed
+    // match's own business_id is used. profileId is set only once the profile proved to be the caller's.
     let companyContext = '';
     let companyProfile: CompanyFields | null = null;
-    if (business_profile_id) {
-      console.log(`Cégprofil lekérdezése az adatbázisból: ${business_profile_id}...`);
+    let profileId: string | null = null;
+    let matchBusinessId: string | null = null;
+    if (!business_profile_id && match_id) {
+      // A separate read (service role, like the rest here): the grant fetch below comes after the profile block.
+      // On an error the chat goes on without company data, as before; the error is logged to tell it from "no match".
+      const { data: matchOwner, error: matchOwnerError } = await supabaseClient
+        .from('grant_matches')
+        .select('business_id')
+        .eq('id', match_id)
+        .maybeSingle();
+      if (matchOwnerError) {
+        console.warn('Nem sikerült lekérni a találat profilját:', matchOwnerError);
+      }
+      matchBusinessId = matchOwner?.business_id ?? null;
+      console.warn(`A kérés profil-azonosító nélkül jött (match_id: ${match_id}); a találat profilja: ${matchBusinessId ?? 'nincs'}.`);
+    }
+    const profileRef = chatProfileId(business_profile_id, matchBusinessId);
+    if (profileRef) {
+      console.log(`Cégprofil lekérdezése az adatbázisból: ${profileRef.id} (forrás: ${profileRef.source})...`);
       const { data: profile, error: profileDbError } = await supabaseClient
         .from('business_profiles')
         .select('*')
-        .eq('id', business_profile_id)
+        .eq('id', profileRef.id)
         .single();
 
       if (profileDbError) {
         console.warn('Nem sikerült lekérni a cégprofilt:', profileDbError);
       }
 
-      if (profile) {
-        if (profile.user_id !== user.id) {
+      const decision = profile ? chatProfileDecision(profileRef.source, profile.user_id, user.id) : 'skip';
+      if (decision === 'skip' && profile) {
+        console.warn('A találat profilja nem a hívóé, cégadat nélkül folytatom.');
+      }
+      if (profile && decision !== 'skip') {
+        if (decision === 'forbidden') {
           console.error('Jogosulatlan hozzáférés a cégprofilhoz');
           // Card [L]: no AI call happens on this path, so the consumed chat message is given back.
           await refundDailyChat(supabaseClient, user.id);
@@ -157,8 +181,12 @@ serve(async (req) => {
         // Only the filled fields, as in the other generation prompts (card 431a496e); the ask rule names them.
         companyContext = buildCompanyContext(profile);
         companyProfile = profile;
+        profileId = profileRef.id;
         console.log('Cégprofil kontextus sikeresen felépítve.');
       }
+    }
+    if (match_id && !companyProfile) {
+      console.warn('Pályázatról kérdez, de cégprofil nélkül: a válasz a cégadatokat vissza fogja kérdezni.');
     }
 
     // 2. Pályázat adatainak lekérdezése (ha van ID)
@@ -189,12 +217,12 @@ serve(async (req) => {
     // task-status write below must stay inside this set: the ids come from the model's reply,
     // and the service-role client would otherwise update any user's task (measured 2026-09-26).
     let ownedPlanIds: string[] = [];
-    if (business_profile_id) {
+    if (profileId) {
       console.log('Aktív felkészülési feladatok lekérdezése...');
       const { data: plans, error: plansDbError } = await supabaseClient
         .from('action_plans')
         .select('id, title')
-        .eq('business_profile_id', business_profile_id);
+        .eq('business_profile_id', profileId);
 
       if (plansDbError) {
         console.warn('Nem sikerült lekérni az akcióterveket:', plansDbError);
@@ -397,7 +425,7 @@ serve(async (req) => {
       reply = parsedReply.reply || reply;
 
       // 7.1. Cégprofil frissítése, ha van profile_updates
-      if (parsedReply.profile_updates && business_profile_id) {
+      if (parsedReply.profile_updates && profileId) {
         const updates: Record<string, any> = {};
         if (typeof parsedReply.profile_updates.revenue === 'number') {
           updates.yearly_revenue = parsedReply.profile_updates.revenue;
@@ -414,7 +442,7 @@ serve(async (req) => {
           const { error: profileError } = await supabaseClient
             .from('business_profiles')
             .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('id', business_profile_id);
+            .eq('id', profileId);
 
           if (!profileError) {
             databaseUpdated = true;
