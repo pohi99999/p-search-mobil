@@ -23,6 +23,8 @@ export interface Grant {
   eligibility_criteria: string | null;
   source_url: string | null;
   created_at: string;
+  // Card [H2]: when the loader found the call no longer Aktív at the source; null = open there.
+  source_closed_at?: string | null;
 }
 
 export interface GrantMatch {
