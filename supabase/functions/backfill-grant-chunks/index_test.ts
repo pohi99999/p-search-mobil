@@ -175,3 +175,24 @@ Deno.test("regenerate write: the first quota error (429) stops the run and names
   const other = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], dry_run: false }), g.deps)).json();
   assertEquals([other.stopped_reason, other.remaining_grant_ids, other.failed.length], [null, [], 3]);
 });
+
+Deno.test("regenerate: max_embeds takes whole grants in order, the rest is named, nothing over the budget is embedded", async () => {
+  // 2 + 2 + 1 chunks; a budget of 3 fits g1 only (g1 + g2 would be 4), and g3 is not jumped ahead.
+  const grants = [
+    { id: "g1", title: "A", description: "a" },
+    { id: "g2", title: "B", description: "b" },
+    { id: "g3", title: "C" },
+  ];
+  const f = fake({ grants, chunks: [{ id: "o1", grant_id: "g1" }, { id: "o2", grant_id: "g2" }] });
+  const dry = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], max_embeds: 3 }), f.deps)).json();
+  assertEquals([dry.max_embeds, dry.embeds_in_this_run, dry.grants_in_this_run, dry.grants_over_budget], [3, 2, ["g1"], ["g2", "g3"]]);
+  const body = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], max_embeds: 3, dry_run: false }), f.deps)).json();
+  assertEquals([body.stopped_reason, body.remaining_grant_ids, f.embedCalls(), f.deleted], ["max_embeds", ["g2", "g3"], 2, ["o1"]]);
+  // The default budget is 40; a grant bigger than the budget alone is not started.
+  const d = await (await handler(req({ mode: "regenerate", grant_ids: ["g1"], max_embeds: 1 }), f.deps)).json();
+  assertEquals([d.grants_in_this_run, d.grants_over_budget], [[], ["g1"]]);
+  assertEquals((await (await handler(req({ mode: "regenerate", grant_ids: ["g1"] }), f.deps)).json()).max_embeds, 40);
+  for (const bad of [0, 501, 2.5, "40", null]) {
+    assertEquals((await handler(req({ mode: "regenerate", grant_ids: ["g1"], max_embeds: bad }), f.deps)).status, 400, String(bad));
+  }
+});
