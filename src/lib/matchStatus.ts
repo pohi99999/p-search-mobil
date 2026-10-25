@@ -28,13 +28,14 @@ const UNTOUCHED_STATUSES = new Set(['new', STALE_MATCH_STATUS]);
  * The home list without the expired grants nobody acted on. A match stays when the user did something with it (a
  * status other than new/stale) or an action plan hangs on it, so a started plan never vanishes from the list.
  */
-export function withoutExpired<T extends { id: string; status: string; grants?: { deadline: string | null } | null }>(
+export function withoutExpired<T extends { id: string; status: string; grants?: { deadline: string | null; source_closed_at?: string | null } | null }>(
   rows: T[],
   planMatchIds: ReadonlySet<string>,
   now: Date = new Date(),
 ): T[] {
   return rows.filter(
-    (r) => isOpenGrant(r.grants?.deadline, now) || !UNTOUCHED_STATUSES.has(r.status) || planMatchIds.has(r.id),
+    // Card [H2]: a call closed at the source counts as expired too.
+    (r) => (isOpenGrant(r.grants?.deadline, now) && !r.grants?.source_closed_at) || !UNTOUCHED_STATUSES.has(r.status) || planMatchIds.has(r.id),
   );
 }
 
