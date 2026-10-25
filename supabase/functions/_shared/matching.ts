@@ -71,6 +71,21 @@ export const MIN_MATCH_SCORE = 40;
 const MAX_CANDIDATES = 12;
 
 /**
+ * Card [C] (review 2026-10-25): the earliest deadline that still counts as open. A grant stays a candidate for its
+ * whole deadline day in Budapest (the deadline is often stored as that day's midnight), the same cut the app uses.
+ */
+export function openGrantCutoffIso(now: Date = new Date(), timeZone = 'Europe/Budapest'): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(now).map((p) => [p.type, p.value]),
+  );
+  const wall = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  const offsetMs = wall - Math.floor(now.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day) - offsetMs).toISOString();
+}
+
+/**
  * Renders the company profile as the text that gets embedded and shown to the
  * scoring model. Missing fields are labelled rather than omitted so the model
  * can explicitly reason about gaps in the profile.
@@ -103,12 +118,13 @@ export async function collectCandidateGrants(
   supabase: SupabaseClient,
   profileText: string,
   geminiApiKey: string,
+  embed: (text: string, apiKey: string) => Promise<number[]> = generateEmbedding,
 ): Promise<GrantRow[]> {
-  const nowIso = new Date().toISOString();
+  const nowIso = openGrantCutoffIso();
   const orderedIds: string[] = [];
 
   try {
-    const embedding = await generateEmbedding(profileText, geminiApiKey);
+    const embedding = await embed(profileText, geminiApiKey);
     const { data: chunks, error } = await supabase.rpc('match_grant_chunks', {
       query_embedding: embedding,
       match_threshold: 0.2,

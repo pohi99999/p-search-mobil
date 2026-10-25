@@ -59,7 +59,8 @@ describe('useHomeData', () => {
     userData: any = mockUserProfile,
     matchesError = null,
     matchesData: any = mockMatches,
-    updateError = null
+    updateError = null,
+    plans: { data: any; error: any } = { data: [], error: null }
   ) => {
     const mockFrom = jest.fn((table: string) => {
       if (table === 'business_profiles') {
@@ -83,6 +84,12 @@ describe('useHomeData', () => {
         };
         return chain;
       }
+      if (table === 'action_plans') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockResolvedValue(plans),
+        };
+      }
       if (table === 'grant_matches') {
         return {
           select: jest.fn().mockReturnThis(),
@@ -95,6 +102,37 @@ describe('useHomeData', () => {
 
     (supabase.from as jest.Mock).mockImplementation(mockFrom);
   };
+
+  describe('expired grants (card [C])', () => {
+    const past = { deadline: '2020-01-01T00:00:00Z' };
+    const future = { deadline: '2999-01-01T00:00:00Z' };
+    const rows = [
+      { id: 'open', status: 'new', match_score: 90, grants: future },
+      { id: 'expired', status: 'new', match_score: 80, grants: past },
+      { id: 'expired-with-plan', status: 'new', match_score: 70, grants: past },
+    ];
+
+    it('hides an expired match nobody acted on, keeps the one with an action plan', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, null, rows, null, {
+        data: [{ match_id: 'expired-with-plan' }, { match_id: null }],
+        error: null,
+      });
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.matches.map((m: any) => m.id)).toEqual(['open', 'expired-with-plan']);
+    });
+
+    it('a failed action plan lookup hides nothing', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, null, rows, null, {
+        data: null,
+        error: { message: 'boom' },
+      });
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.matches.map((m: any) => m.id)).toEqual(['open', 'expired', 'expired-with-plan']);
+      expect(logger.warn).toHaveBeenCalled();
+    });
+  });
 
   describe('fetchData', () => {
     it('handles missing session', async () => {
