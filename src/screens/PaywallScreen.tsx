@@ -65,6 +65,7 @@ export const PaywallScreen = () => {
             size={24}
             onPress={() => navigation.goBack()}
             style={styles.closeButton}
+            accessibilityLabel="Bezárás"
           />
         </View>
 

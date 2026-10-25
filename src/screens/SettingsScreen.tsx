@@ -245,6 +245,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Card.Title
             title="Automatikus AI keresés"
             subtitle="Állítsd be, milyen gyakran keressünk új pályázatokat."
+            subtitleNumberOfLines={2}
+            // Card [J]: a 2-line subtitle no longer fits Card.Title's fixed 72 px row without padding.
+            style={styles.cardTitle}
           />
           <Card.Content>
             <RadioButton.Group
@@ -399,6 +402,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  cardTitle: {
+    paddingVertical: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

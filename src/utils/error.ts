@@ -15,5 +15,7 @@ export const formatChatErrorMessage = (err: unknown): string => {
     return errorMessage;
   }
 
-  return `Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: ${errorMessage || 'hálózati hiba'}. Kérlek, ellenőrizd a kapcsolatot és próbáld újra!`;
+  // Card [J]: the raw error ("Failed to send a request to the Edge Function") reached the chat bubble in English.
+  // It is logged by the caller (useCopilotChat logger.error); the user gets one plain Hungarian sentence.
+  return 'Sajnálom, most nem érem el a P-Search asszisztenst. Ellenőrizd az internetkapcsolatot, és küldd el újra a kérdést.';
 };

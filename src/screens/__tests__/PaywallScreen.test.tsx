@@ -89,10 +89,10 @@ describe('PaywallScreen', () => {
 
     const root = component!.root;
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sikeres Pro Előfizetés! 🎉');
+    expect(treeStr).toContain('Sikeres Pro előfizetés! 🎉');
 
     const backButton = root.findAllByType(Button).find(
-      (b) => b.props.children === 'Vissza a Kezdőlapra'
+      (b) => b.props.children === 'Vissza a kezdőlapra'
     );
     expect(backButton).toBeDefined();
 

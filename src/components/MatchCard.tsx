@@ -37,7 +37,10 @@ export function MatchCard({ item, onPress }: MatchCardProps) {
         )}
       </Card.Content>
       <Card.Actions>
-        <Button onPress={onPress}>Részletek</Button>
+        {/* Card [J]: every card's button read "Részletek"; the label names the grant. */}
+        <Button onPress={onPress} accessibilityLabel={`${item.grants?.title || 'Ismeretlen pályázat'} részletei`}>
+          Részletek
+        </Button>
       </Card.Actions>
     </Card>
   );

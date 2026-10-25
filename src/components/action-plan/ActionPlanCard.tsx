@@ -90,7 +90,7 @@ export function ActionPlanCard({
                 );
               } catch (err: unknown) {
                 logger.error('PDF opening error:', err);
-                Alert.alert('Hiba', 'Váratlan hiba történt a PDF megnyitásakor. Kérjük, próbálja újra később.');
+                Alert.alert('Hiba', 'Nem sikerült megnyitni a PDF-et. Kérlek, próbáld újra később.');
               }
             }}
             style={[styles.pdfButton, { marginRight: 8 }]}
@@ -147,7 +147,7 @@ export function ActionPlanCard({
                   const body = ctx?.json ? await ctx.json() : {};
                   if (body?.code?.startsWith('gemini_') && body.error) geminiMessage = body.error;
                 } catch { /* fall through */ }
-                Alert.alert('Hiba', geminiMessage || 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+                Alert.alert('Hiba', geminiMessage || 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
               } finally {
                 setPdfLoading(false);
               }
@@ -155,7 +155,7 @@ export function ActionPlanCard({
           }}
           style={styles.pdfButton}
         >
-          {pdfLoading ? 'Generálás...' : plan.ai_context?.generated_document_html ? 'Újragenerálás' : 'PDF Generálása'}
+          {pdfLoading ? 'Generálás...' : plan.ai_context?.generated_document_html ? 'Újragenerálás' : 'PDF készítése'}
         </Button>
       </Card.Actions>
       {dialog}

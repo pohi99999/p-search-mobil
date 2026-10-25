@@ -11,13 +11,13 @@ export const PaywallSuccess = ({ onBack }: PaywallSuccessProps) => {
     <View style={styles.centered}>
       <IconButton icon="star-circle" iconColor="#FFD700" size={80} style={styles.proIcon} />
       <Text variant="headlineMedium" style={styles.successTitle}>
-        Sikeres Pro Előfizetés! 🎉
+        Sikeres Pro előfizetés! 🎉
       </Text>
       <Text variant="bodyLarge" style={styles.successSubtitle}>
         Köszönjük a bizalmat! Mostantól korlátlan hozzáférésed van az összes prémium funkcióhoz reklámok nélkül.
       </Text>
       <Button mode="contained" onPress={onBack} style={styles.backButtonPro}>
-        Vissza a Kezdőlapra
+        Vissza a kezdőlapra
       </Button>
     </View>
   );
