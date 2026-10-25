@@ -148,7 +148,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
-          <Text variant="headlineMedium" style={styles.title}>{editMode ? 'Cégprofil szerkesztése' : 'Cégprofil Létrehozása'}</Text>
+          <Text variant="headlineMedium" style={styles.title}>{editMode ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
             {editMode
               ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'
@@ -226,7 +226,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
             disabled={loading}
             style={styles.button}
           >
-            {editMode ? 'Mentés' : 'Mentés és Keresés Indítása'}
+            {editMode ? 'Mentés' : 'Mentés és keresés indítása'}
           </Button>
         </Surface>
       </ScrollView>

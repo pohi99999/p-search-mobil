@@ -180,7 +180,7 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', mockError);
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
     expect(generateAndSharePDF).not.toHaveBeenCalled();
   });
@@ -218,7 +218,7 @@ describe('ActionPlanCard PDF Generation', () => {
       await getPdfButton(root!)?.props.onPress();
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
   });
 
   it('handles error inside data returned from supabase.functions.invoke', async () => {
@@ -240,7 +240,7 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', expect.any(Error));
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
     expect(generateAndSharePDF).not.toHaveBeenCalled();
   });
@@ -262,7 +262,7 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', mockException);
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
   });
 

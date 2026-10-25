@@ -27,7 +27,7 @@ describe('PaywallSuccess', () => {
 
     // Check titles
     const titleInstances = root!.root.findAll(
-      (node) => node.type === 'Text' && node.props.children === 'Sikeres Pro Előfizetés! 🎉'
+      (node) => node.type === 'Text' && node.props.children === 'Sikeres Pro előfizetés! 🎉'
     );
     expect(titleInstances.length).toBeGreaterThan(0);
 
@@ -39,7 +39,7 @@ describe('PaywallSuccess', () => {
 
     // Check back button
     const buttonInstances = root!.root.findAll(
-      (node) => node.type === 'Button' && node.props.children === 'Vissza a Kezdőlapra'
+      (node) => node.type === 'Button' && node.props.children === 'Vissza a kezdőlapra'
     );
     expect(buttonInstances.length).toBeGreaterThan(0);
   });
@@ -52,7 +52,7 @@ describe('PaywallSuccess', () => {
       root = renderer.create(<PaywallSuccess onBack={mockOnBack} />);
     });
 
-    const button = root!.root.find((node) => node.type === 'Button' && node.props.children === 'Vissza a Kezdőlapra');
+    const button = root!.root.find((node) => node.type === 'Button' && node.props.children === 'Vissza a kezdőlapra');
 
     act(() => {
       button.props.onPress();

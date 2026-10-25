@@ -57,7 +57,7 @@ describe('OnboardingScreen Form Validation', () => {
       root = renderer.create(<OnboardingScreen navigation={navigationMock} />);
     });
 
-    const button = root.root.findByProps({ children: 'Mentés és Keresés Indítása' });
+    const button = root.root.findByProps({ children: 'Mentés és keresés indítása' });
 
     await act(async () => {
       await button.props.onPress();

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Button, Surface, Snackbar, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
@@ -37,6 +37,12 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus, generatePlanForMatch } = useActionPlan(profile?.id);
 
   const visiblePlans = matchId ? plans.filter(p => p.match_id === matchId) : plans;
+
+  // Card [J]: the hook's error (load, task update or generation; often a raw server text) is no longer shown
+  // on screen, so it goes to the log here.
+  useEffect(() => {
+    if (error) logger.warn('Akcióterv hiba:', error);
+  }, [error]);
 
   const handleStatusChange = useCallback(async (task: ActionTask, currentStatus: ActionTaskStatus) => {
     const newStatus = STATUS_TRANSITION[currentStatus] ?? 'todo';
@@ -104,8 +110,9 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
           size={24}
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="action-plan-back-button"
+          accessibilityLabel="Vissza"
         />
-        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>
+        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati felkészülés</Text>
         <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>
 
@@ -140,7 +147,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
 
       {error && (
         <Surface style={styles.errorBanner} elevation={1}>
-          <Text style={{ color: 'red' }}>Hiba: {error}</Text>
+          {/* Card [J]: the raw error (often an English server text) stays in the log, not on screen. */}
+          <Text style={{ color: '#B71C1C' }}>Valami nem sikerült az akciótervekkel. Koppints a Frissítés gombra, vagy próbáld újra később.</Text>
         </Surface>
       )}
 
@@ -183,14 +191,14 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                         return;
                       }
                       logger.error('Hiba az akcióterv generálása során:', err);
-                      setSnackbarMessage('Hiba történt a generálás során. Kérjük, próbálja újra később.');
+                      setSnackbarMessage('Nem sikerült elkészíteni az akciótervet. Kérlek, próbáld újra később.');
                       setSnackbarVisible(true);
                     } finally {
                       setGenerating(false);
                     }
                   })}
                 >
-                  Akcióterv Generálása
+                  Akcióterv készítése
                 </Button>
               </>
             )

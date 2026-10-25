@@ -93,9 +93,10 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           size={24}
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="copilot-chat-back-button"
+          accessibilityLabel="Vissza"
         />
         <View style={styles.headerTextContainer}>
-          <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
+          <Text variant="titleMedium" style={styles.headerTitle}>AI pályázati Copilot</Text>
           <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
         </View>
       </View>
@@ -134,6 +135,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
               color={inputText.trim() ? '#1A237E' : '#9E9E9E'}
               onPress={handleSend}
               disabled={!inputText.trim() || isTyping}
+              accessibilityLabel="Üzenet küldése"
             />
           }
           disabled={isTyping}

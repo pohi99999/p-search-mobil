@@ -111,7 +111,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         color="#FFFFFF"
         style={[styles.fab, { bottom: fabBottom }]}
         testID="new-search-fab"
-        label={searching ? 'Keresés folyamatban...' : 'Új AI Keresés'}
+        label={searching ? 'Keresés folyamatban...' : 'Új AI-keresés'}
         extended={fabExtended || Boolean(searching)}
         animateFrom="right"
         iconMode="static"
