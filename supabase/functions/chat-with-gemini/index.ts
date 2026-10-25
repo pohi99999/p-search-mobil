@@ -137,11 +137,16 @@ serve(async (req) => {
     let profileId: string | null = null;
     let matchBusinessId: string | null = null;
     if (!business_profile_id && match_id) {
-      const { data: matchOwner } = await supabaseClient
+      // A separate read (service role, like the rest here): the grant fetch below comes after the profile block.
+      // On an error the chat goes on without company data, as before; the error is logged to tell it from "no match".
+      const { data: matchOwner, error: matchOwnerError } = await supabaseClient
         .from('grant_matches')
         .select('business_id')
         .eq('id', match_id)
         .maybeSingle();
+      if (matchOwnerError) {
+        console.warn('Nem sikerült lekérni a találat profilját:', matchOwnerError);
+      }
       matchBusinessId = matchOwner?.business_id ?? null;
       console.warn(`A kérés profil-azonosító nélkül jött (match_id: ${match_id}); a találat profilja: ${matchBusinessId ?? 'nincs'}.`);
     }
