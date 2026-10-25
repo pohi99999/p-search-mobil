@@ -6,8 +6,10 @@ import {
   type ChatGrant,
   isGrantOpen,
   type RagChunk,
+  profileAskRule,
   TEGEZES_RULE,
 } from './chat-context.ts';
+import { companyContext } from './company-context.ts';
 
 // Copilot card (vc 18 E2E, Lumen 4800; Brunella 4802/4853).
 const CUTOFF = '2026-10-24T22:00:00.000Z'; // Budapest 2026-10-25 00:00
@@ -74,8 +76,47 @@ Deno.test('the prompt asks for tegezés, and its sample reply uses it', () => {
   const p = buildChatSystemPrompt({ company: '', grant: '', rag: '', tasks: '' });
   assert(p.includes(TEGEZES_RULE));
   const sample = p.slice(p.indexOf('Példa a kimenetre:'));
-  assert(sample.includes('meg tudnád adni'), sample);
+  assert(sample.includes('Szeretnéd'), sample);
   // \b is ASCII-only in JS ("tudná" would match inside "tudnád"), so the word edges are Unicode letters.
   assert(!/(?<!\p{L})(Ön|Önnek|tudná|adja meg|kérem)(?!\p{L})/u.test(sample), sample);
   assert(!/Aktuálisan tárgyalt pályázat adatai|Tudásbázisból/.test(p), 'empty blocks are left out');
+});
+
+// Profile (Lumen's evening check 4925): 5 employees and 50 M Ft in the profile, yet the reply asked for both.
+const FOUR = 'cégforma, éves árbevétel, aktuális foglalkoztatotti létszám és székhely/telephely régió';
+const LUMEN = { company_name: 'Teszt Kft', employee_count: 5, yearly_revenue: 50_000_000, industry_code: null, goals: null };
+const promptFor = (profile: typeof LUMEN | null) =>
+  buildChatSystemPrompt({ company: profile ? companyContext(profile) : '', grant: '', rag: '', tasks: '', profile });
+
+Deno.test('filled profile: revenue and headcount are given, not asked again', () => {
+  const p = promptFor(LUMEN);
+  assert(p.includes('Alkalmazottak száma: 5 fő'), p);
+  assert(p.includes('Éves árbevétel: 50 000 000 Ft'), p);
+  assert(!p.includes('Nincs megadva'), p);
+  assert(!p.includes(FOUR), 'the four-item ask list is gone');
+  const rule = profileAskRule(LUMEN);
+  assert(rule.includes('a hiányzó kulcsfontosságú részletekre: cégforma és székhely/telephely régió.'), rule);
+  assert(rule.includes('már szerepel a foglalkoztatotti létszám és az éves árbevétel: ezeket ne kérdezd meg újra'), rule);
+  assert(p.includes(rule));
+});
+
+Deno.test('empty profile: the missing data is still asked for', () => {
+  for (const profile of [null, { ...LUMEN, employee_count: null, yearly_revenue: null }, { ...LUMEN, employee_count: 0, yearly_revenue: 0 }]) {
+    const rule = profileAskRule(profile);
+    assert(rule.includes(`a hiányzó kulcsfontosságú részletekre: ${FOUR}.`), rule);
+    assert(!rule.includes('ne kérdezd meg újra'), rule);
+    assert(promptFor(profile as typeof LUMEN | null).includes(rule));
+  }
+});
+
+Deno.test('half-filled profile: only the missing one is asked for', () => {
+  const rule = profileAskRule({ ...LUMEN, employee_count: null });
+  assert(rule.includes('részletekre: cégforma, aktuális foglalkoztatotti létszám és székhely/telephely régió.'), rule);
+  assert(rule.includes('már szerepel az éves árbevétel: ezeket ne kérdezd meg újra'), rule);
+});
+
+Deno.test('the sample reply asks for no company data', () => {
+  const p = promptFor(LUMEN);
+  const sample = p.slice(p.indexOf('Példa a kimenetre:'));
+  assert(!/árbevétel|cég formáj|cégform/.test(sample), sample);
 });
