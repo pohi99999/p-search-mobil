@@ -97,7 +97,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
         />
         <View style={styles.headerTextContainer}>
           <Text variant="titleMedium" style={styles.headerTitle}>AI pályázati Copilot</Text>
-          <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+          <Text variant="bodySmall" style={styles.headerSubtitle}>Kérdezz a kiválasztott pályázatról</Text>
         </View>
       </View>
 
@@ -167,8 +167,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1A237E',
   },
+  // #4CAF50 was 2.78:1 on white; #2E7D32 keeps the green and is 5.13:1.
   headerSubtitle: {
-    color: '#4CAF50',
+    color: '#2E7D32',
     fontWeight: '600',
   },
   listContent: {
