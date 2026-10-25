@@ -136,7 +136,7 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
         const ctx = (invokeError as { context?: { status?: number; json?: () => Promise<{ code?: string; error?: string }> } }).context;
         if (ctx?.status === 403 && ctx.json) {
           const body = await ctx.json().catch(() => null);
-          if (body?.code === 'chat_daily_limit' && body.error) throw new Error(body.error);
+          if (body?.code === 'chat_daily_limit' && body.error) throw Object.assign(new Error(body.error), { code: 'chat_daily_limit' });
         }
         throw invokeError;
       }
@@ -164,7 +164,8 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
       logger.error('Chat error details:', err);
       // Only a code, never the text: the message body stays out of the event log (card [G]).
       const status = (err as { context?: { status?: number } })?.context?.status;
-      const code: ErrorCode = status === 429 ? 'gemini_quota' : status === 503 ? 'gemini_busy' : status ? 'server' : 'network';
+      const capHit = (err as { code?: string })?.code === 'chat_daily_limit';
+      const code: ErrorCode = capHit ? 'chat_daily_limit' : status === 429 ? 'gemini_quota' : status === 503 ? 'gemini_busy' : status ? 'server' : 'network';
       track('chat_message_sent', { ok: false, error_code: code });
       const errorMessageText = formatChatErrorMessage(err);
 
