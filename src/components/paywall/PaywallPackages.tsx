@@ -118,8 +118,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2E7D32',
   },
+  // Card [I]: the intro price was #FF6F00, 2.79:1 on white; #BF360C keeps the orange and is 5.60:1.
   introOffer: {
-    color: '#FF6F00',
+    color: '#BF360C',
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 6,

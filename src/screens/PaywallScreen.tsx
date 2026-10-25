@@ -185,10 +185,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  // Card [I]: the renewal terms were #9E9E9E at 11 px, 2.59:1 on #FAFBFD; #616161 at 12 px is 5.98:1.
   disclaimer: {
     textAlign: 'center',
-    color: '#9E9E9E',
-    fontSize: 11,
+    color: '#616161',
+    fontSize: 12,
     marginTop: 20,
     lineHeight: 16,
     paddingHorizontal: 20,

@@ -97,6 +97,8 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           the cards (card a96dd8e2 #9: the wide label covered the 2nd card's text). */}
       <AnimatedFAB
         icon={searching ? 'progress-clock' : 'magnify'}
+        // Card [I]: the MD3 default label colour (onPrimaryContainer #21005D) on our blue was 3.73:1; white is 4.60:1.
+        color="#FFFFFF"
         style={[styles.fab, { bottom: fabBottom }]}
         testID="new-search-fab"
         label={searching ? 'Keresés folyamatban...' : 'Új AI Keresés'}

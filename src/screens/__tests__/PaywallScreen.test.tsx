@@ -7,6 +7,7 @@ import { Alert } from 'react-native';
 import { Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
+import { contrastRatio, textColor } from '../../test-utils/contrast';
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(),
@@ -210,6 +211,20 @@ describe('PaywallScreen', () => {
   // Advertising a concrete price and a free trial for a product nobody can buy
   // is deceptive and a Play policy risk, so the empty state must stay silent
   // about price and offer no way to start a purchase.
+  // Card [I]: the auto-renewal terms were #9E9E9E at 11 px on #FAFBFD, 2.59:1.
+  it('the auto-renewal terms meet WCAG AA on the paywall background', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [] });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = renderWithSafeArea(<PaywallScreen />);
+    });
+    const terms = component!.root.findAll(
+      (n) => n.type === 'Text' && typeof n.props.children === 'string' && n.props.children.startsWith('Az előfizetés automatikusan megújul'),
+    )[0];
+    expect(terms).toBeDefined();
+    expect(contrastRatio(textColor(terms.props.style), '#FAFBFD')).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('shows an honest empty state, with no price and no purchase button, when packages is empty', async () => {
     (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [] });
 
