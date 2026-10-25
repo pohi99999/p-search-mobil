@@ -10,6 +10,10 @@ export interface DeadlineInfo {
   tone: DeadlineTone;
   /** The line on the card, e.g. "Beadás: 2026. 11. 30. (még 36 nap)". */
   label: string;
+  /** The deadline's day ("2026. 11. 30."), when there is one. */
+  date?: string;
+  /** Calendar days left (0 = today), when the deadline has not passed. */
+  daysLeft?: number;
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -27,9 +31,23 @@ export function formatDeadline(deadline: string | null | undefined, now: Date = 
   }
   const day = date.toLocaleDateString('hu-HU');
   if (date.getTime() < now.getTime()) {
-    return { tone: 'expired', label: `Lejárt: ${day}` };
+    return { tone: 'expired', label: `Lejárt: ${day}`, date: day };
   }
   const days = calendarDaysUntil(date, now);
   const left = days === 0 ? 'ma jár le' : `még ${days} nap`;
-  return { tone: days < DEADLINE_SOON_DAYS ? 'soon' : 'normal', label: `Beadás: ${day} (${left})` };
+  return { tone: days < DEADLINE_SOON_DAYS ? 'soon' : 'normal', label: `Beadás: ${day} (${left})`, date: day, daysLeft: days };
+}
+
+/** The deadline value on the detail view, under the "Beadási határidő" label (texts: Stratéga, card [B]). */
+export function deadlineDetailText(info: DeadlineInfo): string {
+  switch (info.tone) {
+    case 'unknown':
+      return 'A kiírás nem ad meg határidőt.';
+    case 'expired':
+      return info.label;
+    case 'soon':
+      return info.daysLeft === 0 ? `Ma jár le: ${info.date}` : `Még ${info.daysLeft} nap: ${info.date}`;
+    default:
+      return info.date ?? '';
+  }
 }

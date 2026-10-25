@@ -43,7 +43,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   const renderItem = ({ item }: { item: MatchWithGrant }) => (
     <MatchCard
       item={item}
-      onPress={() => navigation.navigate('ActionPlan', { matchId: item.id })}
+      onPress={() => navigation.navigate('GrantDetail', { match: item })}
     />
   );
 
