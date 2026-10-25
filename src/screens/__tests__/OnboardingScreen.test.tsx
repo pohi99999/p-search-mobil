@@ -259,3 +259,47 @@ describe('OnboardingScreen edit mode', () => {
     await act(async () => { component!.unmount(); });
   });
 });
+
+// Live chat test 2026-10-25 (Marveen 4938): after a new profile the context kept the "no profile" it cached at
+// login, and the Copilot sent business_profile_id: null for the rest of the session.
+describe('OnboardingScreen new profile refreshes the context', () => {
+  const renderAndSave = async (mockNavigation: NativeStackNavigationProp<RootStackParamList, 'Onboarding'>) => {
+    (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
+    const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'new-profile' }, error: null });
+    const mockInsert = jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: mockSingle }) });
+    (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+    supabase.functions.invoke = jest.fn().mockResolvedValue({});
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const root = component!.root;
+    const companyNameInput = root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
+    await act(async () => { companyNameInput!.props.onChangeText('Új Kft'); });
+    await act(async () => { await root.findByType(Button).props.onPress(); });
+    await act(async () => { component!.unmount(); });
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockProfileContext.profile = null;
+  });
+
+  it('refreshes the profile context before it goes Home', async () => {
+    mockProfileContext.refreshProfile = jest.fn().mockResolvedValue(undefined);
+    const mockNavigation = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    await renderAndSave(mockNavigation);
+    expect(mockProfileContext.refreshProfile).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+    const refreshedAt = mockProfileContext.refreshProfile.mock.invocationCallOrder[0];
+    const navigatedAt = (mockNavigation.replace as jest.Mock).mock.invocationCallOrder[0];
+    expect(refreshedAt).toBeLessThan(navigatedAt);
+  });
+
+  it('still goes Home when the refresh fails', async () => {
+    const refreshError = new Error('offline');
+    mockProfileContext.refreshProfile = jest.fn().mockRejectedValue(refreshError);
+    const mockNavigation = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    await renderAndSave(mockNavigation);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+    expect(logger.warn).toHaveBeenCalledWith('Profil-frissítés hiba:', refreshError);
+  });
+});
