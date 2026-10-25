@@ -22,9 +22,10 @@ export function grantKind(grantType: string | null | undefined): GrantKind {
   return 'grant';
 }
 
-/** One line for the action-plan prompt: what the next steps must cover for a loan or a hybrid. */
+/** One line for the action-plan prompt: what the next steps must cover for a loan, a hybrid or venture capital. */
 export function actionPlanHint(kind: GrantKind): string {
   if (kind === 'loan') return 'A kiválasztott program visszafizetendő hitel, nem támogatás: a Következő Lépésekben a hitelkérelem előkészítése szerepeljen (pénzügyi beszámolók, a saját erő igazolása, a fedezet, a törlesztési terv), és ne nevezd támogatásnak.';
+  if (kind === 'equity') return 'A kiválasztott program kockázatitőke-befektetés, nem támogatás és nem hitel: a Következő Lépésekben a befektetői anyagok előkészítése szerepeljen (pitch deck, cap table / tulajdonosi tábla, due diligence előkészítés, cégértékelés).';
   if (kind === 'hybrid') return 'A kiválasztott program kombinált (vissza nem térítendő támogatás és hitel): a Következő Lépésekben a pályázati teendők mellett a hitelrész teendői is szerepeljenek (a saját erő igazolása, a fedezet, a törlesztési terv).';
   return '';
 }
