@@ -18,17 +18,6 @@ export interface DeadlineInfo {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/**
- * The day a deadline belongs to. A deadline stored as exactly local midnight means "until the end of the
- * previous day": the source's 2026-12-01T23:00Z is 2026-12-02 00:00 in Budapest, and the card showed
- * "2026. 12. 02." while the call (and the server's `deadline >= now()`) closes at the end of 12-01
- * (Marveen 4801, measured against the source file). Used by the card, the detail view and isOpenGrant.
- */
-export function deadlineDay(date: Date): Date {
-  const atMidnight = date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0;
-  return atMidnight ? new Date(date.getTime() - 1) : date;
-}
-
 /** Calendar days from today to the deadline's day, in the device's time zone (0 = today). */
 function calendarDaysUntil(deadline: Date, now: Date): number {
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -40,11 +29,11 @@ export function formatDeadline(deadline: string | null | undefined, now: Date = 
   if (!date || Number.isNaN(date.getTime())) {
     return { tone: 'unknown', label: 'Beadási határidő: nincs megadva' };
   }
+  const day = date.toLocaleDateString('hu-HU');
   // Open through the deadline's own day, expired from the next day on: the same rule as isOpenGrant
-  // in matchStatus.ts ([C]). A midnight deadline belongs to the day before (deadlineDay).
-  const lastDay = deadlineDay(date);
-  const day = lastDay.toLocaleDateString('hu-HU');
-  const days = calendarDaysUntil(lastDay, now);
+  // in matchStatus.ts ([C]). Deadlines are mostly stored as midnight, so a moment check said
+  // "Lejárt" all day on the last day while [C] still kept the grant on the list.
+  const days = calendarDaysUntil(date, now);
   if (days < 0) {
     return { tone: 'expired', label: `Lejárt: ${day}`, date: day };
   }
