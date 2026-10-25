@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { scoreBand, setMatchFeedback, type MatchFeedback as Value } from '../services/events';
 import { logger } from '../utils/logger';
@@ -13,9 +13,11 @@ interface Props {
   /** 1-based position in the home list. */
   rank: number;
   initial?: Value | null;
+  /** Placement of the whole block (the card puts it in its actions row, the detail view under the reasoning). */
+  style?: StyleProp<ViewStyle>;
 }
 
-export function MatchFeedback({ matchId, grantId, score, rank, initial = null }: Props) {
+export function MatchFeedback({ matchId, grantId, score, rank, initial = null, style }: Props) {
   const [value, setValue] = useState<Value | null>(initial);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -39,11 +41,15 @@ export function MatchFeedback({ matchId, grantId, score, rank, initial = null }:
   };
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, style]}>
       <View style={styles.row}>
         <Button
           compact
           mode={value === 'useful' ? 'contained' : 'outlined'}
+          // Chosen: our blue with white text (4.60:1); not chosen: Paper's outlined (primary text on white).
+          buttonColor={value === 'useful' ? SELECTED_BG : undefined}
+          textColor={value === 'useful' ? '#FFFFFF' : undefined}
+          accessibilityLabel="Hasznos találat"
           icon="thumb-up-outline"
           onPress={() => choose('useful')}
           accessibilityState={{ selected: value === 'useful', busy: saving }}
@@ -55,6 +61,10 @@ export function MatchFeedback({ matchId, grantId, score, rank, initial = null }:
         <Button
           compact
           mode={value === 'not_relevant' ? 'contained' : 'outlined'}
+          // Chosen: our blue with white text (4.60:1); not chosen: Paper's outlined (primary text on white).
+          buttonColor={value === 'not_relevant' ? SELECTED_BG : undefined}
+          textColor={value === 'not_relevant' ? '#FFFFFF' : undefined}
+          accessibilityLabel="Nem releváns találat"
           icon="thumb-down-outline"
           onPress={() => choose('not_relevant')}
           accessibilityState={{ selected: value === 'not_relevant', busy: saving }}
@@ -73,9 +83,12 @@ export function MatchFeedback({ matchId, grantId, score, rank, initial = null }:
   );
 }
 
+const SELECTED_BG = '#1976D2';
+
 const styles = StyleSheet.create({
   wrap: { marginTop: 8 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  button: { flexGrow: 1 },
-  error: { color: '#B00020', marginTop: 4 },
+  button: { borderRadius: 8 },
+  // #B3261E on white is 6.54:1 (Paper's error colour).
+  error: { color: '#B3261E', marginTop: 4 },
 });

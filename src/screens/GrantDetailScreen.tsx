@@ -78,7 +78,6 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
                 ? `Korábbi keresés találata (egyezés akkor: ${match.match_score}%)`
                 : `Egyezés a cégeddel: ${match.match_score}%`}
             </Text>
-            <MatchFeedback matchId={match.id} grantId={match.grant_id} score={match.match_score} rank={rank ?? 0} initial={match.feedback ?? null} />
 
             <Field label="Beadási határidő">
               <Text variant="bodyLarge" style={[styles.value, deadlineStyles[deadline.tone]]} testID="grant-detail-deadline">
@@ -103,6 +102,16 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
                 <Text variant="bodyMedium" style={styles.body}>{match.match_reasoning}</Text>
               </Field>
             ) : null}
+
+            {/* [G2]: the feedback answer under the reasoning, where the user has just read why it was recommended. */}
+            <MatchFeedback
+              matchId={match.id}
+              grantId={match.grant_id}
+              score={match.match_score}
+              rank={rank ?? 0}
+              initial={match.feedback ?? null}
+              style={styles.feedback}
+            />
 
             <Field label="Kinek szól">
               <Text variant="bodyMedium" style={grant?.eligibility_criteria ? styles.body : styles.missing}>
@@ -236,6 +245,9 @@ const styles = StyleSheet.create({
   },
   field: {
     marginTop: 16,
+  },
+  feedback: {
+    marginTop: 12,
   },
   label: {
     color: '#616161',

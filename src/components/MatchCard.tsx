@@ -50,13 +50,27 @@ export function MatchCard({ item, onPress, rank }: MatchCardProps) {
             Összeg: {amountLine}
           </Text>
         )}
-        {rank !== undefined && (
-          <MatchFeedback matchId={item.id} grantId={item.grant_id} score={item.match_score} rank={rank} initial={item.feedback ?? null} />
-        )}
       </Card.Content>
-      <Card.Actions>
+      {/* [G2]: the feedback answer sits in the actions row, before "Részletek"; on a narrow screen the row wraps and
+          "Részletek" stays at the right. Card.Actions would make its 2nd child a contained button, hence the explicit mode. */}
+      <Card.Actions style={styles.actions}>
+        {rank !== undefined && (
+          <MatchFeedback
+            matchId={item.id}
+            grantId={item.grant_id}
+            score={item.match_score}
+            rank={rank}
+            initial={item.feedback ?? null}
+            style={styles.feedback}
+          />
+        )}
         {/* Card [J]: every card's button read "Részletek"; the label names the grant. */}
-        <Button onPress={onPress} accessibilityLabel={`${item.grants?.title || 'Ismeretlen pályázat'} részletei`}>
+        <Button
+          mode="outlined"
+          onPress={onPress}
+          accessibilityLabel={`${item.grants?.title || 'Ismeretlen pályázat'} részletei`}
+          style={styles.details}
+        >
           Részletek
         </Button>
       </Card.Actions>
@@ -83,6 +97,19 @@ const styles = StyleSheet.create({
   },
   deadline: {
     marginBottom: 8,
+  },
+  actions: {
+    flexWrap: 'wrap',
+    rowGap: 8,
+  },
+  // Card.Actions pads 8 px, Card.Content 16 px: the extra 8 px lines the buttons up with the card text.
+  feedback: {
+    marginTop: 0,
+    marginLeft: 8,
+    marginRight: 'auto',
+  },
+  details: {
+    marginLeft: 'auto',
   },
 });
 
