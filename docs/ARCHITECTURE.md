@@ -210,18 +210,19 @@ from the code.
   - The dry run lists per grant the `delete_chunk_ids` and the `new_chunks` texts, plus `not_found`
     (supabase/functions/backfill-grant-chunks/index.ts:118).
   - Writing embeds and inserts the new chunks first and deletes that grant's old ids only after
-    (supabase/functions/backfill-grant-chunks/index.ts:134-140). A failed embed or insert deletes nothing;
-    a row that gives no chunk keeps its old ones (supabase/functions/backfill-grant-chunks/index.ts:126).
+    (supabase/functions/backfill-grant-chunks/index.ts:139-145). A failed embed or insert deletes nothing;
+    a row that gives no chunk keeps its old ones (supabase/functions/backfill-grant-chunks/index.ts:131).
+    The first Gemini quota error (429) stops the run; `remaining_grant_ids` is the list for the next call.
 - **Client / data:** service role (supabase/functions/backfill-grant-chunks/index.ts:48).
   - Reads `grant_chunks` and `grants`, inserts `grant_chunks` with Gemini embeddings
-    (supabase/functions/backfill-grant-chunks/index.ts:78, :135); regenerate also deletes `grant_chunks` by id.
+    (supabase/functions/backfill-grant-chunks/index.ts:78, :140); regenerate also deletes `grant_chunks` by id.
 - **Output:**
   - Dry run: `{ dry_run: true, grants_total, grants_covered, grants_to_backfill, chunks_planned, plan }`
     (supabase/functions/backfill-grant-chunks/index.ts:63); regenerate:
     `{ dry_run: true, mode, grants_requested, not_found, chunks_to_delete, chunks_to_write, plan }`.
   - Write run: `{ dry_run: false, grants_to_backfill, chunks_planned, chunks_inserted, failed }`
     (supabase/functions/backfill-grant-chunks/index.ts:85); regenerate adds `chunks_deleted`, and each
-    `failed` entry names its `stage` (supabase/functions/backfill-grant-chunks/index.ts:148).
+    `failed` entry names its `stage`, plus `stopped_reason` and `remaining_grant_ids` (supabase/functions/backfill-grant-chunks/index.ts:158-161).
 - **Callers:** none in the repo; it is run by hand (admin). Its Deno tests run in CI (.github/workflows/ci.yml:32).
 
 #### `chat-with-gemini`
@@ -541,7 +542,7 @@ function environment.
 | supabase/functions/_shared/gemini.ts:68-84 | REST `generateContent` | `gemini-2.5-flash` default |
 | supabase/functions/_shared/matching.ts:110, supabase/functions/_shared/matching.ts:224 | via gemini.ts | embedding + flash (called by match-grants and scheduled-grant-scan) |
 | supabase/functions/ingest-n8n-grants/index.ts:132 | via gemini.ts | embedding |
-| supabase/functions/backfill-grant-chunks/index.ts:74, :131 | via gemini.ts | embedding |
+| supabase/functions/backfill-grant-chunks/index.ts:74, :136 | via gemini.ts | embedding |
 | supabase/functions/chat-with-gemini/index.ts:3, supabase/functions/chat-with-gemini/index.ts:209-215, supabase/functions/chat-with-gemini/index.ts:350-358 | `npm:@google/generative-ai` | embedding + flash |
 | supabase/functions/process-master-document/index.ts:3, supabase/functions/process-master-document/index.ts:231-256 | `npm:@google/generative-ai` | flash (vision) |
 | supabase/functions/generate-action-plan/index.ts:3, supabase/functions/generate-action-plan/index.ts:138-139 | `esm.sh/@google/generative-ai@0.1.3` | flash |

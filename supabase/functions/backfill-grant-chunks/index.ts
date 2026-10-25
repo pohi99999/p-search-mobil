@@ -18,7 +18,7 @@
 // failed grant keeps its old chunks (at worst both, reported), never none.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { generateEmbedding } from "../_shared/gemini.ts";
+import { generateEmbedding, GeminiUnavailableError } from "../_shared/gemini.ts";
 import { chunkGrant, type GrantTextRow } from "../_shared/grant-chunking.ts";
 
 export type CreateClientFn = (url: string, key: string) => SupabaseClient;
@@ -121,7 +121,12 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
   if (!geminiApiKey) return json({ error: "GEMINI_API_KEY missing" }, 500);
   let inserted = 0, deleted = 0;
   const failed: { grant_id: string; stage: string; error: string }[] = [];
-  for (const p of plan) {
+  // Brunella 4894: on 2026-10-25 the free daily embedding quota ran out mid-run (429), and every later grant would
+  // only have hit 429 again. The run stops at the first quota error; remaining_grant_ids (that grant and the ones
+  // not reached) is the list for the next call.
+  let remaining: string[] = [];
+  let stoppedReason: string | null = null;
+  for (const [index, p] of plan.entries()) {
     // A grant whose row gives no chunk keeps the old ones: deleting them would leave it unsearchable.
     if (p.new_chunks.length === 0) { failed.push({ grant_id: p.grant_id, stage: "chunk", error: "no chunk from the current row, old chunks kept" }); continue; }
     let stage = "embed";
@@ -143,9 +148,17 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
       }
     } catch (e) {
       failed.push({ grant_id: p.grant_id, stage, error: (e as Error).message });
+      if (e instanceof GeminiUnavailableError && e.status === 429) {
+        stoppedReason = "gemini_quota";
+        remaining = plan.slice(index).map((r) => r.grant_id);
+        break;
+      }
     }
   }
-  return json({ dry_run: false, ...summary, chunks_inserted: inserted, chunks_deleted: deleted, failed });
+  return json({
+    dry_run: false, ...summary, chunks_inserted: inserted, chunks_deleted: deleted, failed,
+    stopped_reason: stoppedReason, remaining_grant_ids: remaining,
+  });
 }
 
 if (import.meta.main) {

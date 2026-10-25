@@ -1,6 +1,7 @@
 // Deno tests for backfill-grant-chunks (grant_chunks 5/63). Run: deno test --allow-env supabase/functions/backfill-grant-chunks/
 import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { handler, type Deps } from "./index.ts";
+import { GeminiUnavailableError } from "../_shared/gemini.ts";
 import { buildGrantText, chunkGrant, splitParagraphs } from "../_shared/grant-chunking.ts";
 
 const SERVICE = "service-key-x";
@@ -15,9 +16,12 @@ function fake(opts: {
   chunks?: { id: string; grant_id: string }[];
   failInsert?: boolean;
   failEmbed?: boolean;
+  /** Embedding calls after which every call is a 429 (the daily quota). */
+  quotaAfter?: number;
 }) {
   const inserted: Record<string, unknown>[] = [];
   const deleted: string[] = [];
+  let embedCalls = 0;
   const chunks = opts.chunks ?? (opts.covered ?? []).map((grant_id, i) => ({ id: `c${i}`, grant_id }));
   const rowsOf = (table: string) => (table === "grant_chunks" ? chunks : opts.grants) as Record<string, unknown>[];
   const client = {
@@ -40,10 +44,15 @@ function fake(opts: {
   };
   const deps: Deps = {
     createClient: () => client as unknown as ReturnType<Deps["createClient"]>,
-    embed: async (t) => { if (opts.failEmbed) throw new Error("embed down"); return Array(768).fill(t.length / 1000); },
+    embed: async (t) => {
+      embedCalls++;
+      if (opts.failEmbed) throw new Error("embed down");
+      if (opts.quotaAfter !== undefined && embedCalls > opts.quotaAfter) throw new GeminiUnavailableError(429);
+      return Array(768).fill(t.length / 1000);
+    },
     env,
   };
-  return { deps, inserted, deleted };
+  return { deps, inserted, deleted, embedCalls: () => embedCalls };
 }
 const req = (body: unknown, bearer = SERVICE, method = "POST") =>
   new Request("http://x/backfill-grant-chunks", { method, headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" }, body: method === "POST" ? JSON.stringify(body) : undefined });
@@ -145,4 +154,24 @@ Deno.test("regenerate: bad input is a 400, unknown ids are reported, the gate st
   assertEquals([body.grants_requested, body.not_found], [2, ["nincs"]]);
   assertEquals((await handler(req({ mode: "regenerate", grant_ids: ["bay"], dry_run: false }, "wrong"), f.deps)).status, 401);
   assertEquals([f.inserted.length, f.deleted.length], [0, 0]);
+});
+
+Deno.test("regenerate write: the first quota error (429) stops the run and names what is left", async () => {
+  const grants = [
+    { id: "g1", title: "A", description: "a" },
+    { id: "g2", title: "B", description: "b" },
+    { id: "g3", title: "C", description: "c" },
+  ];
+  // g1 needs 2 embeddings; the third call (g2's first) is a 429.
+  const f = fake({ grants, chunks: [{ id: "o1", grant_id: "g1" }, { id: "o2", grant_id: "g2" }, { id: "o3", grant_id: "g3" }], quotaAfter: 2 });
+  const body = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], dry_run: false }), f.deps)).json();
+  assertEquals(body.stopped_reason, "gemini_quota");
+  assertEquals(body.remaining_grant_ids, ["g2", "g3"]);
+  assertEquals(f.embedCalls(), 3, "g3 is not tried");
+  assertEquals(f.deleted, ["o1"], "only the finished grant lost its old chunks");
+  assertEquals(body.failed.map((x: { grant_id: string }) => x.grant_id), ["g2"]);
+  // Any other error is not a stop: the run goes on (a plain failure on every grant).
+  const g = fake({ grants, failEmbed: true });
+  const other = await (await handler(req({ mode: "regenerate", grant_ids: ["g1", "g2", "g3"], dry_run: false }), g.deps)).json();
+  assertEquals([other.stopped_reason, other.remaining_grant_ids, other.failed.length], [null, [], 3]);
 });
