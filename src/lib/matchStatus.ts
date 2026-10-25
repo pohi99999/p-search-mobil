@@ -1,5 +1,7 @@
 // Card 2428c38f: grant_matches.status values the app reasons about. Pure module (no React Native
 // imports) so components and tests can use it without loading the Supabase client.
+import { deadlineDay } from './deadline';
+
 export const STALE_MATCH_STATUS = 'stale';
 
 /** A new scan marks its older, not re-scored matches 'stale'; they go after the fresh ones, score order kept inside each group. */
@@ -9,13 +11,16 @@ export function sortFreshFirst<T extends { status: string; match_score: number }
 }
 
 /**
- * Card [C] (review 2026-10-25): an expired grant is still open on its own deadline day (the deadline is often stored
- * as that day's midnight), so the cut is the start of the viewer's local day, not the current instant.
+ * Card [C] (review 2026-10-25): a grant is open through its deadline's day, so the cut is the start of the viewer's
+ * local day, not the current instant. A deadline stored as exactly local midnight belongs to the day before
+ * (deadlineDay, Marveen 4801), which matches the server's `deadline >= now()`.
  */
 export function isOpenGrant(deadline: string | null | undefined, now: Date = new Date()): boolean {
   if (!deadline) return true;
-  const at = new Date(deadline).getTime();
-  if (Number.isNaN(at)) return true;
+  const parsed = new Date(deadline);
+  if (Number.isNaN(parsed.getTime())) return true;
+  // A midnight deadline closes at the end of the day before (deadlineDay), like the card shows it.
+  const at = deadlineDay(parsed).getTime();
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   return at >= startOfToday.getTime();

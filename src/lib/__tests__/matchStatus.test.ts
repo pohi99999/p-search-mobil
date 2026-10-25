@@ -17,9 +17,15 @@ describe('expired grants (card [C])', () => {
   const at = (y: number, m: number, d: number, h = 0) => new Date(y, m, d, h).toISOString();
 
   it('a grant is open on its deadline day, closed from the next day', () => {
-    expect(isOpenGrant(at(2026, 9, 25), now)).toBe(true);
+    expect(isOpenGrant(at(2026, 9, 25, 8), now)).toBe(true);
     expect(isOpenGrant(at(2026, 9, 24, 23), now)).toBe(false);
     expect(isOpenGrant(at(2026, 10, 1), now)).toBe(true);
+  });
+
+  // Marveen 4801: a deadline at exactly local midnight belongs to the day before (deadlineDay), as on the card.
+  it('a midnight deadline closes at the end of the day before', () => {
+    expect(isOpenGrant(at(2026, 9, 26), now)).toBe(true); // tomorrow 00:00 = today's deadline
+    expect(isOpenGrant(at(2026, 9, 25), now)).toBe(false); // today 00:00 = yesterday's deadline
   });
 
   it('no deadline (or an unreadable one) counts as open', () => {

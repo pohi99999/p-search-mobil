@@ -1,4 +1,4 @@
-import { formatDeadline, deadlineDetailText, DEADLINE_SOON_DAYS } from '../deadline';
+import { formatDeadline, deadlineDetailText, deadlineDay, DEADLINE_SOON_DAYS } from '../deadline';
 
 // Fixed "now" in local time, so the day counts do not depend on when the suite runs.
 const NOW = new Date(2026, 9, 25, 10, 0, 0); // 2026-10-25 10:00 local
@@ -18,10 +18,27 @@ describe('formatDeadline (card [A])', () => {
   });
 
   it('the deadline day itself is still open, even past the stored hour (same rule as isOpenGrant, [C])', () => {
-    // Deadlines are mostly stored as midnight: today 00:00 seen at 15:00 is "ma jár le", not expired.
     const afternoon = new Date(2026, 9, 25, 15, 0, 0);
-    expect(formatDeadline(new Date(2026, 9, 25, 0, 0, 0).toISOString(), afternoon)).toMatchObject({ tone: 'soon', label: 'Beadás: 2026. 10. 25. (ma jár le)', daysLeft: 0 });
     expect(formatDeadline(at(2026, 10, 25, 8), NOW).tone).toBe('soon');
+    // Midnight at the END of today (tomorrow 00:00) is today's deadline: "ma jár le" at 15:00.
+    expect(formatDeadline(new Date(2026, 9, 26, 0, 0, 0).toISOString(), afternoon)).toMatchObject({ tone: 'soon', label: 'Beadás: 2026. 10. 25. (ma jár le)', daysLeft: 0 });
+  });
+
+  // Marveen 4801: the source's 2026-12-01T23:00Z (= 2026-12-02 00:00 in Budapest) closes at the end of 12-01;
+  // the card used to show "2026. 12. 02.".
+  it('a deadline at exactly local midnight belongs to the day before', () => {
+    expect(formatDeadline(new Date(2026, 11, 2, 0, 0, 0).toISOString(), NOW).label).toBe('Beadás: 2026. 12. 01. (még 37 nap)');
+    expect(deadlineDetailText(formatDeadline(new Date(2026, 11, 2, 0, 0, 0).toISOString(), NOW))).toBe('2026. 12. 01.');
+    // Today 00:00 is yesterday's deadline: expired, dated yesterday.
+    expect(formatDeadline(new Date(2026, 9, 25, 0, 0, 0).toISOString(), NOW)).toEqual({ tone: 'expired', label: 'Lejárt: 2026. 10. 24.', date: '2026. 10. 24.' });
+    // One minute past midnight is that day's deadline, not the day before.
+    expect(formatDeadline(new Date(2026, 11, 2, 0, 1, 0).toISOString(), NOW).label).toBe('Beadás: 2026. 12. 02. (még 38 nap)');
+  });
+
+  it('deadlineDay moves only an exact midnight', () => {
+    expect(deadlineDay(new Date(2026, 11, 2, 0, 0, 0)).getDate()).toBe(1);
+    expect(deadlineDay(new Date(2026, 11, 2, 0, 0, 1)).getDate()).toBe(2);
+    expect(deadlineDay(new Date(2026, 11, 1, 23, 59, 59)).getDate()).toBe(1);
   });
 
   it('later today is not expired yet', () => {
