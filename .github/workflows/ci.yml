@@ -28,3 +28,8 @@ jobs:
       - run: deno test --allow-env supabase/functions/vies-check/
       - run: deno test --allow-read supabase/functions/_shared/
       - run: deno test --allow-env --allow-read supabase/functions/generate-document/
+      # Card [K] (review 2026-10-25): these suites existed and passed but never ran in CI; match-grants is new.
+      - run: deno test --allow-env --allow-read supabase/functions/backfill-grant-chunks/
+      - run: deno test --allow-env --allow-read supabase/functions/generate-action-plan/
+      - run: deno test --allow-env --allow-read supabase/functions/revenuecat-webhook/
+      - run: deno test --allow-env supabase/functions/match-grants/

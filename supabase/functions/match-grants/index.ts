@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { runMatchingForProfile } from '../_shared/matching.ts';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { runMatchingForProfile, type MatchRunSummary } from '../_shared/matching.ts';
 import { FREE_DAILY_SEARCH_CAP } from '../_shared/entitlement.ts';
 import { refundDailySearch } from '../_shared/daily-search-refund.ts';
 import { GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
@@ -19,6 +19,15 @@ import { GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/ge
  * one) means RLS is still the backstop if this check is ever refactored away.
  */
 
+// Card [K] (review 2026-10-25): the handler takes its clients and the matching run as deps, so it is tested
+// without a network (the same pattern as backfill-grant-chunks, delete-account, vies-check).
+export interface Deps {
+  createClient: (url: string, key: string, options?: Record<string, unknown>) => SupabaseClient;
+  env: (name: string) => string | undefined;
+  runMatching: (client: SupabaseClient, businessProfileId: string, geminiApiKey: string) => Promise<MatchRunSummary>;
+  refund: (client: SupabaseClient, userId: string) => Promise<unknown>;
+}
+
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '*';
 
 const corsHeaders = {
@@ -33,7 +42,7 @@ const json = (body: unknown, status: number) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-serve(async (req) => {
+export async function handler(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
@@ -44,9 +53,9 @@ serve(async (req) => {
       return json({ error: 'Nincs hitelesítési fejléc' }, 401);
     }
 
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    const userClient = deps.createClient(
+      deps.env('SUPABASE_URL') ?? '',
+      deps.env('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -83,15 +92,15 @@ serve(async (req) => {
       return json({ error: 'Hozzáférés megtagadva' }, 403);
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const geminiApiKey = deps.env('GEMINI_API_KEY');
     if (!geminiApiKey) {
       console.error('GEMINI_API_KEY nincs beállítva.');
       return json({ error: 'A szolgáltatás átmenetileg nem elérhető.' }, 503);
     }
 
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    const adminClient = deps.createClient(
+      deps.env('SUPABASE_URL') ?? '',
+      deps.env('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
     );
 
@@ -120,9 +129,9 @@ serve(async (req) => {
     // (measured 2026-09-23: invalid GEMINI_API_KEY -> 500 with the counter kept).
     let summary;
     try {
-      summary = await runMatchingForProfile(adminClient, businessProfileId, geminiApiKey);
+      summary = await deps.runMatching(adminClient, businessProfileId, geminiApiKey);
     } catch (runErr) {
-      const refunded = await refundDailySearch(adminClient, user.id);
+      const refunded = await deps.refund(adminClient, user.id);
       console.error('Pályázatkeresés hiba a levonás után, visszaadva:', refunded, runErr);
       if (runErr instanceof GeminiUnavailableError) {
         // 429 daily AI quota / 503 overloaded: the user gets the reason and when to retry.
@@ -155,4 +164,13 @@ serve(async (req) => {
     console.error('Hiba a pályázatkeresés során:', err);
     return json({ error: 'Nem sikerült lefuttatni a pályázatkeresést.' }, 500);
   }
-});
+}
+
+if (import.meta.main) {
+  serve((req) => handler(req, {
+    createClient: (url, key, options) => createClient(url, key, options),
+    env: (name) => Deno.env.get(name),
+    runMatching: runMatchingForProfile,
+    refund: refundDailySearch,
+  }));
+}
