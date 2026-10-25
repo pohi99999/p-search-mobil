@@ -1,6 +1,6 @@
 # P-Search – Adatvédelmi tájékoztató
 
-**Hatályos:** 2026. október 25. · **Verzió:** 1.2
+**Hatályos:** 2026. október 25. · **Verzió:** 1.3
 
 Ez a tájékoztató a P-Search (Pályázat Kereső) mobilalkalmazásra (Android, csomagnév: `com.pohankaestarsa.psearch`) vonatkozik. Leírja, milyen személyes adatot kezelünk, milyen célból, meddig, kinek adjuk át, és milyen jogai vannak.
 
@@ -82,7 +82,7 @@ Ha a tájékoztató érdemben változik, az alkalmazásban és ezen az oldalon j
 
 # P-Search – Privacy Policy
 
-**Effective:** October 25, 2026 · **Version:** 1.2
+**Effective:** October 25, 2026 · **Version:** 1.3
 
 This policy applies to the P-Search (Grant Finder) mobile app (Android, package `com.pohankaestarsa.psearch`). It explains what personal data we process, why, for how long, who we share it with, and your rights.
 

@@ -6,7 +6,7 @@ copied in unchanged). Output, served by Vercel with cleanUrls:
   public/adatvedelem.html  -> /adatvedelem   (Hungarian notice)
   public/privacy.html      -> /privacy       (English notice)
 
-The notice text is NOT edited here. Since 1.2 (2026-10-25, owner GO Telegram 10617) the source
+The notice text is NOT edited here. Since 1.3 (2026-10-25, owner GO Telegram 10617; 1.3 because the site already showed a different 1.2) the source
 carries the published header itself (effective date, version, no draft marks, no square brackets),
 the same text as on pohankaestarsa.com/p-search/adatvedelem, so there is nothing left to substitute.
 EDITS stays as the place for a future owner-approved substitution; each one asserts that it hit
