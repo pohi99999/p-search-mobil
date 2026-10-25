@@ -4,7 +4,13 @@
  * description alone. Measured 2026-09-25 on the live db: 62 of 63 grants had no
  * chunk at all (they came in through scripts/ingest-grants, which never
  * chunked), so match_grant_chunks could only ever find one grant.
+ *
+ * The header's amount and deadline follow the app's rules (grant-text.ts, Irisz 4868 (b)): the raw values put
+ * "Határidő: 2026-12-01T23:00:00+00:00" into the BAY_VOUCHER chunk, which a model reads as December 1 while the
+ * source says 2026. 12. 02., and "Összeg: 1 - 138937500000 Ft", a placeholder minimum and a programme budget.
  */
+import { formatAmountHu, formatDeadlineHu } from "./grant-text.ts";
+
 export interface GrantTextRow {
   id: string;
   title?: string | null;
@@ -24,10 +30,10 @@ export function buildGrantText(g: GrantTextRow): string {
   const meta: string[] = [];
   if (g.provider) meta.push(`Kiíró: ${g.provider}`);
   if (g.grant_type) meta.push(`Típus: ${g.grant_type}`);
-  if (g.amount_min != null || g.amount_max != null) {
-    meta.push(`Összeg: ${g.amount_min ?? "?"} - ${g.amount_max ?? "?"} Ft`);
-  }
-  if (g.deadline) meta.push(`Határidő: ${g.deadline}`);
+  const amount = formatAmountHu(g.amount_min, g.amount_max);
+  if (amount) meta.push(`Összeg: ${amount}`);
+  const deadline = formatDeadlineHu(g.deadline);
+  if (deadline) meta.push(`Határidő: ${deadline}`);
   if (meta.length) head.push(meta.join(". "));
   const parts = [head.join("\n"), g.description ?? "", g.eligibility_criteria ? `Jogosultság: ${g.eligibility_criteria}` : ""];
   return parts.map((p) => p.trim()).filter((p) => p.length > 0).join("\n\n");
