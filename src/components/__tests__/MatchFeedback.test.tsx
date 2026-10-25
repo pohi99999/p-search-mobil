@@ -4,6 +4,7 @@ import renderer, { act } from 'react-test-renderer';
 import { MatchFeedback } from '../MatchFeedback';
 import { MatchCard } from '../MatchCard';
 import { setMatchFeedback } from '../../services/events';
+import { resetMatchFeedbackStoreForTest } from '../../lib/matchFeedbackStore';
 import type { MatchWithGrant } from '../../hooks/useHomeData';
 
 jest.mock('../../utils/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn() } }));
@@ -22,6 +23,7 @@ async function render(initial: 'useful' | 'not_relevant' | null = null) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  resetMatchFeedbackStoreForTest();
   (setMatchFeedback as jest.Mock).mockResolvedValue(undefined);
 });
 
@@ -59,4 +61,18 @@ it('the match card shows the buttons only when it knows its rank', async () => {
   const has = (t: renderer.ReactTestRenderer) => t.root.findAll((n) => n.props.testID === 'feedback-useful-m-1').length > 0;
   expect(has(withRank!)).toBe(true);
   expect(has(withoutRank!)).toBe(false);
+});
+
+it('an answer given on one (the detail view) shows on the other (the card still mounted under it)', async () => {
+  let card: renderer.ReactTestRenderer;
+  let detail: renderer.ReactTestRenderer;
+  await act(async () => { card = renderer.create(<MatchFeedback matchId="m-1" grantId="g-1" score={65} rank={4} initial={null} />); });
+  await act(async () => { detail = renderer.create(<MatchFeedback matchId="m-1" grantId="g-1" score={65} rank={4} initial={null} />); });
+  const btn = (t: renderer.ReactTestRenderer, id: string) => t.root.findAll((n) => n.props.testID === id && typeof n.props.onPress === 'function')[0];
+  await act(async () => { btn(detail!, 'feedback-not-relevant-m-1').props.onPress(); });
+  expect(btn(card!, 'feedback-not-relevant-m-1').props.accessibilityState.selected).toBe(true);
+  // A different match is not affected.
+  let other: renderer.ReactTestRenderer;
+  await act(async () => { other = renderer.create(<MatchFeedback matchId="m-2" grantId="g-2" score={65} rank={5} initial={null} />); });
+  expect(btn(other!, 'feedback-not-relevant-m-2').props.accessibilityState.selected).toBe(false);
 });

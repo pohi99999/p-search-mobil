@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { scoreBand, setMatchFeedback, type MatchFeedback as Value } from '../services/events';
 import { logger } from '../utils/logger';
+import { getMatchFeedback, setStoredMatchFeedback, subscribeMatchFeedback } from '../lib/matchFeedbackStore';
 
 // Card [G2]: the "Hasznos / Nem releváns" answer on a match, for the relevance metric of the closed test (Irisz M3-M5).
 // Pressing the chosen answer again clears it. The look is a first version; Lumen owns the final design.
@@ -18,7 +19,10 @@ interface Props {
 }
 
 export function MatchFeedback({ matchId, grantId, score, rank, initial = null, style }: Props) {
-  const [value, setValue] = useState<Value | null>(initial);
+  // The answer given in this session wins over the one loaded with the list, so the card and the detail view agree.
+  const stored = useSyncExternalStore(subscribeMatchFeedback, () => getMatchFeedback(matchId));
+  const value: Value | null = stored !== undefined ? stored : initial;
+  const setValue = (v: Value | null) => setStoredMatchFeedback(matchId, v);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
 
