@@ -10,8 +10,14 @@
 // The similarity is no relevance signal here: measured 2026-10-25 on 5 questions (live, gemini-embedding-001),
 // all 40 hits scored 0.64-0.78, the generic "Mi a határideje?" too, so no threshold separates the asked grant
 // from the rest. Scoping to the grant is what removes the foreign sources, not a higher threshold.
+// Profile (Lumen's evening check 4925, Brunella 4927/4930): with 5 employees and 50 M Ft in the profile, the reply
+// still asked for the revenue and the headcount. The rule told the model to ask for company form, revenue,
+// headcount and region whenever the data was not enough, and the profile has no company form or region column,
+// so the condition always held; the sample reply asked for the revenue too. Now the rule names what the
+// profile already gives (not to be asked again) and asks only for the rest.
 // Plain TypeScript, no Deno API.
 
+import { type CompanyFields } from './company-context.ts';
 import { formatAmountHu, formatDeadlineHu } from './grant-text.ts';
 
 /** The search's threshold, unchanged: 0.45 would have dropped 0 of 40 measured hits (see above). */
@@ -112,8 +118,36 @@ export function buildRagContext(opts: {
 export const TEGEZES_RULE =
   '- Tegezd a felhasználót, ahogy az alkalmazás is teszi (te, neked, tudsz, add meg). Magázó alakot (Ön, Önnek, tudná, adja meg, kérem) ne használj.';
 
+const known = (v: unknown): boolean => v !== null && v !== undefined && String(v).trim() !== '' && Number(v) > 0;
+
+/**
+ * The rule on asking back for company data. The profile stores the revenue and the headcount; the company form
+ * and the region it has no column for, so those stay askable. What the profile gives is named as known.
+ */
+export function profileAskRule(profile: CompanyFields | null): string {
+  const revenue = known(profile?.yearly_revenue);
+  const headcount = known(profile?.employee_count);
+  const missing = ['cégforma'];
+  if (!revenue) missing.push('éves árbevétel');
+  if (!headcount) missing.push('aktuális foglalkoztatotti létszám');
+  missing.push('székhely/telephely régió');
+  const given = [headcount && 'a foglalkoztatotti létszám', revenue && 'az éves árbevétel'].filter(Boolean);
+  const list = `${missing.slice(0, -1).join(', ')} és ${missing[missing.length - 1]}`;
+  let rule = `- Ha a felhasználó cégéről még nem áll rendelkezésre elegendő információ a pontos pályázati szűréshez, kérdezz vissza a hiányzó kulcsfontosságú részletekre: ${list}.`;
+  if (given.length > 0) {
+    rule += ` A lenti cégadatok között már szerepel ${given.join(' és ')}: ezeket ne kérdezd meg újra, és ne sorold fel bekérendő adatként, hanem használd őket.`;
+  }
+  return rule;
+}
+
 /** The system prompt; the four context blocks are left out when empty. */
-export function buildChatSystemPrompt(ctx: { company: string; grant: string; rag: string; tasks: string }): string {
+export function buildChatSystemPrompt(ctx: {
+  company: string;
+  grant: string;
+  rag: string;
+  tasks: string;
+  profile?: CompanyFields | null;
+}): string {
   return `Te egy Professzionális Pályázati és Digitalizációs Szakértő Copilot vagy, a P-Search AI asszisztense.
 Küldetésed, hogy támogasd a magyar kis- és középvállalkozásokat (KKV-kat) a digitális átállásban, különös tekintettel az AI integrációra, szoftverfejlesztésre és hardverbeszerzésre.
 Stílusod legyen lényegretörő, szakmai, de támogató.
@@ -123,7 +157,7 @@ SZABÁLYOK A PÁLYÁZATOKKAL KAPCSOLATBAN:
 - Soha ne találj ki nem létező pályázatokat! A válaszaidat alapozd a lenti hiteles forrásokra vagy az aktuálisan tárgyalt pályázat adataira.
 - Ha van aktuálisan tárgyalt pályázat, a kérdésekre CSAK annak adataiból és kiírás-részleteiből válaszolj. Ha a felhasználó más pályázatot keres, mondd meg, hogy azt a főoldali kereséssel találja meg.
 - A határidőt és az összeget pontosan úgy add meg, ahogy a lenti adatokban áll; ne számold át és ne kerekítsd.
-- Ha a felhasználó cégéről még nem áll rendelkezésre elegendő információ a pontos pályázati szűréshez, kérdezz vissza a kulcsfontosságú részletekre: cégforma, éves árbevétel, aktuális foglalkoztatotti létszám és székhely/telephely régió.
+${profileAskRule(ctx.profile ?? null)}
 - Képes vagy a beszélgetés alapján frissíteni a cég adatait vagy lezárni a teendőket az adatbázisban.
 
 ${ctx.company ? `Aktuális ügyfél (cég) adatai:\n${ctx.company}\n` : ''}
@@ -139,9 +173,9 @@ KÖTELEZŐ FORMÁTUMI UTASÍTÁSOK:
 
 Példa a kimenetre:
 {
-  "reply": "Rögzítettem a cég 10 fős létszámát. A digitalizációs és AI integrációs pályázatok szűréséhez meg tudnád adni a cég formáját és a legutóbbi éves nettó árbevételét is?",
+  "reply": "Rögzítettem, hogy a cég már 12 fős. Szeretnéd, hogy végignézzük, mit kell előkészítened a beadásig?",
   "profile_updates": {
-    "employee_count": 10
+    "employee_count": 12
   },
   "task_updates": {
     "completed_task_ids": []

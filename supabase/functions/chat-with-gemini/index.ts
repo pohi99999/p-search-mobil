@@ -12,6 +12,7 @@ import { validateChatInput } from '../_shared/input-limits.ts';
 import { consumeDailyChat } from '../_shared/daily-chat.ts';
 import { refundDailyChat } from '../_shared/daily-search-refund.ts';
 import { openGrantCutoffIso } from '../_shared/matching.ts';
+import { companyContext as buildCompanyContext, type CompanyFields } from '../_shared/company-context.ts';
 import {
   buildChatSystemPrompt,
   buildRagContext,
@@ -129,6 +130,7 @@ serve(async (req) => {
 
     // 1. Cégprofil adatainak lekérdezése (ha van ID)
     let companyContext = '';
+    let companyProfile: CompanyFields | null = null;
     if (business_profile_id) {
       console.log(`Cégprofil lekérdezése az adatbázisból: ${business_profile_id}...`);
       const { data: profile, error: profileDbError } = await supabaseClient
@@ -152,11 +154,9 @@ serve(async (req) => {
           });
         }
 
-        companyContext = `Cégnév: ${profile.company_name}
-TEÁOR kód (iparág): ${profile.industry_code || 'Nincs megadva'}
-Alkalmazottak száma: ${profile.employee_count || 'Nincs megadva'}
-Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString('hu-HU') + ' Ft' : 'Nincs megadva'}
-Cég céljai: ${profile.goals || 'Nincs megadva'}`;
+        // Only the filled fields, as in the other generation prompts (card 431a496e); the ask rule names them.
+        companyContext = buildCompanyContext(profile);
+        companyProfile = profile;
         console.log('Cégprofil kontextus sikeresen felépítve.');
       }
     }
@@ -339,6 +339,7 @@ Cég céljai: ${profile.goals || 'Nincs megadva'}`;
       grant: grantContext,
       rag: ragContext,
       tasks: tasksContext,
+      profile: companyProfile,
     });
 
     console.log('Beszélgetési előzmények leképezése a Gemini formátumára...');
