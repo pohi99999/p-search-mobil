@@ -32,7 +32,7 @@ jest.mock('../../components/AdBanner', () => ({
 }));
 
 // Card fa68ea84: the edit mode reads the existing profile from the context.
-const mockProfileContext: { profile: Record<string, unknown> | null; refreshProfile: jest.Mock; setProfile: jest.Mock } = { profile: null, refreshProfile: jest.fn(), setProfile: jest.fn() };
+const mockProfileContext: { profile: Record<string, unknown> | null; refreshProfile: jest.Mock } = { profile: null, refreshProfile: jest.fn() };
 jest.mock('../../context/ProfileContext', () => ({
   useProfile: () => mockProfileContext,
 }));
@@ -187,9 +187,6 @@ describe('OnboardingScreen Webhook Handling', () => {
 
     expect(logger.warn).toHaveBeenCalledWith('Edge function hívás hiba:', fetchError);
     expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
-    // Live 2026-10-25 (Brunella 4939): without this the context kept the sign-in null and the Copilot sent
-    // business_profile_id: null.
-    expect(mockProfileContext.setProfile).toHaveBeenCalledWith({ id: 'profile-id' });
   });
 });
 

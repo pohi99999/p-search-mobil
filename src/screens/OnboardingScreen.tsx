@@ -8,7 +8,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import type { RouteProp } from '@react-navigation/native';
 import { useProfile } from '../context/ProfileContext';
-import type { BusinessProfile } from '../types/database';
 
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
@@ -22,7 +21,7 @@ type OnboardingScreenRouteProp = RouteProp<RootStackParamList, 'Onboarding'>;
 export function OnboardingScreen({ navigation, route }: { navigation: OnboardingScreenNavigationProp; route?: OnboardingScreenRouteProp }) {
   // Card fa68ea84: the same form edits an existing profile (Settings -> Cégprofil szerkesztése).
   // Until now a profile could be filled once (onboarding or the profile gate) and never corrected.
-  const { profile: existingProfile, refreshProfile, setProfile } = useProfile();
+  const { profile: existingProfile, refreshProfile } = useProfile();
   const editMode = route?.params?.edit === true && !!existingProfile;
   // Edge-to-edge: when no banner is shown (Pro, or the ad failed), the button must still clear the navigation bar.
   const insets = useSafeAreaInsets();
@@ -128,9 +127,6 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
       if (dbError) throw dbError;
       track('onboarding_done', profileFlags(values));
-      // The profile context fetched at sign-in, before this row existed, and keeps that null until a reload:
-      // the Copilot then sent no profile id and asked for data the profile has (live 2026-10-25, Brunella 4939).
-      if (newProfile) setProfile(newProfile as BusinessProfile);
 
       // Keresés indítása edge functionön keresztül (Fire and forget, nem várjuk meg)
       if (newProfile) {
