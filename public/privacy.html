@@ -113,11 +113,17 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <td>fixing bugs</td>
 <td>Art. 6(1)(f) – legitimate interest</td>
 </tr>
+<tr>
+<td>Usage events</td>
+<td>your account identifier, the type and time of an action (e.g. a search started, a match opened, a “useful / not relevant” feedback), numbers and yes/no flags, the app version and platform; NO typed text, company data or document content</td>
+<td>improving the service, measuring how relevant the matches are</td>
+<td>Art. 6(1)(f) – legitimate interest</td>
+</tr>
 </tbody>
 </table></div>
-<p>The app does <strong>not</strong> request location, contacts, camera or microphone, and uses no separate analytics tracker.</p>
+<p>The app does <strong>not</strong> request location, contacts, camera or microphone, and uses no third-party analytics tracker: usage is measured in our own database with the content-free events above.</p>
 <h2>3. Use of AI</h2>
-<p>Grant search, Copilot answers and document processing use the <strong>Google Gemini</strong> model. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under the Gemini API terms, Google does not use this data to train its models. AI output is informational; decisions about applying for grants remain yours.</p>
+<p>Text AI tasks are performed primarily by the <strong>Anthropic Claude</strong> model, and by <strong>Google Gemini</strong> when Claude is not available: scoring the matches in grant search, Copilot chat answers, action plans and grant documents, and processing uploaded documents. The searchable representation (vector) of the company profile and the grants is made by <strong>Google Gemini</strong>. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under their API terms, neither Anthropic nor Google uses this data to train its models. AI output is informational; decisions about applying for grants remain yours.</p>
 <h2>4. Processors</h2>
 <div class="table"><table>
 <thead>
@@ -134,8 +140,13 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <td>EU (Ireland, eu-west-1)</td>
 </tr>
 <tr>
+<td>Anthropic Ireland, Limited – Claude API</td>
+<td>AI processing (match scoring, Copilot chat, action plans, documents, uploaded documents)</td>
+<td>Anthropic infrastructure, may be outside the EU</td>
+</tr>
+<tr>
 <td>Google LLC – Gemini API</td>
-<td>AI processing</td>
+<td>AI processing (searchable representation; fallback for the tasks above)</td>
 <td>Google infrastructure, may be outside the EU</td>
 </tr>
 <tr>
@@ -186,6 +197,7 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <li><strong>Account, company profile, searches, Copilot, documents:</strong> until you delete your account; permanently erased within 30 days of deletion.</li>
 <li><strong>Subscription and accounting records:</strong> as long as required by law (for accounting/tax purposes up to 8 years).</li>
 <li><strong>Crash reports (Sentry):</strong> up to 90 days.</li>
+<li><strong>Usage events:</strong> 12 months, or until you delete your account if that comes first.</li>
 <li><strong>Ad data:</strong> under Google AdMob's own policies.</li>
 </ul>
 <h2>6. Your rights</h2>

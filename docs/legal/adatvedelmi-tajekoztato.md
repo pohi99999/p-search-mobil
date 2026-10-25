@@ -24,19 +24,21 @@ Ez a tájékoztató a P-Search (Pályázat Kereső) mobilalkalmazásra (Android,
 | Üdvözlő e-mail | e-mail cím, cégnév, név (ha megadja) | egyszeri üdvözlő levél a cégprofil létrehozásakor | 6. cikk (1) b) |
 | Belső értesítés új regisztrációról | cégnév, TEÁOR-kód, létszám, árbevétel, célok | az adatkezelő értesítése az új felhasználóról, a szolgáltatás minőségének figyelése | 6. cikk (1) f) – jogos érdek |
 | Hibanapló | hibaüzenet, eszköztípus, rendszerverzió, teljesítmény-mintavétel | hibák javítása, stabil működés | 6. cikk (1) f) – jogos érdek |
+| Használati események | a fiók azonosítója, a művelet típusa és ideje (pl. keresés indult, találat megnyitva, „Hasznos / Nem releváns” visszajelzés), számok és igen/nem jelzők, az alkalmazás verziója és a platform; beírt szöveg, cégadat és dokumentumtartalom NEM | a szolgáltatás javítása, a találatok relevanciájának mérése | 6. cikk (1) f) – jogos érdek |
 
-Az alkalmazás **nem** kér helymeghatározást, névjegyeket, kamerát vagy mikrofont, és nem használ külön analitikai követőt.
+Az alkalmazás **nem** kér helymeghatározást, névjegyeket, kamerát vagy mikrofont, és harmadik féltől származó analitikai követőt nem használ: a használatot a saját adatbázisunkban, a fenti, tartalom nélküli eseményekkel mérjük.
 
 ## 3. Mesterséges intelligencia használata
 
-A pályázat-kereséshez, a Copilot-válaszokhoz és a dokumentumok feldolgozásához a **Google Gemini** nyelvi modellt használjuk. A modell a mi szerverünkön (Supabase Edge Functions) keresztül kapja meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). A Gemini API-n küldött adatokat a Google az API-feltételei szerint nem használja modelltanításra. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.
+A szöveges AI-feladatokat elsődlegesen az **Anthropic Claude** nyelvi modellje végzi; ha az nem elérhető, a **Google Gemini**. Ide tartozik a találatok értékelése a pályázat-keresésben, a Copilot csevegő válaszai, az akcióterv és a pályázati dokumentum elkészítése, valamint a feltöltött dokumentumok feldolgozása. A cégprofil és a pályázatok kereshető leképezését (vektorát) a **Google Gemini** készíti. A modellek a mi szerverünkön (Supabase Edge Functions) keresztül kapják meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). Az API-n küldött adatokat sem az Anthropic, sem a Google nem használja modelltanításra a saját API-feltételei szerint. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.
 
 ## 4. Adatfeldolgozók (akiknek átadjuk az adatot)
 
 | Szolgáltató | Feladat | Adatok helye |
 |---|---|---|
 | Supabase Inc. | adatbázis, bejelentkezés, szerveroldali függvények | EU (Írország, eu-west-1) |
-| Google LLC – Gemini API | AI-feldolgozás | Google infrastruktúra, EU-n kívül is |
+| Anthropic Ireland, Limited – Claude API | AI-feldolgozás (találat-értékelés, Copilot csevegő, akcióterv, dokumentum, feltöltött dokumentum) | Anthropic infrastruktúra, EU-n kívül is |
+| Google LLC – Gemini API | AI-feldolgozás (kereshető leképezés; tartalék a fenti feladatokra) | Google infrastruktúra, EU-n kívül is |
 | RevenueCat Inc. | előfizetés-kezelés | USA |
 | Google LLC – Google Play | vásárlás, fizetés, alkalmazás-terjesztés | Google infrastruktúra |
 | Google LLC – AdMob | hirdetések (csak az ingyenes verzióban) | Google infrastruktúra |
@@ -53,6 +55,7 @@ Az EU-n kívüli (USA) adattovábbítás az EU–USA Adatvédelmi Keretrendszer 
 - **Fiók, cégprofil, keresések, Copilot, dokumentumok:** a fiók törléséig; törléskor 30 napon belül véglegesen töröljük.
 - **Előfizetési és számviteli adatok:** a jogszabályban előírt ideig (számviteli/adózási célra legfeljebb 8 évig).
 - **Hibanapló (Sentry):** legfeljebb 90 nap.
+- **Használati események:** 12 hónapig, vagy a fiók törléséig, ha az hamarabb van.
 - **Hirdetési adatok:** a Google AdMob saját szabályai szerint.
 
 ## 6. Az Ön jogai
@@ -103,19 +106,21 @@ This policy applies to the P-Search (Grant Finder) mobile app (Android, package 
 | Welcome e-mail | e-mail address, company name, name (optional) | a one-time welcome message when the company profile is created | Art. 6(1)(b) |
 | Internal new-sign-up notice | company name, industry code, headcount, revenue, goals | notifying the controller of a new user, monitoring service quality | Art. 6(1)(f) – legitimate interest |
 | Crash reports | error message, device model, OS version, performance samples | fixing bugs | Art. 6(1)(f) – legitimate interest |
+| Usage events | your account identifier, the type and time of an action (e.g. a search started, a match opened, a “useful / not relevant” feedback), numbers and yes/no flags, the app version and platform; NO typed text, company data or document content | improving the service, measuring how relevant the matches are | Art. 6(1)(f) – legitimate interest |
 
-The app does **not** request location, contacts, camera or microphone, and uses no separate analytics tracker.
+The app does **not** request location, contacts, camera or microphone, and uses no third-party analytics tracker: usage is measured in our own database with the content-free events above.
 
 ## 3. Use of AI
 
-Grant search, Copilot answers and document processing use the **Google Gemini** model. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under the Gemini API terms, Google does not use this data to train its models. AI output is informational; decisions about applying for grants remain yours.
+Text AI tasks are performed primarily by the **Anthropic Claude** model, and by **Google Gemini** when Claude is not available: scoring the matches in grant search, Copilot chat answers, action plans and grant documents, and processing uploaded documents. The searchable representation (vector) of the company profile and the grants is made by **Google Gemini**. Only the data needed for the task (company profile, question, document text) is sent, via our own server (Supabase Edge Functions). Under their API terms, neither Anthropic nor Google uses this data to train its models. AI output is informational; decisions about applying for grants remain yours.
 
 ## 4. Processors
 
 | Provider | Role | Location |
 |---|---|---|
 | Supabase Inc. | database, authentication, server functions | EU (Ireland, eu-west-1) |
-| Google LLC – Gemini API | AI processing | Google infrastructure, may be outside the EU |
+| Anthropic Ireland, Limited – Claude API | AI processing (match scoring, Copilot chat, action plans, documents, uploaded documents) | Anthropic infrastructure, may be outside the EU |
+| Google LLC – Gemini API | AI processing (searchable representation; fallback for the tasks above) | Google infrastructure, may be outside the EU |
 | RevenueCat Inc. | subscription management | USA |
 | Google LLC – Google Play | purchases, payments, distribution | Google infrastructure |
 | Google LLC – AdMob | ads (free version only) | Google infrastructure |
@@ -132,6 +137,7 @@ Transfers to the USA rely on the EU–US Data Privacy Framework and/or the Europ
 - **Account, company profile, searches, Copilot, documents:** until you delete your account; permanently erased within 30 days of deletion.
 - **Subscription and accounting records:** as long as required by law (for accounting/tax purposes up to 8 years).
 - **Crash reports (Sentry):** up to 90 days.
+- **Usage events:** 12 months, or until you delete your account if that comes first.
 - **Ad data:** under Google AdMob's own policies.
 
 ## 6. Your rights

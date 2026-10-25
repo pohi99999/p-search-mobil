@@ -113,11 +113,17 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <td>hibák javítása, stabil működés</td>
 <td>6. cikk (1) f) – jogos érdek</td>
 </tr>
+<tr>
+<td>Használati események</td>
+<td>a fiók azonosítója, a művelet típusa és ideje (pl. keresés indult, találat megnyitva, „Hasznos / Nem releváns” visszajelzés), számok és igen/nem jelzők, az alkalmazás verziója és a platform; beírt szöveg, cégadat és dokumentumtartalom NEM</td>
+<td>a szolgáltatás javítása, a találatok relevanciájának mérése</td>
+<td>6. cikk (1) f) – jogos érdek</td>
+</tr>
 </tbody>
 </table></div>
-<p>Az alkalmazás <strong>nem</strong> kér helymeghatározást, névjegyeket, kamerát vagy mikrofont, és nem használ külön analitikai követőt.</p>
+<p>Az alkalmazás <strong>nem</strong> kér helymeghatározást, névjegyeket, kamerát vagy mikrofont, és harmadik féltől származó analitikai követőt nem használ: a használatot a saját adatbázisunkban, a fenti, tartalom nélküli eseményekkel mérjük.</p>
 <h2>3. Mesterséges intelligencia használata</h2>
-<p>A pályázat-kereséshez, a Copilot-válaszokhoz és a dokumentumok feldolgozásához a <strong>Google Gemini</strong> nyelvi modellt használjuk. A modell a mi szerverünkön (Supabase Edge Functions) keresztül kapja meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). A Gemini API-n küldött adatokat a Google az API-feltételei szerint nem használja modelltanításra. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.</p>
+<p>A szöveges AI-feladatokat elsődlegesen az <strong>Anthropic Claude</strong> nyelvi modellje végzi; ha az nem elérhető, a <strong>Google Gemini</strong>. Ide tartozik a találatok értékelése a pályázat-keresésben, a Copilot csevegő válaszai, az akcióterv és a pályázati dokumentum elkészítése, valamint a feltöltött dokumentumok feldolgozása. A cégprofil és a pályázatok kereshető leképezését (vektorát) a <strong>Google Gemini</strong> készíti. A modellek a mi szerverünkön (Supabase Edge Functions) keresztül kapják meg az adott feladathoz szükséges adatokat (cégprofil, kérdés, dokumentum szövege). Az API-n küldött adatokat sem az Anthropic, sem a Google nem használja modelltanításra a saját API-feltételei szerint. Az AI-válasz tájékoztató jellegű; a pályázati döntés és beadás az Ön felelőssége.</p>
 <h2>4. Adatfeldolgozók (akiknek átadjuk az adatot)</h2>
 <div class="table"><table>
 <thead>
@@ -134,8 +140,13 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <td>EU (Írország, eu-west-1)</td>
 </tr>
 <tr>
+<td>Anthropic Ireland, Limited – Claude API</td>
+<td>AI-feldolgozás (találat-értékelés, Copilot csevegő, akcióterv, dokumentum, feltöltött dokumentum)</td>
+<td>Anthropic infrastruktúra, EU-n kívül is</td>
+</tr>
+<tr>
 <td>Google LLC – Gemini API</td>
-<td>AI-feldolgozás</td>
+<td>AI-feldolgozás (kereshető leképezés; tartalék a fenti feladatokra)</td>
 <td>Google infrastruktúra, EU-n kívül is</td>
 </tr>
 <tr>
@@ -186,6 +197,7 @@ footer { color:var(--muted); font-size:.85rem; padding:16px 4px; }
 <li><strong>Fiók, cégprofil, keresések, Copilot, dokumentumok:</strong> a fiók törléséig; törléskor 30 napon belül véglegesen töröljük.</li>
 <li><strong>Előfizetési és számviteli adatok:</strong> a jogszabályban előírt ideig (számviteli/adózási célra legfeljebb 8 évig).</li>
 <li><strong>Hibanapló (Sentry):</strong> legfeljebb 90 nap.</li>
+<li><strong>Használati események:</strong> 12 hónapig, vagy a fiók törléséig, ha az hamarabb van.</li>
 <li><strong>Hirdetési adatok:</strong> a Google AdMob saját szabályai szerint.</li>
 </ul>
 <h2>6. Az Ön jogai</h2>
