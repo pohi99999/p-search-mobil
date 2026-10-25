@@ -81,3 +81,31 @@ describe('useCopilotChat.handleSend without a global crypto (React Native / Herm
     expect(result.current.isTyping).toBe(false);
   });
 });
+
+// Card [L]: the free daily chat cap answers 403 chat_daily_limit; the user reads the server's text, not the generic one.
+describe('useCopilotChat daily chat cap', () => {
+  const capError = (code: string, error: string) => ({
+    data: null,
+    error: { message: 'Edge Function returned a non-2xx status code', context: { status: 403, json: () => Promise.resolve({ code, error }) } },
+  });
+
+  it('shows the server text of chat_daily_limit', async () => {
+    invoke.mockResolvedValue(capError('chat_daily_limit', 'Sajnálom, a mai napra elérted a Copilot-üzenetek keretét (20). Holnap újra kérdezhetsz.'));
+    const { result } = renderHook(() => useCopilotChat('match-42', 'profile-7'));
+    act(() => result.current.setInputText('Kérdés'));
+    await act(async () => { await result.current.handleSend(); });
+    const last = result.current.messages[result.current.messages.length - 1];
+    expect(last.sender).toBe('ai');
+    expect(last.text).toBe('Sajnálom, a mai napra elérted a Copilot-üzenetek keretét (20). Holnap újra kérdezhetsz.');
+  });
+
+  it('another 403 keeps the generic failure text', async () => {
+    invoke.mockResolvedValue(capError('something_else', 'belső részlet'));
+    const { result } = renderHook(() => useCopilotChat('match-42', 'profile-7'));
+    act(() => result.current.setInputText('Kérdés'));
+    await act(async () => { await result.current.handleSend(); });
+    const last = result.current.messages[result.current.messages.length - 1];
+    expect(last.text).not.toContain('belső részlet');
+    expect(last.text).toMatch(/^Sajnálom/);
+  });
+});
