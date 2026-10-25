@@ -199,7 +199,7 @@ function useGrantSearch({
         'AI keresés kész',
         matchesFound > 0
           ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
-          : 'Jelenleg nem találtunk a cégedhez illeszkedő pályázatot. Próbáld újra később, vagy pontosítsd a cégprofilt.',
+          : 'Most nem találtunk új, a cégedhez illő pályázatot. Ha új kiírás jelenik meg, a következő automatikus keresés után itt látod.',
       );
     } catch (err) {
       const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };
