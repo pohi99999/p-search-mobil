@@ -55,7 +55,7 @@ Az EU-n kívüli (USA) adattovábbítás az EU–USA Adatvédelmi Keretrendszer 
 - **Fiók, cégprofil, keresések, Copilot, dokumentumok:** a fiók törléséig; törléskor 30 napon belül véglegesen töröljük.
 - **Előfizetési és számviteli adatok:** a jogszabályban előírt ideig (számviteli/adózási célra legfeljebb 8 évig).
 - **Hibanapló (Sentry):** legfeljebb 90 nap.
-- **Használati események:** a fiók törléséig; a fiókkal együtt törlődnek.
+- **Használati események:** 12 hónapig, vagy a fiók törléséig, ha az hamarabb van.
 - **Hirdetési adatok:** a Google AdMob saját szabályai szerint.
 
 ## 6. Az Ön jogai
@@ -137,7 +137,7 @@ Transfers to the USA rely on the EU–US Data Privacy Framework and/or the Europ
 - **Account, company profile, searches, Copilot, documents:** until you delete your account; permanently erased within 30 days of deletion.
 - **Subscription and accounting records:** as long as required by law (for accounting/tax purposes up to 8 years).
 - **Crash reports (Sentry):** up to 90 days.
-- **Usage events:** until you delete your account; they are deleted with it.
+- **Usage events:** 12 months, or until you delete your account if that comes first.
 - **Ad data:** under Google AdMob's own policies.
 
 ## 6. Your rights
