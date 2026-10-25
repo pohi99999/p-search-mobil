@@ -8,13 +8,15 @@ import { TesterProgress } from '../components/TesterProgress';
 
 import { RootStackNavigationProp } from '../types/navigation';
 import { useHomeData, MatchWithGrant } from '../hooks/useHomeData';
-import { HomeEmptyState } from '../components/HomeEmptyState';
+import { HomeEmptyState, type HomeEmptyStateKind } from '../components/HomeEmptyState';
+import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
 
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const {
     loading,
     searching,
+    hasSearched,
     profile,
     matches,
     isPro,
@@ -30,6 +32,9 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   const [fabExtended, setFabExtended] = useState(true);
   // The FAB sits above the bottom banner when it is shown, else above the navigation-bar inset.
   const fabBottom = (bannerHeight > 0 ? bannerHeight : insets.bottom) + 4;
+
+  // Card [D]: which empty state; a search running wins over the other two.
+  const emptyKind: HomeEmptyStateKind = searching ? 'searching' : hasSearched ? 'none' : 'never';
 
   if (loading) {
     return (
@@ -78,7 +83,12 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       
       {matches.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <HomeEmptyState industryCode={profile?.industry_code} onRefresh={fetchData} />
+          <HomeEmptyState
+            kind={emptyKind}
+            profileIncomplete={missingProfileFields(profile).length > 0}
+            onSearch={handleNewSearch}
+            onEditProfile={() => navigation.navigate('Onboarding', { edit: true })}
+          />
         </View>
       ) : (
         <FlatList<MatchWithGrant>
