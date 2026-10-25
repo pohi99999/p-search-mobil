@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
 import { useBilling } from '../context/BillingContext';
@@ -7,11 +8,37 @@ import { logger } from '../utils/logger';
 import { RootStackNavigationProp } from '../types/navigation';
 import { clearStoredChatHistory } from './useCopilotChat';
 
-import { hasSearchedBefore, sortFreshFirst, withoutExpired } from '../lib/matchStatus';
+import { hasSearchedBefore, isOpenGrant, sortFreshFirst, STALE_MATCH_STATUS, withoutExpired } from '../lib/matchStatus';
+import { errorCode, track } from '../services/events';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 export interface SearchRunResult {
   matchesFound: number;
+  candidatesConsidered: number;
+}
+
+// [G2] events: once per app session, and app_open again after more than 30 minutes in the background.
+const APP_OPEN_AFTER_BACKGROUND_MS = 30 * 60 * 1000;
+let appOpenRecorded = false;
+let matchListViewRecorded = false;
+/** Wall-clock milliseconds; a plain function so the React compiler's purity rule does not mistake it for render work. */
+function nowMs(): number {
+  return Date.now();
+}
+/** Test hook: a new "session" for the module-level once-per-session flags. */
+export function resetSessionEventsForTest() {
+  appOpenRecorded = false;
+  matchListViewRecorded = false;
+}
+
+/** The server's {code, search_refunded} of a failed match-grants call, read once (the body can only be read once). */
+async function readErrorBody(error: unknown): Promise<{ code?: string; error?: string; search_refunded?: boolean }> {
+  try {
+    const ctx = (error as { context?: { json?: () => Promise<{ code?: string; error?: string; search_refunded?: boolean }> } }).context;
+    return ctx?.json ? await ctx.json() : {};
+  } catch {
+    return {};
+  }
 }
 
 /** The ids of the matches that have an action plan, or null when the lookup failed (then nothing is hidden). */
@@ -42,14 +69,10 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
     // show the right Hungarian message and route to the Paywall.
     const status = (error as { context?: { status?: number } })?.context?.status;
     if (status === 403) {
-      let code = '';
-      let serverMessage = '';
-      try {
-        const ctx = (error as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
-        const body = ctx?.json ? await ctx.json() : {};
-        code = body?.code ?? '';
-        serverMessage = body?.error ?? '';
-      } catch { /* body unreadable -> fall back to a plain Paywall route */ }
+      // body unreadable -> {} -> a plain Paywall route
+      const body = await readErrorBody(error);
+      const code = body?.code ?? '';
+      const serverMessage = body?.error ?? '';
       const paywallErr = new Error(serverMessage || 'paywall') as Error & { paywall?: boolean; code?: string; serverMessage?: string };
       paywallErr.paywall = true;
       paywallErr.code = code;
@@ -59,16 +82,13 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
     // 429 daily AI quota / 503 AI overloaded (card 6303fd73): the server sends {code, error} with a
     // Hungarian message; surface it instead of the generic failure.
     if (status === 429 || status === 503) {
-      let code = '';
-      let serverMessage = '';
-      try {
-        const ctx = (error as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
-        const body = ctx?.json ? await ctx.json() : {};
-        code = body?.code ?? '';
-        serverMessage = body?.error ?? '';
-      } catch { /* body unreadable -> generic AI message below */ }
-      const aiErr = new Error(serverMessage || 'ai_unavailable') as Error & { aiUnavailable?: boolean; code?: string; serverMessage?: string };
+      // body unreadable -> {} -> the generic AI message
+      const body = await readErrorBody(error);
+      const code = body?.code ?? '';
+      const serverMessage = body?.error ?? '';
+      const aiErr = new Error(serverMessage || 'ai_unavailable') as Error & { aiUnavailable?: boolean; code?: string; serverMessage?: string; searchRefunded?: boolean };
       aiErr.aiUnavailable = true;
+      aiErr.searchRefunded = body?.search_refunded === true;
       aiErr.code = code || (status === 429 ? 'gemini_quota' : 'gemini_busy');
       aiErr.serverMessage = serverMessage;
       throw aiErr;
@@ -77,7 +97,7 @@ async function runGrantMatching(businessId: string): Promise<SearchRunResult> {
   }
   if (data?.error) throw new Error(data.error);
 
-  return { matchesFound: Number(data?.matches_found ?? 0) };
+  return { matchesFound: Number(data?.matches_found ?? 0), candidatesConsidered: Number(data?.candidates_considered ?? 0) };
 }
 
 /**
@@ -188,10 +208,14 @@ function useGrantSearch({
   const executeSearch = async (
     businessId: string,
     action: 'new_search_pro' | 'new_search_free',
+    trigger: 'manual' | 'after_onboarding' = 'manual',
   ) => {
     setSearching(true);
+    const startedAt = nowMs();
+    track('search_start', { trigger });
     try {
-      const { matchesFound } = await runGrantMatching(businessId);
+      const { matchesFound, candidatesConsidered } = await runGrantMatching(businessId);
+      track('search_result', { ok: true, matches_found: matchesFound, candidates_considered: candidatesConsidered, duration_ms: nowMs() - startedAt });
       void triggerSearchWebhook(action, businessId);
       await onSearchSuccess();
 
@@ -203,8 +227,18 @@ function useGrantSearch({
       );
     } catch (err) {
       const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };
+      const aiFailure = err as { aiUnavailable?: boolean; code?: string; searchRefunded?: boolean };
+      track('search_result', {
+        ok: false,
+        duration_ms: nowMs() - startedAt,
+        error_code: paywallErr?.paywall
+          ? (paywallErr.code === 'daily_limit' ? 'daily_limit' : 'pro_required')
+          : errorCode(err, aiFailure?.aiUnavailable ? aiFailure.code : null),
+        ...(aiFailure?.aiUnavailable ? { search_refunded: aiFailure.searchRefunded === true } : {}),
+      });
       if (paywallErr?.paywall) {
         if (paywallErr.code === 'daily_limit') {
+          track('daily_limit_hit');
           // Daily free cap hit: show the server's message with a Pro upsell,
           // rather than jumping straight to the Paywall.
           Alert.alert(
@@ -212,12 +246,12 @@ function useGrantSearch({
             paywallErr.serverMessage || 'Elérted a napi ingyenes keresést. Holnap újra próbálhatod.',
             [
               { text: 'Bezár', style: 'cancel' },
-              { text: 'Pro-ra váltok', onPress: () => navigation.navigate('Paywall') },
+              { text: 'Pro-ra váltok', onPress: () => navigation.navigate('Paywall', { source: 'home_limit' }) },
             ],
           );
         } else {
           // pro_required (or an unlabelled 403): straight to the Paywall.
-          navigation.navigate('Paywall');
+          navigation.navigate('Paywall', { source: 'home_limit' });
         }
         return;
       }
@@ -235,7 +269,7 @@ function useGrantSearch({
             ? [{ text: 'Bezár', style: 'cancel' }]
             : [
                 { text: 'Bezár', style: 'cancel' },
-                { text: 'Újra', onPress: () => { void executeSearch(businessId, action); } },
+                { text: 'Újra', onPress: () => { void executeSearch(businessId, action, trigger); } },
               ],
         );
         return;
@@ -247,7 +281,8 @@ function useGrantSearch({
     }
   };
 
-  const handleNewSearch = async () => {
+  // A Button passes its press event here, so anything but 'after_onboarding' counts as a manual search.
+  const handleNewSearch = async (trigger?: unknown) => {
     if (!userProfile || !userProfile.id) {
       Alert.alert('Felhasználói profil nem található!');
       return;
@@ -263,7 +298,7 @@ function useGrantSearch({
     // non-Pro) and the Pro gate are enforced server-side in match-grants; a 403
     // there routes the user to the Paywall (handled in executeSearch). No
     // client-side pre-check, and we no longer call increment-search-count.
-    await executeSearch(profile.id, isPro ? 'new_search_pro' : 'new_search_free');
+    await executeSearch(profile.id, isPro ? 'new_search_pro' : 'new_search_free', trigger === 'after_onboarding' ? 'after_onboarding' : 'manual');
   };
 
   return { searching, handleNewSearch };
@@ -297,8 +332,38 @@ export function useHomeData(navigation: RootStackNavigationProp) {
   useEffect(() => {
     if (loading || searching || hasSearched || autoSearched.current || !profile || !userProfile?.id) return;
     autoSearched.current = true;
-    void handleNewSearch();
+    void handleNewSearch('after_onboarding');
   }, [loading, searching, hasSearched, profile, userProfile, handleNewSearch]);
+
+  // [G2] app_open: the signed-in home's first load in this app session, and again after more than 30 minutes in the
+  // background. match_list_view: the first non-empty list of the session (n_expired should be 0 after card [C]).
+  useEffect(() => {
+    if (loading || !userProfile?.id || appOpenRecorded) return;
+    appOpenRecorded = true;
+    track('app_open');
+  }, [loading, userProfile]);
+
+  useEffect(() => {
+    let backgroundSince: number | null = null;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') backgroundSince = Date.now();
+      if (state === 'active' && backgroundSince !== null) {
+        if (Date.now() - backgroundSince > APP_OPEN_AFTER_BACKGROUND_MS) track('app_open');
+        backgroundSince = null;
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (loading || matches.length === 0 || matchListViewRecorded) return;
+    matchListViewRecorded = true;
+    track('match_list_view', {
+      n_total: matches.length,
+      n_stale: matches.filter((m) => m.status === STALE_MATCH_STATUS).length,
+      n_expired: matches.filter((m) => !isOpenGrant(m.grants?.deadline)).length,
+    });
+  }, [loading, matches]);
 
   async function signOut() {
     // Előbb a helyi beszélgetés-előzmény, hogy egy sikertelen hálózati

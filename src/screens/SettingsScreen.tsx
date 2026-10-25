@@ -224,7 +224,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             }
             left={(props) => <List.Icon {...props} icon="star" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => navigation.navigate('Paywall')}
+            onPress={() => navigation.navigate('Paywall', { source: 'settings' })}
             testID="settings-pro-entry"
           />
         </Card>

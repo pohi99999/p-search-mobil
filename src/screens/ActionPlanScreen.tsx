@@ -187,7 +187,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                     } catch (err: unknown) {
                       if ((err as { proRequired?: boolean })?.proRequired) {
                         // Pro feature: send the user to the Paywall (message already set by the hook).
-                        navigation.navigate('Paywall');
+                        navigation.navigate('Paywall', { source: 'action_plan' });
                         return;
                       }
                       logger.error('Hiba az akcióterv generálása során:', err);
@@ -232,7 +232,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                 setPdfLoading={setPdfLoading}
                 showAdIfAvailable={showAdIfAvailable}
                 refetch={refetch}
-                onProRequired={() => navigation.navigate('Paywall')}
+                onProRequired={() => navigation.navigate('Paywall', { source: 'action_plan' })}
               />
             );
           })}

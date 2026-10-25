@@ -6,6 +6,7 @@ import { TextInput, Button, HelperText } from 'react-native-paper';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types/navigation';
 import { logger } from '../../utils/logger';
+import { metasOutsideWhitelist, trackCalls } from '../../test-utils/events';
 
 // Mock dependencies globally for all tests in this file
 // Edge-to-edge insets (card bc8e4135): tests set mockInsets.bottom to measure the layout.
@@ -225,6 +226,11 @@ describe('OnboardingScreen edit mode', () => {
     expect(mockProfileContext.refreshProfile).toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
     expect(mockNavigation.replace).not.toHaveBeenCalled();
+    // Card [G2]: an edit is profile_updated, with yes/no flags only (no company data in the event).
+    expect(trackCalls('profile_updated')).toEqual([['profile_updated', { has_goals: true, has_industry: true, has_revenue: true, has_employees: true, has_tax_number: true }]]);
+    expect(trackCalls('onboarding_done')).toEqual([]);
+    expect(JSON.stringify(trackCalls('profile_updated'))).not.toMatch(/Javított|6201|180000000/);
+    expect(metasOutsideWhitelist()).toEqual([]);
     await act(async () => { component!.unmount(); });
   });
 
@@ -244,6 +250,12 @@ describe('OnboardingScreen edit mode', () => {
     await act(async () => { await root.findByType(Button).props.onPress(); });
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalledTimes(1);
+    // Card [G2]: a new profile is onboarding_done, never profile_updated, and carries no company name.
+    expect(trackCalls('onboarding_done')).toHaveLength(1);
+    expect(trackCalls('profile_updated')).toEqual([]);
+    expect(Object.keys(trackCalls('onboarding_done')[0][1]!).sort()).toEqual(['has_employees', 'has_goals', 'has_industry', 'has_revenue', 'has_tax_number']);
+    expect(JSON.stringify(trackCalls('onboarding_done'))).not.toContain('Új Kft');
+    expect(metasOutsideWhitelist()).toEqual([]);
     await act(async () => { component!.unmount(); });
   });
 });

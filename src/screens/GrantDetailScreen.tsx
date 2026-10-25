@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,8 @@ import { formatGrantAmount } from '../lib/grantAmount';
 import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { deadlineDetailText, formatDeadline } from '../lib/deadline';
 import { logger } from '../utils/logger';
+import { scoreBand, track } from '../services/events';
+import { MatchFeedback } from '../components/MatchFeedback';
 import type { GrantDetailScreenProps } from '../types/navigation';
 
 // Card [B] (review 2026-10-25): "Részletek" opened the action plan, so the grant itself (deadline, official
@@ -21,7 +23,7 @@ export function isOpenableUrl(url: string | null | undefined): url is string {
 
 export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps) {
   const insets = useSafeAreaInsets();
-  const { match } = route.params;
+  const { match, rank } = route.params;
   const grant = match.grants;
   const { isPro } = useBilling();
   const { profile } = useProfile();
@@ -36,8 +38,14 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
   const rawUrl = grant?.source_url;
   const sourceUrl = isOpenableUrl(rawUrl) ? rawUrl.trim() : null;
 
+  // [G2]: one match_open per opening of the view (rank 0 = opened from somewhere other than the home list).
+  useEffect(() => {
+    track('match_open', { match_id: match.id, grant_id: match.grant_id, rank: rank ?? 0, score_band: scoreBand(match.match_score) });
+  }, [match.id, match.grant_id, match.match_score, rank]);
+
   const openSource = () => {
     if (!sourceUrl) return;
+    track('source_link_open', { grant_id: match.grant_id });
     Linking.openURL(sourceUrl).catch((err) => {
       logger.error('A hivatalos kiírás nem nyílt meg:', err);
       Alert.alert('Hiba', 'Nem sikerült megnyitni a kiírást. Próbáld újra később.');
@@ -70,6 +78,7 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
                 ? `Korábbi keresés találata (egyezés akkor: ${match.match_score}%)`
                 : `Egyezés a cégeddel: ${match.match_score}%`}
             </Text>
+            <MatchFeedback matchId={match.id} grantId={match.grant_id} score={match.match_score} rank={rank ?? 0} initial={match.feedback ?? null} />
 
             <Field label="Beadási határidő">
               <Text variant="bodyLarge" style={[styles.value, deadlineStyles[deadline.tone]]} testID="grant-detail-deadline">
@@ -149,7 +158,7 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
                     <Text variant="bodyMedium" style={styles.offerLine}>📄 Dokumentum-vázlat a cégprofilod alapján, PDF-ben</Text>
                     <Button
                       mode="contained"
-                      onPress={() => navigation.navigate('Paywall')}
+                      onPress={() => navigation.navigate('Paywall', { source: 'grant_detail' })}
                       style={styles.primaryButton}
                       testID="grant-detail-upgrade"
                     >

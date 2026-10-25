@@ -107,7 +107,7 @@ describe('SettingsScreen', () => {
       proRow!.props.onPress();
     });
 
-    expect(navigation.navigate).toHaveBeenCalledWith('Paywall');
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'settings' });
   });
 
   // Card fa68ea84: the profile could be filled once and never corrected; this row opens the form in edit mode.

@@ -5,13 +5,16 @@ import type { MatchWithGrant } from '../hooks/useHomeData';
 import { formatGrantAmount } from '../lib/grantAmount';
 import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { formatDeadline } from '../lib/deadline';
+import { MatchFeedback } from './MatchFeedback';
 
 interface MatchCardProps {
   item: MatchWithGrant;
   onPress: () => void;
+  /** [G2]: 1-based position in the list; with it the card shows the feedback buttons. */
+  rank?: number;
 }
 
-export function MatchCard({ item, onPress }: MatchCardProps) {
+export function MatchCard({ item, onPress, rank }: MatchCardProps) {
   // Card 378073ce: no invented ranges (placeholder 1 Ft minimum, programme budget as maximum).
   const amountLine = formatGrantAmount(item.grants?.amount_min, item.grants?.amount_max);
   // Card 2428c38f: a match the latest scan did not re-score says so, instead of showing an old
@@ -46,6 +49,9 @@ export function MatchCard({ item, onPress }: MatchCardProps) {
           <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
             Összeg: {amountLine}
           </Text>
+        )}
+        {rank !== undefined && (
+          <MatchFeedback matchId={item.id} grantId={item.grant_id} score={item.match_score} rank={rank} initial={item.feedback ?? null} />
         )}
       </Card.Content>
       <Card.Actions>

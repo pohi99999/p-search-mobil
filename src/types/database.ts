@@ -33,6 +33,8 @@ export interface GrantMatch {
   match_reasoning: string | null;
   status: string;
   created_at: string;
+  // [G]: the user's "Hasznos / Nem releváns" answer (set_match_feedback).
+  feedback?: 'useful' | 'not_relevant' | null;
 }
 
 export interface UserProfile {

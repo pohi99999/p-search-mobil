@@ -9,6 +9,7 @@ import { useProfile } from '../../context/ProfileContext';
 import { logger } from '../../utils/logger';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types/navigation';
+import { metasOutsideWhitelist, trackCalls } from '../../test-utils/events';
 
 jest.mock('expo-document-picker', () => ({
   getDocumentAsync: jest.fn(),
@@ -143,6 +144,9 @@ describe('DocumentUploadScreen', () => {
     expect(tree).toContain((3456789).toLocaleString('hu-HU'));
     expect(tree).toContain('2025');
     expect(tree).toContain('Magas');
+    // Card [G2]
+    expect(trackCalls('document_uploaded')).toEqual([['document_uploaded', { ok: true }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
   });
 
 
@@ -196,6 +200,8 @@ describe('DocumentUploadScreen', () => {
       'DocumentUploadScreen feltöltési hiba:',
       'Edge function failed'
     );
+    // Card [G2]
+    expect(trackCalls('document_uploaded')).toEqual([['document_uploaded', { ok: false }]]);
   });
 
   it('shows snackbar for unsupported mime types', async () => {

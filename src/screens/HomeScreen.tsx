@@ -49,10 +49,11 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     );
   }
 
-  const renderItem = ({ item }: { item: MatchWithGrant }) => (
+  const renderItem = ({ item, index }: { item: MatchWithGrant; index: number }) => (
     <MatchCard
       item={item}
-      onPress={() => navigation.navigate('GrantDetail', { match: item })}
+      rank={index + 1}
+      onPress={() => navigation.navigate('GrantDetail', { match: item, rank: index + 1 })}
     />
   );
 

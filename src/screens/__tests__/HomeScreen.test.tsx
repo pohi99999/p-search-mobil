@@ -223,9 +223,9 @@ describe('HomeScreen', () => {
 
     const root = renderScreen();
     const list = root.root.findByType('FlatList');
-    const card = list.props.renderItem({ item: match });
+    const card = list.props.renderItem({ item: match, index: 0 });
     act(() => { card.props.onPress(); });
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match, rank: 1 });
     expect(mockNavigation.navigate).not.toHaveBeenCalledWith('ActionPlan', expect.anything());
   });
 

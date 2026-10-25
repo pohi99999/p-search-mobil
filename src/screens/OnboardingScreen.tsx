@@ -11,6 +11,7 @@ import { useProfile } from '../context/ProfileContext';
 
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
+import { profileFlags, track } from '../services/events';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
@@ -112,6 +113,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           .update(values)
           .eq('id', existingProfile.id);
         if (updateError) throw updateError;
+        track('profile_updated', profileFlags(values));
         await refreshProfile();
         if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('Home');
         return;
@@ -124,6 +126,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
         .single();
 
       if (dbError) throw dbError;
+      track('onboarding_done', profileFlags(values));
 
       // Keresés indítása edge functionön keresztül (Fire and forget, nem várjuk meg)
       if (newProfile) {
