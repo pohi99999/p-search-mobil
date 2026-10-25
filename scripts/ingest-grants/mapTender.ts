@@ -11,6 +11,8 @@
  * Grants without a parseable deadline are flagged, never silently dropped.
  */
 
+import { normalizeDeadline } from '../../supabase/functions/_shared/deadline-normalize.ts';
+
 export interface Tender {
   id: string;
   code: string;
@@ -88,7 +90,8 @@ export function mapTenderToGrant(t: Tender): GrantRecord {
     grant_type: t.formOfSupport ?? null,
     amount_min: amountOrNull(t.minSupportAmount),
     amount_max: amountOrNull(t.maxSupportAmount),
-    deadline: t.endTime ?? null,
+    // Card [H2]: the source's winter dates come an hour off; stored as the Budapest midnight of the last day.
+    deadline: normalizeDeadline(t.endTime),
     eligibility_criteria: eligibility,
     source_url: buildSourceUrl(t),
   };

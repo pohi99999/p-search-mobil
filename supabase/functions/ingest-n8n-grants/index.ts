@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { generateEmbedding } from "../_shared/gemini.ts";
+import { normalizeDeadline } from "../_shared/deadline-normalize.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -95,7 +96,8 @@ serve(async (req) => {
         grant_type,
         amount_min,
         amount_max,
-        deadline,
+        // Card [H2]: the Budapest midnight that starts the last day (the app's and the matching's convention).
+        deadline: normalizeDeadline(deadline),
         eligibility_criteria,
         source_url,
       })

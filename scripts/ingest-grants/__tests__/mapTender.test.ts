@@ -123,3 +123,18 @@ describe('selectGrantsToIngest (open + undated, dedup + filters)', () => {
     expect(r.skippedExisting).toBe(1);
   });
 });
+
+// Card [H2]: the deadline is stored as the Budapest midnight that starts the last day.
+describe('deadline normalisation (card [H2])', () => {
+  it('a winter date an hour off (Budapest 23:00) becomes the next day midnight, as on the source page', () => {
+    // DIMOP_PLUSZ-1.2.3/B1-24: the page says 2029.12.31, endTime came as 2029-12-30T22:00Z
+    expect(mapTenderToGrant({ ...bayVoucher, endTime: '2029-12-30T22:00:00.000Z' }).deadline).toBe('2029-12-30T23:00:00.000Z');
+  });
+  it('a stored Budapest midnight and a real time of day are kept', () => {
+    expect(mapTenderToGrant({ ...bayVoucher, endTime: '2026-09-30T22:00:00.000Z' }).deadline).toBe('2026-09-30T22:00:00.000Z');
+    expect(mapTenderToGrant({ ...bayVoucher, endTime: '2026-06-30T16:00:00.000Z' }).deadline).toBe('2026-06-30T16:00:00.000Z');
+  });
+  it('no deadline stays null', () => {
+    expect(mapTenderToGrant({ ...bayVoucher, endTime: null }).deadline).toBeNull();
+  });
+});
