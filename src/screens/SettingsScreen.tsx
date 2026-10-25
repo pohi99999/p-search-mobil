@@ -469,6 +469,8 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#1976D2',
+    // The save button sat flush against the privacy card below it (review P1-8).
+    marginBottom: 24,
   },
   dangerCard: {
     marginTop: 24,
