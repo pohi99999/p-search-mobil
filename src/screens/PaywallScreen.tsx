@@ -1,10 +1,12 @@
 import { RootStackNavigationProp } from "../types/navigation";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
 import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../types/navigation';
+import { track } from '../services/events';
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 
@@ -21,7 +23,15 @@ export const PaywallScreen = () => {
   // Edge-to-edge: keep the footer above the Android navigation bar (owner test 2026-10-04).
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Paywall'>>();
   const [purchasing, setPurchasing] = useState(false);
+  // [G2]: one paywall_view per opening, with where it came from (a Pro user sees the success view, not the offer).
+  const source = route.params?.source;
+  useEffect(() => {
+    // A route without a source is 'other', never guessed as one of the known places.
+    if (!isPro) track('paywall_view', { source: source ?? 'other' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recorded once per opening, not on every isPro change
+  }, []);
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -29,6 +39,8 @@ export const PaywallScreen = () => {
     setPurchasing(true);
     try {
       await purchasePackage(pkg);
+      // The RevenueCat package id ($rc_monthly...), never the price.
+      track('purchase_done', { package: pkg.identifier });
     } catch (err: unknown) {
       logger.error('Vásárlási hiba:', getErrorMessage(err));
       Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');

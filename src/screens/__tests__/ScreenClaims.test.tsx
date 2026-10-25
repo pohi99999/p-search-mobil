@@ -5,7 +5,7 @@ import { PaywallScreen } from '../PaywallScreen';
 import { CopilotChatScreen } from '../CopilotChatScreen';
 import { contrastRatio, textColor } from '../../test-utils/contrast';
 
-jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ goBack: jest.fn(), navigate: jest.fn() }) }));
+jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ goBack: jest.fn(), navigate: jest.fn() }), useRoute: () => ({ params: undefined }) }));
 jest.mock('../../context/BillingContext', () => ({
   useBilling: () => ({ packages: [], purchasePackage: jest.fn(), restorePurchases: jest.fn(), isLoading: false, isPro: false }),
 }));

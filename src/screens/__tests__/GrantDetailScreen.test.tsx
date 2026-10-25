@@ -9,6 +9,8 @@ import { useActionPlan } from '../../hooks/useActionPlan';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types/navigation';
 import type { MatchWithGrant } from '../../hooks/useHomeData';
+import { setMatchFeedback } from '../../services/events';
+import { metasOutsideWhitelist, trackCalls } from '../../test-utils/events';
 
 jest.mock('../../context/BillingContext', () => ({ useBilling: jest.fn() }));
 jest.mock('../../context/ProfileContext', () => ({ useProfile: jest.fn() }));
@@ -46,12 +48,12 @@ const createNavigation = () =>
   ({ canGoBack: jest.fn().mockReturnValue(true), goBack: jest.fn(), navigate: jest.fn() }) as unknown as
     NativeStackNavigationProp<RootStackParamList, 'GrantDetail'>;
 
-async function renderScreen(match: MatchWithGrant, navigation = createNavigation()) {
+async function renderScreen(match: MatchWithGrant, navigation = createNavigation(), rank?: number) {
   let tree: renderer.ReactTestRenderer;
   await act(async () => {
     tree = renderer.create(
       <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
-        <GrantDetailScreen navigation={navigation} route={{ key: 'grant-detail', name: 'GrantDetail', params: { match } }} />
+        <GrantDetailScreen navigation={navigation} route={{ key: 'grant-detail', name: 'GrantDetail', params: { match, rank } }} />
       </SafeAreaProvider>,
     );
   });
@@ -98,11 +100,32 @@ describe('GrantDetailScreen (card [B])', () => {
     expect(byTestId('grant-detail-source')).toBeUndefined();
   });
 
+  // Card [G2]: the usage events of the detail view and its feedback buttons.
+  it('opening the view records match_open with the rank and the score band', async () => {
+    await renderScreen(makeMatch(), createNavigation(), 3);
+    expect(trackCalls('match_open')).toEqual([['match_open', { match_id: 'match-1', grant_id: 'g-1', rank: 3, score_band: '80-100' }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
+  });
+
+  it('the official link records source_link_open with the grant only', async () => {
+    jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const { byTestId } = await renderScreen(makeMatch(), createNavigation(), 1);
+    await act(async () => { byTestId('grant-detail-source').props.onPress(); });
+    expect(trackCalls('source_link_open')).toEqual([['source_link_open', { grant_id: 'g-1' }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
+  });
+
+  it('the feedback buttons are on the view and save through setMatchFeedback', async () => {
+    const { byTestId } = await renderScreen(makeMatch(), createNavigation(), 2);
+    await act(async () => { byTestId('feedback-not-relevant-match-1').props.onPress(); });
+    expect(setMatchFeedback).toHaveBeenCalledWith({ match_id: 'match-1', grant_id: 'g-1', rank: 2, score_band: '80-100' }, 'not_relevant');
+  });
+
   it('a free user gets the Pro offer, which goes to the paywall', async () => {
     const { byTestId, navigation } = await renderScreen(makeMatch());
     expect(byTestId('grant-detail-plan')).toBeUndefined();
     await act(async () => { byTestId('grant-detail-upgrade').props.onPress(); });
-    expect(navigation.navigate).toHaveBeenCalledWith('Paywall');
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'grant_detail' });
   });
 
   it('a Pro user goes to the action plan, labelled by whether one exists', async () => {

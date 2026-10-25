@@ -2,7 +2,8 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { PaywallScreen } from '../PaywallScreen';
 import { useBilling } from '../../context/BillingContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { metasOutsideWhitelist, trackCalls } from '../../test-utils/events';
 import { Alert } from 'react-native';
 import { Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { contrastRatio, textColor } from '../../test-utils/contrast';
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(),
+  useRoute: jest.fn(() => ({ params: undefined })),
 }));
 
 jest.mock('../../context/BillingContext', () => ({
@@ -169,6 +171,40 @@ describe('PaywallScreen', () => {
     });
 
     expect(mockBilling.purchasePackage).toHaveBeenCalledWith(mockPackages[0]);
+  });
+
+  // Card [G2]: paywall_view with where it was opened from, and purchase_done with the package id only (no price).
+  it('opening the offer records paywall_view with the source of the route', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: { source: 'grant_detail' } });
+    await act(async () => { renderWithSafeArea(<PaywallScreen />); });
+    expect(trackCalls('paywall_view')).toEqual([['paywall_view', { source: 'grant_detail' }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
+  });
+
+  it('a route without a source is recorded as other, not guessed', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: undefined });
+    await act(async () => { renderWithSafeArea(<PaywallScreen />); });
+    expect(trackCalls('paywall_view')).toEqual([['paywall_view', { source: 'other' }]]);
+  });
+
+  it('a Pro user sees the success view and records no paywall_view', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: { source: 'settings' } });
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+    await act(async () => { renderWithSafeArea(<PaywallScreen />); });
+    expect(trackCalls('paywall_view')).toEqual([]);
+  });
+
+  it('a purchase records purchase_done with the package id, never the price', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: undefined });
+    const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [pkg] });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderWithSafeArea(<PaywallScreen />); });
+    const buy = component!.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+    await act(async () => { buy.props.onPress(); });
+    expect(trackCalls('purchase_done')).toEqual([['purchase_done', { package: '$rc_monthly' }]]);
+    expect(JSON.stringify(trackCalls('purchase_done'))).not.toContain('2 990');
+    expect(metasOutsideWhitelist()).toEqual([]);
   });
 
   it('handles purchase error and displays alert', async () => {

@@ -1,5 +1,8 @@
 import { sanitizeMeta, scoreBand, setMatchFeedback, track } from '../events';
 import { logger } from '../../utils/logger';
+
+// setupJest mocks track() for every other suite; this one measures the real module.
+jest.unmock('../events');
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '17' }));
 jest.mock('../../utils/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn() } }));
 const mockInsert = jest.fn();

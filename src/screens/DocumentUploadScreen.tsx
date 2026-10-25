@@ -14,6 +14,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 import { logger } from '../utils/logger';
+import { track } from '../services/events';
 import { getErrorMessage } from '../utils/error';
 import type { DocumentUploadScreenProps } from '../types/navigation';
 
@@ -154,10 +155,12 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
 
       setExtractedData(data.extracted_data);
       setLowConfidenceVisible(data.extracted_data.extraction_confidence === 'low');
+      track('document_uploaded', { ok: true });
       await refreshProfile();
       showSnackbar('Dokumentum sikeresen feldolgozva.');
     } catch (err: unknown) {
       logger.error('DocumentUploadScreen feltöltési hiba:', getErrorMessage(err));
+      track('document_uploaded', { ok: false });
       showSnackbar('Nem sikerült feldolgozni a dokumentumot. Kérjük, próbáld újra később.');
     } finally {
       setUploading(false);

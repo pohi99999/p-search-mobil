@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { ActionPlan, ActionTask, ActionTaskStatus, BusinessProfile } from '../../types/database';
 import { generateAndSharePDF } from '../../utils/documentGenerator';
 import { logger } from '../../utils/logger';
+import { errorCode, track } from '../../services/events';
 import { TaskItem } from './TaskItem';
 import { useProfileGate } from '../../hooks/useProfileGate';
 
@@ -123,6 +124,7 @@ export function ActionPlanCard({
                 if (data?.error) throw new Error(data.error);
 
                 await generateAndSharePDF(data.html, `${plan.title.replace(/\s+/g, '_')}_uzleti_terv.pdf`);
+                track('doc_generated', { ok: true });
 
                 refetch();
               } catch (err: unknown) {
@@ -135,6 +137,7 @@ export function ActionPlanCard({
                     const body = ctx?.json ? await ctx.json() : {};
                     serverMessage = body?.error ?? '';
                   } catch { /* fall through */ }
+                  track('doc_generated', { ok: false, error_code: 'pro_required' });
                   Alert.alert('Pro funkció', serverMessage || 'A dokumentum-generálás a Pro csomag része. Válts Pro-ra a használatához.');
                   onProRequired?.();
                   return;
@@ -142,11 +145,14 @@ export function ActionPlanCard({
                 logger.error('PDF generation error:', err);
                 // Gemini quota / busy / cut-off answer: the server sends {code: 'gemini_*', error: <Hungarian text>}.
                 let geminiMessage = '';
+                let docErrorCode: string | null = null;
                 try {
                   const ctx = (err as { context?: { json?: () => Promise<{ code?: string; error?: string }> } }).context;
                   const body = ctx?.json ? await ctx.json() : {};
                   if (body?.code?.startsWith('gemini_') && body.error) geminiMessage = body.error;
+                  docErrorCode = body?.code ?? null;
                 } catch { /* fall through */ }
+                track('doc_generated', { ok: false, error_code: errorCode(err, docErrorCode) });
                 Alert.alert('Hiba', geminiMessage || 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
               } finally {
                 setPdfLoading(false);

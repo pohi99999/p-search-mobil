@@ -1,7 +1,9 @@
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { waitFor } from '@testing-library/react-native';
 import { renderHook, act } from '../../test-utils/renderHook';
-import { useHomeData } from '../useHomeData';
+import { useHomeData, resetSessionEventsForTest } from '../useHomeData';
+import { track } from '../../services/events';
+import { sanitizeMeta } from '../../services/eventMeta';
 import { supabase } from '../../lib/supabase';
 import { useBilling } from '../../context/BillingContext';
 import { logger } from '../../utils/logger';
@@ -102,6 +104,127 @@ describe('useHomeData', () => {
 
     (supabase.from as jest.Mock).mockImplementation(mockFrom);
   };
+
+  describe('usage events (card [G2])', () => {
+    const calls = (name: string) => (track as jest.Mock).mock.calls.filter(([e]: [string]) => e === name);
+    // Every recorded meta passes the whitelist unchanged: no key would be dropped on the way to app_events.
+    const expectWhitelisted = () => {
+      for (const [, meta] of (track as jest.Mock).mock.calls) {
+        if (meta !== undefined) expect(sanitizeMeta(meta)).toEqual(meta);
+      }
+    };
+    beforeEach(() => resetSessionEventsForTest());
+
+    it('app_open once per session, match_list_view once with stale and expired counts', async () => {
+      const rows = [
+        { id: 'a', status: 'new', match_score: 90, grants: { deadline: '2999-01-01T00:00:00Z' } },
+        { id: 'b', status: 'stale', match_score: 60, grants: { deadline: null } },
+      ];
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, null, rows);
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(calls('match_list_view')).toHaveLength(1));
+      expect(calls('app_open')).toHaveLength(1);
+      expect(calls('match_list_view')[0][1]).toEqual({ n_total: 2, n_stale: 1, n_expired: 0 });
+      await act(async () => { await result.current.fetchData(); });
+      expect(calls('app_open')).toHaveLength(1);
+      expect(calls('match_list_view')).toHaveLength(1);
+      expectWhitelisted();
+    });
+
+    it('a manual search: search_start manual, then search_result ok with the counts and a duration', async () => {
+      setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        Promise.resolve(fn === 'match-grants' ? { data: { matches_found: 3, candidates_considered: 12 }, error: null } : { data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => { await result.current.handleNewSearch(); });
+      expect(calls('search_start')[0][1]).toEqual({ trigger: 'manual' });
+      const meta = calls('search_result')[0][1];
+      expect(meta).toMatchObject({ ok: true, matches_found: 3, candidates_considered: 12 });
+      expect(typeof meta.duration_ms).toBe('number');
+      expectWhitelisted();
+    });
+
+    it('the automatic first search is search_start after_onboarding', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, { id: 'test-user-id', last_scan_at: null }, null, []);
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        Promise.resolve(fn === 'match-grants' ? { data: { matches_found: 0 }, error: null } : { data: {}, error: null }),
+      );
+      renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(calls('search_start')).toHaveLength(1));
+      expect(calls('search_start')[0][1]).toEqual({ trigger: 'after_onboarding' });
+    });
+
+    it('the daily cap: daily_limit_hit, search_result ok:false daily_limit, and the paywall opens as home_limit', async () => {
+      setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        fn === 'match-grants'
+          ? Promise.resolve({ data: null, error: { context: { status: 403, json: () => Promise.resolve({ code: 'daily_limit', error: 'Elérted a napi keretet.' }) } } })
+          : Promise.resolve({ data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => { await result.current.handleNewSearch(); });
+      expect(calls('daily_limit_hit')).toHaveLength(1);
+      expect(calls('search_result')[0][1]).toMatchObject({ ok: false, error_code: 'daily_limit' });
+      const buttons = (Alert.alert as jest.Mock).mock.calls.find(([t]: [string]) => t === 'Napi keresési limit')[2];
+      buttons[1].onPress();
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'home_limit' });
+      expectWhitelisted();
+    });
+
+    it('the AI quota: search_result with gemini_quota and whether the search was given back, no text', async () => {
+      setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        fn === 'match-grants'
+          ? Promise.resolve({ data: null, error: { context: { status: 429, json: () => Promise.resolve({ code: 'gemini_quota', error: 'A napi AI-keret elfogyott.', search_refunded: true }) } } })
+          : Promise.resolve({ data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => { await result.current.handleNewSearch(); });
+      const meta = calls('search_result')[0][1];
+      expect(meta).toMatchObject({ ok: false, error_code: 'gemini_quota', search_refunded: true });
+      expect(JSON.stringify(meta)).not.toMatch(/AI-keret/);
+      expect(calls('daily_limit_hit')).toHaveLength(0);
+      expectWhitelisted();
+    });
+
+    it('app_open again after more than 30 minutes in the background, not after a short one', async () => {
+      let onChange: (state: string) => void = () => {};
+      jest.spyOn(AppState, 'addEventListener').mockImplementation(((_t: string, h: (state: string) => void) => {
+        onChange = h;
+        return { remove: jest.fn() };
+      }) as never);
+      const clock = jest.spyOn(Date, 'now');
+      setupSupabaseMocks();
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(calls('app_open')).toHaveLength(1);
+      clock.mockReturnValue(1_000_000);
+      act(() => onChange('background'));
+      clock.mockReturnValue(1_000_000 + 5 * 60 * 1000);
+      act(() => onChange('active'));
+      expect(calls('app_open')).toHaveLength(1);
+      act(() => onChange('background'));
+      clock.mockReturnValue(1_000_000 + 5 * 60 * 1000 + 31 * 60 * 1000);
+      act(() => onChange('active'));
+      expect(calls('app_open')).toHaveLength(2);
+      clock.mockRestore();
+    });
+
+    it('a network failure is search_result ok:false network', async () => {
+      setupSupabaseMocks();
+      (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+        fn === 'match-grants' ? Promise.reject(new Error('Network request failed')) : Promise.resolve({ data: {}, error: null }),
+      );
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await act(async () => { await result.current.handleNewSearch(); });
+      expect(calls('search_result')[0][1]).toMatchObject({ ok: false, error_code: 'network' });
+    });
+  });
 
   describe('empty home and the first search (card [D])', () => {
     const matchGrantsCalls = () =>
@@ -433,7 +556,7 @@ describe('useHomeData', () => {
         await result.current.handleNewSearch();
       });
 
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall');
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'home_limit' });
       expect(supabase.functions.invoke).not.toHaveBeenCalledWith('increment-search-count');
       expect(supabase.functions.invoke).not.toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
       expect(Alert.alert).not.toHaveBeenCalledWith('Hiba', expect.stringContaining('Nem sikerült'));
@@ -456,6 +579,7 @@ describe('useHomeData', () => {
       });
 
       expect(Alert.alert).toHaveBeenCalledWith('Hiba', expect.stringContaining('Nem sikerült lefuttatni a keresést'));
+      expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Paywall', expect.anything());
       expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Paywall');
     });
   });

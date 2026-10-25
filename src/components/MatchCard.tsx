@@ -5,13 +5,16 @@ import type { MatchWithGrant } from '../hooks/useHomeData';
 import { formatGrantAmount } from '../lib/grantAmount';
 import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { formatDeadline } from '../lib/deadline';
+import { MatchFeedback } from './MatchFeedback';
 
 interface MatchCardProps {
   item: MatchWithGrant;
   onPress: () => void;
+  /** [G2]: 1-based position in the list; with it the card shows the feedback buttons. */
+  rank?: number;
 }
 
-export function MatchCard({ item, onPress }: MatchCardProps) {
+export function MatchCard({ item, onPress, rank }: MatchCardProps) {
   // Card 378073ce: no invented ranges (placeholder 1 Ft minimum, programme budget as maximum).
   const amountLine = formatGrantAmount(item.grants?.amount_min, item.grants?.amount_max);
   // Card 2428c38f: a match the latest scan did not re-score says so, instead of showing an old
@@ -48,9 +51,26 @@ export function MatchCard({ item, onPress }: MatchCardProps) {
           </Text>
         )}
       </Card.Content>
-      <Card.Actions>
+      {/* [G2]: the feedback answer sits in the actions row, before "Részletek"; on a narrow screen the row wraps and
+          "Részletek" stays at the right. Card.Actions would make its 2nd child a contained button, hence the explicit mode. */}
+      <Card.Actions style={styles.actions}>
+        {rank !== undefined && (
+          <MatchFeedback
+            matchId={item.id}
+            grantId={item.grant_id}
+            score={item.match_score}
+            rank={rank}
+            initial={item.feedback ?? null}
+            style={styles.feedback}
+          />
+        )}
         {/* Card [J]: every card's button read "Részletek"; the label names the grant. */}
-        <Button onPress={onPress} accessibilityLabel={`${item.grants?.title || 'Ismeretlen pályázat'} részletei`}>
+        <Button
+          mode="outlined"
+          onPress={onPress}
+          accessibilityLabel={`${item.grants?.title || 'Ismeretlen pályázat'} részletei`}
+          style={styles.details}
+        >
           Részletek
         </Button>
       </Card.Actions>
@@ -77,6 +97,19 @@ const styles = StyleSheet.create({
   },
   deadline: {
     marginBottom: 8,
+  },
+  actions: {
+    flexWrap: 'wrap',
+    rowGap: 8,
+  },
+  // Card.Actions pads 8 px, Card.Content 16 px: the extra 8 px lines the buttons up with the card text.
+  feedback: {
+    marginTop: 0,
+    marginLeft: 8,
+    marginRight: 'auto',
+  },
+  details: {
+    marginLeft: 'auto',
   },
 });
 

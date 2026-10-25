@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../utils/logger';
 import { generateAndSharePDF } from '../../../utils/documentGenerator';
 import { ActionPlan, BusinessProfile } from '../../../types/database';
+import { metasOutsideWhitelist, trackCalls } from '../../../test-utils/events';
 
 // Mock dependencies
 // The profile gate (card 431a496e) has its own test; here generation itself is under test.
@@ -158,6 +159,9 @@ describe('ActionPlanCard PDF Generation', () => {
     expect(generateAndSharePDF).toHaveBeenCalledWith('<div>Mock PDF</div>', 'Test_Plan_uzleti_terv.pdf');
     expect(defaultProps.refetch).toHaveBeenCalled();
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
+    // Card [G2]
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: true }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
   });
 
   it('handles error returned directly from supabase.functions.invoke', async () => {
@@ -201,6 +205,8 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(Alert.alert).toHaveBeenCalledWith('Hiba', serverText);
+    // Card [G2]: only a code, never the server's text.
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: false, error_code: 'server' }]]);
     expect(generateAndSharePDF).not.toHaveBeenCalled();
   });
 
@@ -264,6 +270,23 @@ describe('ActionPlanCard PDF Generation', () => {
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', mockException);
     expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
+    // Card [G2]: a failure without an HTTP status is a network error.
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: false, error_code: 'network' }]]);
+  });
+
+  // Card [G2]: the Pro gate is doc_generated ok:false pro_required.
+  it('the Pro gate (403) records doc_generated with pro_required', async () => {
+    const proError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 403, json: async () => ({ code: 'pro_required', error: 'A dokumentum-generálás a Pro csomag része.' }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: proError });
+    const onProRequired = jest.fn();
+    let root: renderer.ReactTestRenderer | undefined;
+    await act(async () => { root = renderer.create(<ActionPlanCard {...defaultProps} onProRequired={onProRequired} />); });
+    await act(async () => { await getPdfButton(root!)?.props.onPress(); });
+    expect(onProRequired).toHaveBeenCalled();
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: false, error_code: 'pro_required' }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
   });
 
   it('shows alert if profile or match_id is missing', async () => {
