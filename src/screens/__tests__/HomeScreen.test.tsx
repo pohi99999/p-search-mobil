@@ -179,6 +179,56 @@ describe('HomeScreen', () => {
     expect(root.root.findByType('HomeEmptyState')).toBeTruthy();
   });
 
+  // Card [D]: the empty home picks one of three states from the hook's searching / hasSearched.
+  it.each([
+    [{ searching: true, hasSearched: false }, 'searching'],
+    [{ searching: false, hasSearched: false }, 'never'],
+    [{ searching: false, hasSearched: true }, 'none'],
+    [{ searching: true, hasSearched: true }, 'searching'],
+  ])('empty state for %j is %s', (flags, kind) => {
+    const handleNewSearch = jest.fn();
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      ...flags,
+      profile: { company_name: 'Test Company', industry_code: null },
+      matches: [],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch,
+    });
+
+    const root = renderScreen();
+    const empty = root.root.findByType('HomeEmptyState');
+    expect(empty.props.kind).toBe(kind);
+    expect(empty.props.profileIncomplete).toBe(true);
+    empty.props.onSearch();
+    expect(handleNewSearch).toHaveBeenCalled();
+    empty.props.onEditProfile();
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Onboarding', { edit: true });
+  });
+
+  // Card [B]: "Részletek" opens the grant's detail view, not the action plan.
+  it('the card opens the grant detail view with the match', () => {
+    const match = { id: '1', match_score: 80, grants: { title: 'Pályázat' } };
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test Company' },
+      matches: [match],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+
+    const root = renderScreen();
+    const list = root.root.findByType('FlatList');
+    const card = list.props.renderItem({ item: match });
+    act(() => { card.props.onPress(); });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match });
+    expect(mockNavigation.navigate).not.toHaveBeenCalledWith('ActionPlan', expect.anything());
+  });
+
   // Card [I]: the FAB label was the MD3 default #21005D on #1976D2, 3.73:1.
   it('the search button label meets WCAG AA on the button blue', () => {
     (useHomeData as jest.Mock).mockReturnValue({

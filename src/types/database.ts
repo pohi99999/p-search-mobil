@@ -40,6 +40,7 @@ export interface UserProfile {
   subscription_tier: string;
   search_frequency: string;
   search_count: number;
+  last_scan_at?: string | null;
 }
 
 export interface ActionPlan {

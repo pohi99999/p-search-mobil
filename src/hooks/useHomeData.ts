@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
 import { useBilling } from '../context/BillingContext';
@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 import { RootStackNavigationProp } from '../types/navigation';
 import { clearStoredChatHistory } from './useCopilotChat';
 
-import { sortFreshFirst, withoutExpired } from '../lib/matchStatus';
+import { hasSearchedBefore, sortFreshFirst, withoutExpired } from '../lib/matchStatus';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 export interface SearchRunResult {
@@ -199,7 +199,7 @@ function useGrantSearch({
         'AI keresés kész',
         matchesFound > 0
           ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
-          : 'Jelenleg nem találtunk új, a cégedhez illeszkedő pályázatot. Amint új kiírás jelenik meg, értesítünk.',
+          : 'Most nem találtunk új, a cégedhez illő pályázatot. Ha új kiírás jelenik meg, a következő automatikus keresés után itt látod.',
       );
     } catch (err) {
       const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };
@@ -289,6 +289,17 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     onSearchSuccess: fetchData
   });
 
+  // Card [D]: the empty home tells "never searched" from "0 matches". A company that has never been scanned gets its
+  // first search started here, once per session (a failure is not retried in a loop): saving the profile used to
+  // fire only the best-effort n8n trigger, and the home then waited for nothing.
+  const hasSearched = hasSearchedBefore(userProfile?.last_scan_at, matches.length);
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    if (loading || searching || hasSearched || autoSearched.current || !profile || !userProfile?.id) return;
+    autoSearched.current = true;
+    void handleNewSearch();
+  }, [loading, searching, hasSearched, profile, userProfile, handleNewSearch]);
+
   async function signOut() {
     // Előbb a helyi beszélgetés-előzmény, hogy egy sikertelen hálózati
     // kijelentkezés se hagyja az eszközön a korábbi chatet.
@@ -303,6 +314,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
   return {
     loading,
     searching,
+    hasSearched,
     profile,
     matches,
     isPro,

@@ -37,3 +37,8 @@ export function withoutExpired<T extends { id: string; status: string; grants?: 
     (r) => isOpenGrant(r.grants?.deadline, now) || !UNTOUCHED_STATUSES.has(r.status) || planMatchIds.has(r.id),
   );
 }
+
+/** Card [D]: a company counts as searched once a scan ran (profiles.last_scan_at) or it has any match. */
+export function hasSearchedBefore(lastScanAt: string | null | undefined, matchCount: number): boolean {
+  return !!lastScanAt || matchCount > 0;
+}
