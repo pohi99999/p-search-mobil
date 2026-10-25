@@ -47,3 +47,13 @@ it('a failure without a status is a network error', async () => {
   await send('kérdés');
   expect(track).toHaveBeenCalledWith('chat_message_sent', { ok: false, error_code: 'network' });
 });
+
+it('the free daily chat cap is recorded as chat_daily_limit, not as a network error (Brunella 4790)', async () => {
+  invoke.mockResolvedValue({
+    data: null,
+    error: { message: 'Edge Function returned a non-2xx status code', context: { status: 403, json: () => Promise.resolve({ code: 'chat_daily_limit', error: 'Sajnálom, a mai napra elérted a Copilot-üzenetek keretét (20).' }) } },
+  });
+  await send('kérdés');
+  expect(track).toHaveBeenCalledWith('chat_message_sent', { ok: false, error_code: 'chat_daily_limit' });
+  expect(track).not.toHaveBeenCalledWith('chat_message_sent', { ok: false, error_code: 'network' });
+});

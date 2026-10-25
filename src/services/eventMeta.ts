@@ -1,6 +1,7 @@
 // Card [G]/[G2]: the event names, their typed meta and the pure helpers, with no Supabase or native import, so tests
 // and any module can use them without loading the client. The sending lives in events.ts.
-export type ErrorCode = 'daily_limit' | 'pro_required' | 'gemini_quota' | 'gemini_busy' | 'network' | 'server';
+// chat_daily_limit: the free daily chat cap ([L]); it was recorded as 'network' before (Brunella 4790).
+export type ErrorCode = 'daily_limit' | 'chat_daily_limit' | 'pro_required' | 'gemini_quota' | 'gemini_busy' | 'network' | 'server';
 /** Where the paywall was opened from ([G2]: grant_detail is the Pro offer under the free detail view). */
 export type PaywallSource = 'home_limit' | 'action_plan' | 'settings' | 'document' | 'grant_detail' | 'other';
 export type ScoreBand = '40-59' | '60-79' | '80-100';
