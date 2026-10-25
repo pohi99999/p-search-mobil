@@ -1,6 +1,6 @@
 # P-Search – Adatvédelmi tájékoztató
 
-**Hatályos:** 2026. szeptember [nap]. · **Verzió:** 1.0 (tervezet)
+**Hatályos:** 2026. október 25. · **Verzió:** 1.2
 
 Ez a tájékoztató a P-Search (Pályázat Kereső) mobilalkalmazásra (Android, csomagnév: `com.pohankaestarsa.psearch`) vonatkozik. Leírja, milyen személyes adatot kezelünk, milyen célból, meddig, kinek adjuk át, és milyen jogai vannak.
 
@@ -62,7 +62,7 @@ Az EU-n kívüli (USA) adattovábbítás az EU–USA Adatvédelmi Keretrendszer 
 
 Kérheti adatai **megismerését**, **helyesbítését**, **törlését**, a kezelés **korlátozását**, az adatok **hordozhatóságát**, és **tiltakozhat** a jogos érdeken alapuló kezelés ellen. Kérését a fenti e-mail címre küldje; legfeljebb 1 hónapon belül válaszolunk.
 
-**Fiók és adatok törlése:** [az alkalmazásban: Beállítások → Fiók törlése] vagy e-mailben a fenti címen, a fiókhoz tartozó e-mail címről. A törlés a fiókot, a cégprofilt, a kereséseket, a Copilot-előzményeket és a feltöltött dokumentumokat érinti; a jogszabály miatt megőrzendő vásárlási adatok kivételek.
+**Fiók és adatok törlése:** az alkalmazásban: Beállítások → Fiók törlése vagy e-mailben a fenti címen, a fiókhoz tartozó e-mail címről. A törlés a fiókot, a cégprofilt, a kereséseket, a Copilot-előzményeket és a feltöltött dokumentumokat érinti; a jogszabály miatt megőrzendő vásárlási adatok kivételek.
 
 Panasz esetén a **Nemzeti Adatvédelmi és Információszabadság Hatósághoz** fordulhat (1055 Budapest, Falk Miksa utca 9–11., ugyfelszolgalat@naih.hu, www.naih.hu), vagy bírósághoz.
 
@@ -82,7 +82,7 @@ Ha a tájékoztató érdemben változik, az alkalmazásban és ezen az oldalon j
 
 # P-Search – Privacy Policy
 
-**Effective:** September [day], 2026 · **Version:** 1.0 (draft)
+**Effective:** October 25, 2026 · **Version:** 1.2
 
 This policy applies to the P-Search (Grant Finder) mobile app (Android, package `com.pohankaestarsa.psearch`). It explains what personal data we process, why, for how long, who we share it with, and your rights.
 
@@ -144,7 +144,7 @@ Transfers to the USA rely on the EU–US Data Privacy Framework and/or the Europ
 
 You may request **access**, **rectification**, **erasure**, **restriction**, **data portability**, and you may **object** to processing based on legitimate interest. Send requests to the e-mail above; we reply within one month.
 
-**Deleting your account and data:** [in the app: Settings → Delete account] or by e-mail to the address above, sent from the account's e-mail address. Deletion covers the account, company profile, searches, Copilot history and uploaded documents, except purchase records we must keep by law.
+**Deleting your account and data:** in the app: Settings → Delete account or by e-mail to the address above, sent from the account's e-mail address. Deletion covers the account, company profile, searches, Copilot history and uploaded documents, except purchase records we must keep by law.
 
 You may lodge a complaint with the Hungarian National Authority for Data Protection and Freedom of Information (NAIH, Falk Miksa utca 9–11., 1055 Budapest, ugyfelszolgalat@naih.hu, www.naih.hu) or go to court.
 
