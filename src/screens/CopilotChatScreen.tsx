@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'reac
 import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
 import { useCopilotChat, Message } from '../hooks/useCopilotChat';
+import { splitBold } from '../lib/inlineBold';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -29,7 +30,12 @@ const MessageItem = React.memo(({ item }: { item: Message }) => {
           isUser ? styles.userText : styles.aiText,
           isError && styles.errorText
         ]}>
-          {item.text}
+          {/* The AI's "**bold**" shows as bold, without the asterisks; the user's own text stays as typed. */}
+          {isUser
+            ? item.text
+            : splitBold(item.text).map((seg, i) =>
+                seg.bold ? <Text key={i} style={styles.boldText}>{seg.text}</Text> : seg.text,
+              )}
         </Text>
 
         {/* RAG források megjelenítése a válasz alatt */}
@@ -215,6 +221,9 @@ const styles = StyleSheet.create({
   },
   aiText: {
     color: '#212121',
+  },
+  boldText: {
+    fontWeight: 'bold',
   },
   errorText: {
     color: '#D32F2F',
