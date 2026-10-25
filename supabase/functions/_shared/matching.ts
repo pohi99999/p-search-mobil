@@ -22,6 +22,7 @@
 
 import { generateEmbedding, parseJsonFromModel } from './gemini.ts';
 import { generateText } from './llm.ts';
+import { formatAmountHu, formatDeadlineHu } from './grant-text.ts';
 
 /** Minimal shape of the Supabase client methods this module relies on. */
 // deno-lint-ignore no-explicit-any
@@ -203,10 +204,9 @@ export async function scoreCandidates(
         `Cím: ${g.title}`,
         `Kiíró: ${g.provider ?? 'Nincs megadva'}`,
         `Típus: ${g.grant_type ?? 'Nincs megadva'}`,
-        `Támogatás: ${g.amount_min?.toLocaleString('hu-HU') ?? '?'} - ${
-          g.amount_max?.toLocaleString('hu-HU') ?? '?'
-        } Ft`,
-        `Határidő: ${g.deadline ?? 'Nincs megadva'}`,
+        // Copilot card: the app's amount and deadline rules, not the raw values (grant-text.ts).
+        `Támogatás: ${formatAmountHu(g.amount_min, g.amount_max) ?? 'Nincs megadva'}`,
+        `Határidő: ${formatDeadlineHu(g.deadline) ?? 'Nincs megadva'}`,
         `Jogosultsági feltételek: ${g.eligibility_criteria ?? 'Nincs megadva'}`,
         `Leírás: ${(g.description ?? 'Nincs megadva').slice(0, 1200)}`,
       ].join('\n'),
