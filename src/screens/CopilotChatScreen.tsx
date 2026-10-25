@@ -283,7 +283,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  // E2E vc 18 (Marveen 4801): a long grant title ran out of the bubble (559 px at a 390 px screen);
+  // the tag may be at most as wide as the bubble and its text wraps.
   sourceTag: {
+    maxWidth: '100%',
     backgroundColor: '#ECEFF1',
     borderRadius: 8,
     paddingHorizontal: 6,
@@ -292,7 +295,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sourceTagText: {
-    fontSize: 9,
+    flexShrink: 1,
+    fontSize: 11,
     color: '#455A64',
     fontWeight: '600',
   }
