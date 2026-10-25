@@ -71,6 +71,21 @@ export const MIN_MATCH_SCORE = 40;
 const MAX_CANDIDATES = 12;
 
 /**
+ * Card [C] (review 2026-10-25): the earliest deadline that still counts as open. A grant stays a candidate for its
+ * whole deadline day in Budapest (the deadline is often stored as that day's midnight), the same cut the app uses.
+ */
+export function openGrantCutoffIso(now: Date = new Date(), timeZone = 'Europe/Budapest'): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(now).map((p) => [p.type, p.value]),
+  );
+  const wall = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  const offsetMs = wall - Math.floor(now.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day) - offsetMs).toISOString();
+}
+
+/**
  * Renders the company profile as the text that gets embedded and shown to the
  * scoring model. Missing fields are labelled rather than omitted so the model
  * can explicitly reason about gaps in the profile.
@@ -103,12 +118,13 @@ export async function collectCandidateGrants(
   supabase: SupabaseClient,
   profileText: string,
   geminiApiKey: string,
+  embed: (text: string, apiKey: string) => Promise<number[]> = generateEmbedding,
 ): Promise<GrantRow[]> {
-  const nowIso = new Date().toISOString();
+  const nowIso = openGrantCutoffIso();
   const orderedIds: string[] = [];
 
   try {
-    const embedding = await generateEmbedding(profileText, geminiApiKey);
+    const embedding = await embed(profileText, geminiApiKey);
     const { data: chunks, error } = await supabase.rpc('match_grant_chunks', {
       query_embedding: embedding,
       match_threshold: 0.2,
@@ -130,22 +146,25 @@ export async function collectCandidateGrants(
     console.warn('Embedding alapú keresés sikertelen, fallback ág következik:', err);
   }
 
-  // Only grants that are still open are ever considered.
-  const { data: openGrants, error: grantsError } = await supabase
-    .from('grants')
-    .select(
-      'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria',
-    )
-    .or(`deadline.is.null,deadline.gte.${nowIso}`)
-    .order('created_at', { ascending: false })
-    .limit(60);
+  // Only grants that are still open are ever considered. The semantic hits are fetched by id: reading them
+  // only out of the newest 60 open grants dropped every older relevant one once there were more than 60
+  // (review 2026-10-25, Irisz). The newest 60 stay as the fallback order behind them.
+  const columns = 'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria';
+  const openFilter = `deadline.is.null,deadline.gte.${nowIso}`;
+  const [semantic, recent] = await Promise.all([
+    orderedIds.length
+      ? supabase.from('grants').select(columns).in('id', orderedIds).or(openFilter)
+      : Promise.resolve({ data: [] as GrantRow[], error: null }),
+    supabase.from('grants').select(columns).or(openFilter).order('created_at', { ascending: false }).limit(60),
+  ]);
 
+  const grantsError = semantic.error ?? recent.error;
   if (grantsError) {
     throw new Error(`Nem sikerült lekérdezni a pályázatokat: ${grantsError.message}`);
   }
 
   const byId = new Map<string, GrantRow>();
-  for (const grant of (openGrants ?? []) as GrantRow[]) {
+  for (const grant of [...(semantic.data ?? []), ...(recent.data ?? [])] as GrantRow[]) {
     byId.set(grant.id, grant);
   }
 

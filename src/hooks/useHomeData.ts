@@ -7,11 +7,23 @@ import { logger } from '../utils/logger';
 import { RootStackNavigationProp } from '../types/navigation';
 import { clearStoredChatHistory } from './useCopilotChat';
 
-import { sortFreshFirst } from '../lib/matchStatus';
+import { sortFreshFirst, withoutExpired } from '../lib/matchStatus';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 export interface SearchRunResult {
   matchesFound: number;
+}
+
+/** The ids of the matches that have an action plan, or null when the lookup failed (then nothing is hidden). */
+async function fetchPlanMatchIds(businessId: string): Promise<Set<string> | null> {
+  try {
+    const { data, error } = await supabase.from('action_plans').select('match_id').eq('business_profile_id', businessId);
+    if (error) throw error;
+    return new Set((data ?? []).map((r: { match_id: string | null }) => r.match_id).filter((id): id is string => !!id));
+  } catch (e) {
+    logger.warn('action plan lookup failed, expired matches stay listed:', e);
+    return null;
+  }
 }
 
 /**
@@ -122,17 +134,22 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
 
       if (profileData) {
         setProfile(profileData);
-        // Fetch matches
-        const { data: matchesData, error: matchesError } = await supabase
-          .from('grant_matches')
-          .select('*, grants(*)')
-          .eq('business_id', profileData.id)
-          .order('match_score', { ascending: false });
+        // Fetch matches, and the matches an action plan hangs on (those stay even when their grant expired).
+        const [{ data: matchesData, error: matchesError }, planMatchIds] = await Promise.all([
+          supabase
+            .from('grant_matches')
+            .select('*, grants(*)')
+            .eq('business_id', profileData.id)
+            .order('match_score', { ascending: false }),
+          fetchPlanMatchIds(profileData.id),
+        ]);
 
         if (matchesError) {
           logger.error(matchesError);
         } else if (matchesData) {
-          setMatches(sortFreshFirst(matchesData as unknown as MatchWithGrant[]));
+          const rows = matchesData as unknown as MatchWithGrant[];
+          // Card [C]: without the plan list nothing is hidden, so a failed lookup never drops a started plan.
+          setMatches(sortFreshFirst(planMatchIds ? withoutExpired(rows, planMatchIds) : rows));
         }
       } else {
         navigation.replace('Onboarding');
