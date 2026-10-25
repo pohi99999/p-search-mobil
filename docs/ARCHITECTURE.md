@@ -185,32 +185,44 @@ from the code.
 
 | Module | Exports / behaviour | Used by |
 |---|---|---|
-| `gemini.ts` | Constants: `gemini-embedding-001` (supabase/functions/_shared/gemini.ts:13), 768 dims (supabase/functions/_shared/gemini.ts:14), `gemini-2.5-flash` (supabase/functions/_shared/gemini.ts:15), v1beta REST base (supabase/functions/_shared/gemini.ts:17). `generateEmbedding` (supabase/functions/_shared/gemini.ts:28), `generateText` (supabase/functions/_shared/gemini.ts:68), `parseJsonFromModel` (supabase/functions/_shared/gemini.ts:104-120) | backfill-grant-chunks (supabase/functions/backfill-grant-chunks/index.ts:13), ingest-n8n-grants (supabase/functions/ingest-n8n-grants/index.ts:3), matching.ts (supabase/functions/_shared/matching.ts:23) |
+| `gemini.ts` | Constants: `gemini-embedding-001` (supabase/functions/_shared/gemini.ts:13), 768 dims (supabase/functions/_shared/gemini.ts:14), `gemini-2.5-flash` (supabase/functions/_shared/gemini.ts:15), v1beta REST base (supabase/functions/_shared/gemini.ts:17). `generateEmbedding` (supabase/functions/_shared/gemini.ts:28), `generateText` (supabase/functions/_shared/gemini.ts:68), `parseJsonFromModel` (supabase/functions/_shared/gemini.ts:104-120) | backfill-grant-chunks (supabase/functions/backfill-grant-chunks/index.ts:21), ingest-n8n-grants (supabase/functions/ingest-n8n-grants/index.ts:3), matching.ts (supabase/functions/_shared/matching.ts:23) |
 | `matching.ts` | `collectCandidateGrants`: embedding, then RPC `match_grant_chunks`, then a fallback to open `grants` (supabase/functions/_shared/matching.ts:101-164). `scoreCandidates`: one Gemini JSON call (supabase/functions/_shared/matching.ts:170-247). `runMatchingForProfile`: upserts `grant_matches` on `business_id,grant_id` for score ≥ 40 (supabase/functions/_shared/matching.ts:257-311). `computeNextScanAt` (supabase/functions/_shared/matching.ts:318-326) | match-grants (supabase/functions/match-grants/index.ts:3), scheduled-grant-scan (supabase/functions/scheduled-grant-scan/index.ts:3) |
 | `entitlement.ts` | `PRO_TIER='pro'`, `FREE_DAILY_SEARCH_CAP=20` (supabase/functions/_shared/entitlement.ts:7-8). `getSubscriptionTier` reads `profiles.subscription_tier` and defaults to `'free'` (supabase/functions/_shared/entitlement.ts:16-24) | generate-action-plan (supabase/functions/generate-action-plan/index.ts:4), generate-document (supabase/functions/generate-document/index.ts:3), match-grants (supabase/functions/match-grants/index.ts:4) |
 | `daily-search-refund.ts` | `refundDailySearch` decrements today's `daily_search_count` (supabase/functions/_shared/daily-search-refund.ts:23-36) | match-grants (supabase/functions/match-grants/index.ts:124) |
 | `match-ownership.ts` | `foreignMatchIds` compares `business_id` (supabase/functions/_shared/match-ownership.ts:15-22) | generate-action-plan (supabase/functions/generate-action-plan/index.ts:117) |
-| `grant-chunking.ts` | `buildGrantText` / `splitParagraphs` / `chunkGrant` (supabase/functions/_shared/grant-chunking.ts:21-43) | backfill-grant-chunks (supabase/functions/backfill-grant-chunks/index.ts:14) |
+| `grant-chunking.ts` | `buildGrantText` / `splitParagraphs` / `chunkGrant` (supabase/functions/_shared/grant-chunking.ts:27-49); the header's amount and deadline via `grant-text.ts` (supabase/functions/_shared/grant-chunking.ts:12) | backfill-grant-chunks (supabase/functions/backfill-grant-chunks/index.ts:22) |
 | `request-log.ts` | Logs the shape of data only, never values (supabase/functions/_shared/request-log.ts:7-49) | chat-with-gemini (supabase/functions/chat-with-gemini/index.ts:4-9) |
 
 ### 3.2 Functions
 
 #### `backfill-grant-chunks`
-- **Auth:** POST only (supabase/functions/backfill-grant-chunks/index.ts:29). The bearer must
-  equal the service-role key (supabase/functions/backfill-grant-chunks/index.ts:30-34).
-- **Input:** `{ dry_run?: boolean, limit?: number }`. Dry run is the default; `limit` is
-  clamped to 1..500 (supabase/functions/backfill-grant-chunks/index.ts:35-38).
-- **Client / data:** service role (supabase/functions/backfill-grant-chunks/index.ts:40).
-  - Reads `grant_chunks` and `grants` (supabase/functions/backfill-grant-chunks/index.ts:41-46).
-  - Inserts `grant_chunks` with Gemini embeddings
-    (supabase/functions/backfill-grant-chunks/index.ts:64-68).
+- **Auth:** POST only (supabase/functions/backfill-grant-chunks/index.ts:37). The bearer must
+  equal the runtime's `SUPABASE_SERVICE_ROLE_KEY` (supabase/functions/backfill-grant-chunks/index.ts:38-42).
+  On this project that is the new secret key (`sb_secret_…`), not the legacy `service_role` JWT:
+  the legacy JWT gets 401 (measured 2026-10-25).
+- **Input, default mode:** `{ dry_run?: boolean, limit?: number }`. Dry run is the default; `limit` is
+  clamped to 1..500 (supabase/functions/backfill-grant-chunks/index.ts:45-46). Only grants with no
+  chunk are planned; a grant that has chunks is never touched (supabase/functions/backfill-grant-chunks/index.ts:51-58).
+- **Input, regenerate:** `{ mode: "regenerate", grant_ids: string[], dry_run?: boolean }`
+  (supabase/functions/backfill-grant-chunks/index.ts:49, :91). Rebuilds the chunks of exactly those grants
+  from today's row. 1..100 ids, duplicates collapsed; an invalid list or an unknown `mode` is a 400
+  (supabase/functions/backfill-grant-chunks/index.ts:50, :89).
+  - The dry run lists per grant the `delete_chunk_ids` and the `new_chunks` texts, plus `not_found`
+    (supabase/functions/backfill-grant-chunks/index.ts:118).
+  - Writing embeds and inserts the new chunks first and deletes that grant's old ids only after
+    (supabase/functions/backfill-grant-chunks/index.ts:134-140). A failed embed or insert deletes nothing;
+    a row that gives no chunk keeps its old ones (supabase/functions/backfill-grant-chunks/index.ts:126).
+- **Client / data:** service role (supabase/functions/backfill-grant-chunks/index.ts:48).
+  - Reads `grant_chunks` and `grants`, inserts `grant_chunks` with Gemini embeddings
+    (supabase/functions/backfill-grant-chunks/index.ts:78, :135); regenerate also deletes `grant_chunks` by id.
 - **Output:**
   - Dry run: `{ dry_run: true, grants_total, grants_covered, grants_to_backfill, chunks_planned, plan }`
-    (supabase/functions/backfill-grant-chunks/index.ts:52-54).
+    (supabase/functions/backfill-grant-chunks/index.ts:63); regenerate:
+    `{ dry_run: true, mode, grants_requested, not_found, chunks_to_delete, chunks_to_write, plan }`.
   - Write run: `{ dry_run: false, grants_to_backfill, chunks_planned, chunks_inserted, failed }`
-    (supabase/functions/backfill-grant-chunks/index.ts:75).
-- **Callers:** none in the repo. It is not called from `src/`, `scripts/`, the migrations or
-  CI. The CI Deno steps do not include it (.github/workflows/ci.yml:25-29).
+    (supabase/functions/backfill-grant-chunks/index.ts:85); regenerate adds `chunks_deleted`, and each
+    `failed` entry names its `stage` (supabase/functions/backfill-grant-chunks/index.ts:148).
+- **Callers:** none in the repo; it is run by hand (admin). Its Deno tests run in CI (.github/workflows/ci.yml:32).
 
 #### `chat-with-gemini`
 - **Auth:** `Authorization` is required (supabase/functions/chat-with-gemini/index.ts:33-40).
@@ -529,7 +541,7 @@ function environment.
 | supabase/functions/_shared/gemini.ts:68-84 | REST `generateContent` | `gemini-2.5-flash` default |
 | supabase/functions/_shared/matching.ts:110, supabase/functions/_shared/matching.ts:224 | via gemini.ts | embedding + flash (called by match-grants and scheduled-grant-scan) |
 | supabase/functions/ingest-n8n-grants/index.ts:132 | via gemini.ts | embedding |
-| supabase/functions/backfill-grant-chunks/index.ts:64 | via gemini.ts | embedding |
+| supabase/functions/backfill-grant-chunks/index.ts:74, :131 | via gemini.ts | embedding |
 | supabase/functions/chat-with-gemini/index.ts:3, supabase/functions/chat-with-gemini/index.ts:209-215, supabase/functions/chat-with-gemini/index.ts:350-358 | `npm:@google/generative-ai` | embedding + flash |
 | supabase/functions/process-master-document/index.ts:3, supabase/functions/process-master-document/index.ts:231-256 | `npm:@google/generative-ai` | flash (vision) |
 | supabase/functions/generate-action-plan/index.ts:3, supabase/functions/generate-action-plan/index.ts:138-139 | `esm.sh/@google/generative-ai@0.1.3` | flash |

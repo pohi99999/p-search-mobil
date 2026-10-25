@@ -5,8 +5,9 @@
 // searches chunks, so matching could reach ONE grant. This function closes that
 // gap idempotently: a grant that already has chunks is never touched.
 //
-// Gate: the caller must send the service-role key as the bearer (admin job, not a
-// user action). Body: {"dry_run": true} returns the plan and writes nothing;
+// Gate: the bearer must equal the runtime's SUPABASE_SERVICE_ROLE_KEY (admin job, not a user action). On this
+// project that is the new secret key (sb_secret_...), not the legacy service_role JWT: the legacy JWT gets 401
+// (measured 2026-10-25, Brunella 4889). Body: {"dry_run": true} returns the plan and writes nothing;
 // {"dry_run": false} embeds and inserts. `limit` caps the grants per call.
 //
 // Regenerate (Irisz 4868 (a), Brunella 4872): the default mode never touches a grant that already has chunks,
