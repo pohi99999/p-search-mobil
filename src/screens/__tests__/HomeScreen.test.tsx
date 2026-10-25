@@ -1,7 +1,7 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { contrastRatio } from '../../test-utils/contrast';
-import { HomeScreen } from '../HomeScreen';
+import { HomeScreen, FAB_IDLE_LABEL, FAB_SEARCHING_LABEL } from '../HomeScreen';
 import { useHomeData } from '../../hooks/useHomeData';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -243,6 +243,35 @@ describe('HomeScreen', () => {
     const root = renderScreen();
     const fab = root.root.findByProps({ testID: 'new-search-fab' });
     expect(contrastRatio(fab.props.color, '#1976D2')).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // Péter 10518: while searching, the FAB label stayed greyed out (Paper's disabled colours) and overflowed on web.
+  it.each([true, false])('the search button keeps a readable label and only searches when idle (searching=%s)', (searching) => {
+    const handleNewSearch = jest.fn();
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      searching,
+      hasSearched: true,
+      profile: { company_name: 'Test Company' },
+      matches: [{ id: '1', grants: {} }],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch,
+    });
+    const root = renderScreen();
+    const fab = root.root.findByProps({ testID: 'new-search-fab' });
+    expect(fab.props.disabled).toBeFalsy();
+    expect(contrastRatio(fab.props.color, '#1976D2')).toBeGreaterThanOrEqual(4.5);
+    expect(fab.props.accessibilityState).toEqual({ busy: searching, disabled: searching });
+    act(() => { fab.props.onPress(); });
+    expect(handleNewSearch).toHaveBeenCalledTimes(searching ? 0 : 1);
+    expect(fab.props.label).toBe(searching ? FAB_SEARCHING_LABEL : FAB_IDLE_LABEL);
+  });
+
+  // Paper places a static-icon FAB label by its width; a longer searching label ran out of the button on web.
+  it('the searching label is not longer than the idle label', () => {
+    expect(FAB_SEARCHING_LABEL.length).toBeLessThanOrEqual(FAB_IDLE_LABEL.length);
   });
 
   // Owner decision 2026-10-04 (card bc8e4135): no ad inside the list, only the bottom banner.

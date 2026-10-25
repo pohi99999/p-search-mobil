@@ -12,6 +12,10 @@ import { HomeEmptyState, type HomeEmptyStateKind } from '../components/HomeEmpty
 import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
 
+/** FAB labels; the searching one must not be wider than the idle one (see the FAB below). */
+export const FAB_IDLE_LABEL = 'Új AI Keresés';
+export const FAB_SEARCHING_LABEL = 'Keresés…';
+
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const {
     loading,
@@ -106,18 +110,23 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       {/* Extended only at the top of the list; once scrolled it is the round icon, so it covers far less of
           the cards (card a96dd8e2 #9: the wide label covered the 2nd card's text). */}
       <AnimatedFAB
+        // While searching (Péter 10518): Paper's disabled FAB ignores `color` and greys the label out
+        // (onSurfaceDisabled on surfaceDisabled), so the button stays enabled-looking and ignores presses instead.
+        // The label must stay short: with iconMode="static" Paper places it at right = textWidth - 56 + 16, so a
+        // label wider than ~112 px starts left of the button (measured on web: "Keresés folyamatban..." is 148 px
+        // and ran 38 px out). The full sentence is in the accessibility label.
         icon={searching ? 'progress-clock' : 'magnify'}
         // Card [I]: the MD3 default label colour (onPrimaryContainer #21005D) on our blue was 3.73:1; white is 4.60:1.
         color="#FFFFFF"
         style={[styles.fab, { bottom: fabBottom }]}
         testID="new-search-fab"
-        label={searching ? 'Keresés folyamatban...' : 'Új AI Keresés'}
+        label={searching ? FAB_SEARCHING_LABEL : FAB_IDLE_LABEL}
         extended={fabExtended || Boolean(searching)}
         animateFrom="right"
         iconMode="static"
-        onPress={handleNewSearch}
-        disabled={searching}
-        accessibilityLabel="Új AI keresés indítása"
+        onPress={() => { if (!searching) void handleNewSearch(); }}
+        accessibilityLabel={searching ? 'Keresés folyamatban' : 'Új AI keresés indítása'}
+        accessibilityState={{ busy: Boolean(searching), disabled: Boolean(searching) }}
       />
       
       <AdBanner onHeightChange={setBannerHeight} />
