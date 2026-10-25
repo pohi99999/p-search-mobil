@@ -88,8 +88,8 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
 const GRANT_COLUMNS = "id,title,provider,grant_type,amount_min,amount_max,deadline,description,eligibility_criteria";
 export const REGENERATE_MAX_GRANTS = 100;
 /**
- * Embedding calls one regenerate run may spend (Brunella 4897, Irisz 4895). The free daily quota of the P-Search key
- * is about 100 (2026-10-25: the 100th call got 429) and the users' searches share it, so a run takes a slice of it.
+ * Embedding calls one regenerate run may spend (Brunella 4897, Irisz 4895). On 2026-10-25 the 100th call got 429; whether
+ * that limit is daily or per minute is not measured yet (Irisz 4904). The users' searches share it, so a run takes a slice.
  */
 export const REGENERATE_DEFAULT_MAX_EMBEDS = 40;
 
@@ -142,7 +142,7 @@ async function regenerate(supabase: SupabaseClient, deps: Deps, rawIds: unknown,
   if (!geminiApiKey) return json({ error: "GEMINI_API_KEY missing" }, 500);
   let inserted = 0, deleted = 0;
   const failed: { grant_id: string; stage: string; error: string }[] = [];
-  // Brunella 4894: on 2026-10-25 the free daily embedding quota ran out mid-run (429), and every later grant would
+  // Brunella 4894: on 2026-10-25 the embedding quota (daily or per minute, not measured) ran out mid-run (429), and every later grant would
   // only have hit 429 again. The run stops at the first quota error; remaining_grant_ids (that grant and the ones
   // not reached) is the list for the next call.
   let remaining: string[] = summary.grants_over_budget;

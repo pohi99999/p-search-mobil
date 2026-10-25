@@ -205,8 +205,8 @@ from the code.
   chunk are planned; a grant that has chunks is never touched (supabase/functions/backfill-grant-chunks/index.ts:51-58).
 - **Input, regenerate:** `{ mode: "regenerate", grant_ids: string[], max_embeds?: number, dry_run?: boolean }`
   (supabase/functions/backfill-grant-chunks/index.ts:49, :96). Rebuilds the chunks of exactly those grants
-  from today's row. 1..100 ids, duplicates collapsed; `max_embeds` 1..500, default 40 (the free daily
-  embedding quota is about 100 and shared with the users' searches). An invalid list, an invalid
+  from today's row. 1..100 ids, duplicates collapsed; `max_embeds` 1..500, default 40 (on 2026-10-25 the
+  100th embedding got 429, daily or per-minute limit not measured; shared with searches). An invalid list, an invalid
   `max_embeds` or an unknown `mode` is a 400 (supabase/functions/backfill-grant-chunks/index.ts:50, :89-104).
   - Grants are taken in order and whole while their chunks fit in `max_embeds`; the rest is
     `grants_over_budget` and is not embedded.
