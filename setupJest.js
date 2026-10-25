@@ -12,3 +12,7 @@ jest.mock('@expo/vector-icons', () => {
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
+
+// Card [G]: src/services/events.ts reads the app version; the native module is absent under jest. A test that needs
+// a value mocks expo-application itself (that overrides this one).
+jest.mock('expo-application', () => ({ nativeApplicationVersion: null, nativeBuildVersion: null }));
