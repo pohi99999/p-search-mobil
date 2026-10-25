@@ -303,3 +303,79 @@ describe('OnboardingScreen new profile refreshes the context', () => {
     expect(logger.warn).toHaveBeenCalledWith('Profil-frissítés hiba:', refreshError);
   });
 });
+
+describe('OnboardingScreen tax number format warning (owner GO, Telegram 10614)', () => {
+  let mockInsert: jest.Mock;
+  let component: renderer.ReactTestRenderer;
+
+  const renderWithTaxNumber = async (taxNumber: string) => {
+    (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
+    const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'new-profile' }, error: null });
+    mockInsert = jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: mockSingle }) });
+    (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+    supabase.functions.invoke = jest.fn().mockResolvedValue({ data: { found: false } });
+    const mockNavigation = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const inputs = component.root.findAllByType(TextInput);
+    await act(async () => { inputs.find((n) => n.props.label === 'Cégnév *')!.props.onChangeText('Adó Kft'); });
+    const taxInput = component.root.findAllByType(TextInput).find((n) => n.props.label === 'Adószám')!;
+    await act(async () => { taxInput.props.onChangeText(taxNumber); });
+    return mockNavigation;
+  };
+  const blurTaxField = async () => {
+    const taxInput = component.root.findAllByType(TextInput).find((n) => n.props.label === 'Adószám')!;
+    await act(async () => { taxInput.props.onBlur(); });
+  };
+  const warning = () => component.root.findAllByProps({ testID: 'onboarding-tax-warning' }).filter((n) => n.type === HelperText);
+  const save = async () => { await act(async () => { await component.root.findByType(Button).props.onPress(); }); };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockProfileContext.profile = null;
+    mockProfileContext.refreshProfile = jest.fn().mockResolvedValue(undefined);
+  });
+  afterEach(async () => { await act(async () => { component.unmount(); }); });
+
+  it('a wrong check digit warns once the field is left, and saving still goes through with the typed number', async () => {
+    const mockNavigation = await renderWithTaxNumber('12345678-1-12');
+    expect(warning()).toHaveLength(0); // not while typing
+    await blurTaxField();
+    expect(warning()).toHaveLength(1);
+    expect(warning()[0].props.children).toMatch(/ellenőrző számjegy/);
+    await save();
+    expect(mockInsert).toHaveBeenCalledWith([expect.objectContaining({ tax_number: '12345678-1-12' })]);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+  });
+
+  it('a malformed number pressed straight to save still saves', async () => {
+    const mockNavigation = await renderWithTaxNumber('1234');
+    await save();
+    expect(mockInsert).toHaveBeenCalledWith([expect.objectContaining({ tax_number: '1234' })]);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+  });
+
+  it('a malformed number shows the shape hint', async () => {
+    await renderWithTaxNumber('HU12345676');
+    await blurTaxField();
+    expect(warning()[0].props.children).toMatch(/formája: 12345678-1-12/);
+  });
+
+  it('fixing the number clears the warning', async () => {
+    await renderWithTaxNumber('12345678-1-12');
+    await blurTaxField();
+    expect(warning()).toHaveLength(1);
+    const taxInput = component.root.findAllByType(TextInput).find((n) => n.props.label === 'Adószám')!;
+    await act(async () => { taxInput.props.onChangeText('12345676-2-41'); });
+    expect(warning()).toHaveLength(0);
+  });
+
+  it.each([['a correct number', '12345676-2-41'], ['an empty field', '']])('%s gives no warning and saves', async (_label, taxNumber) => {
+    const mockNavigation = await renderWithTaxNumber(taxNumber);
+    await blurTaxField();
+    expect(warning()).toHaveLength(0);
+    await save();
+    expect(warning()).toHaveLength(0);
+    expect(mockInsert).toHaveBeenCalledWith([expect.objectContaining({ tax_number: taxNumber })]);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+  });
+});

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
-import { normalizeHuTaxNumber } from '../lib/taxNumber';
+import { huTaxNumberWarning, normalizeHuTaxNumber } from '../lib/taxNumber';
 import { AdBanner } from '../components/AdBanner';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -54,6 +54,9 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editMode, existingProfile?.id]);
   const [viesHint, setViesHint] = useState<string | null>(null);
+  // A malformed tax number only warns, and only once the user left the field or pressed save (not mid-typing).
+  const [taxTouched, setTaxTouched] = useState(false);
+  const taxWarning = taxTouched ? huTaxNumberWarning(form.tax_number) : null;
   const [viesLookedUp, setViesLookedUp] = useState<string | null>(null);
 
   // VIES pre-fill (kanban eeac42d8, B2/3): once the tax number has its first 8
@@ -80,6 +83,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
 
   const handleSave = async () => {
+    setTaxTouched(true);
     // Spaces are allowed in the numbers ("50 000 000"); anything else is reported at its field.
     const employeeCountStr = form.employee_count ? form.employee_count.replace(/\s/g, '') : '';
     const yearlyRevenueStr = form.yearly_revenue ? form.yearly_revenue.replace(/\s/g, '') : '';
@@ -186,11 +190,19 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
               setForm({ ...form, tax_number: text });
               lookupVies(text, form.company_name);
             }}
-            onBlur={() => lookupVies(form.tax_number, form.company_name)}
+            onBlur={() => {
+              setTaxTouched(true);
+              lookupVies(form.tax_number, form.company_name);
+            }}
             style={styles.input}
             mode="outlined"
             keyboardType="numeric"
           />
+          {taxWarning ? (
+            <HelperText type="info" visible style={styles.taxWarning} testID="onboarding-tax-warning">
+              {taxWarning}
+            </HelperText>
+          ) : null}
           {viesHint ? (
             <Text variant="bodySmall" style={styles.viesHint} accessibilityLabel="VIES találat">
               {viesHint}
@@ -314,6 +326,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   fieldError: {
+    marginTop: -14,
+    marginBottom: 8,
+  },
+  taxWarning: {
+    color: '#8A5300',
     marginTop: -14,
     marginBottom: 8,
   },
