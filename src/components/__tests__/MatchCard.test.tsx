@@ -238,3 +238,33 @@ it('labels a stale match as a result of an earlier search', async () => {
   expect(json).toContain('Korábbi keresés találata');
   expect(json).not.toContain('Egyezés: 50%');
 });
+
+// Card [A]: the deadline is on the card, expired ones in red.
+describe('deadline line (card [A])', () => {
+  const withDeadline = (deadline: string | null) => ({ id: 'm2', business_id: 'b', grant_id: 'g', match_score: 60, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'Határidős pályázat', provider: 'X', description: '', amount_min: null, amount_max: null, deadline } } as any);
+  const deadlineText = async (deadline: string | null) => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={withDeadline(deadline)} onPress={() => {}} />); });
+    const node = tree!.root.findAll((n) => n.props.testID === 'match-deadline' && typeof n.props.children === 'string')[0];
+    return { text: node.props.children as string, style: JSON.stringify(node.props.style) };
+  };
+
+  beforeEach(() => { jest.useFakeTimers(); jest.setSystemTime(new Date(2026, 9, 25, 10, 0, 0)); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  it('shows the days left for an open grant', async () => {
+    const { text } = await deadlineText(new Date(2026, 11, 30, 12).toISOString());
+    expect(text).toBe('Beadás: 2026. 12. 30. (még 66 nap)');
+  });
+
+  it('marks an expired grant in red', async () => {
+    const { text, style } = await deadlineText(new Date(2026, 9, 1, 12).toISOString());
+    expect(text).toBe('Lejárt: 2026. 10. 01.');
+    expect(style).toContain('#B71C1C');
+  });
+
+  it('says when there is no deadline', async () => {
+    const { text } = await deadlineText(null);
+    expect(text).toBe('Beadási határidő: nincs megadva');
+  });
+});
