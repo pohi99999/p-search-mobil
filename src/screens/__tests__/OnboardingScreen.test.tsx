@@ -420,25 +420,83 @@ describe('OnboardingScreen edit save path', () => {
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
-  it('opened as an edit while the context has no profile, it updates the user\'s row instead of inserting a second one', async () => {
+  // The stored row the screen loads itself when the context holds no profile (PR #249 review, Péter 11611).
+  const STORED = { id: 'profile-1', user_id: 'test-user-id', company_name: 'Tárolt Kft', tax_number: '12345678-2-41', industry_code: '6201', employee_count: 12, yearly_revenue: 180000000, goals: 'gépbeszerzés' };
+  function fallbackClient(lookup: { data: unknown; error: unknown } | (() => never)) {
+    const maybeSingle = jest.fn().mockImplementation(() => (typeof lookup === 'function' ? lookup() : Promise.resolve(lookup)));
+    const limit = jest.fn().mockReturnValue({ maybeSingle });
+    const lookupEq = jest.fn().mockReturnValue({ limit });
+    const select = jest.fn().mockReturnValue({ eq: lookupEq });
+    const updateEq = jest.fn().mockResolvedValue({ error: null });
+    const update = jest.fn().mockReturnValue({ eq: updateEq });
+    const insert = jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: jest.fn().mockResolvedValue({ data: { id: 'new-1' }, error: null }) }) });
+    (supabase.from as jest.Mock).mockReturnValue({ select, update, insert });
+    return { select, lookupEq, update, updateEq, insert };
+  }
+  const fieldValues = (root: renderer.ReactTestInstance) => Object.fromEntries(root.findAllByType(TextInput).map((n) => [n.props.label, n.props.value]));
+
+  it('(a) the context has no profile: the form opens with the stored values, and renaming changes only the name in the update', async () => {
     mockProfileContext.profile = null;
-    const mockMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'profile-1' }, error: null });
-    const mockLimit = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-    const mockLookupEq = jest.fn().mockReturnValue({ limit: mockLimit });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockLookupEq });
-    const mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
-    const mockUpdate = jest.fn().mockReturnValue({ eq: mockUpdateEq });
-    const mockInsert = jest.fn();
-    (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect, update: mockUpdate, insert: mockInsert });
+    const c = fallbackClient({ data: STORED, error: null });
     const navigation = nav();
     await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    expect(c.select).toHaveBeenCalledWith('*');
+    expect(c.lookupEq).toHaveBeenCalledWith('user_id', 'test-user-id');
+    expect(fieldValues(component.root)).toMatchObject({
+      'Cégnév *': 'Tárolt Kft', 'Adószám': '12345678-2-41', 'Főtevékenység (TEÁOR)': '6201',
+      'Alkalmazottak száma': '12', 'Éves árbevétel (HUF)': '180000000',
+    });
     await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Javított Kft'); });
     await act(async () => { await component.root.findByType(Button).props.onPress(); });
-    expect(supabase.from).toHaveBeenCalledWith('business_profiles');
-    expect(mockLookupEq).toHaveBeenCalledWith('user_id', 'test-user-id');
-    expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpdate.mock.calls[0][0]).toMatchObject({ company_name: 'Javított Kft' });
-    expect(mockUpdateEq).toHaveBeenCalledWith('id', 'profile-1');
+    expect(c.insert).not.toHaveBeenCalled();
+    expect(c.update).toHaveBeenCalledTimes(1);
+    expect(c.update.mock.calls[0][0]).toEqual({
+      company_name: 'Javított Kft', tax_number: '12345678-2-41', industry_code: '6201',
+      employee_count: 12, yearly_revenue: 180000000, goals: 'gépbeszerzés',
+    });
+    expect(c.updateEq).toHaveBeenCalledWith('id', 'profile-1');
     expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('(b) the load fails: the error is on the form, the save is disabled, and a press writes nothing (0 update, 0 insert)', async () => {
+    mockProfileContext.profile = null;
+    const c = fallbackClient({ data: null, error: new Error('Keresési hiba') });
+    const navigation = nav();
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    expect(JSON.stringify(component.toJSON())).toContain('Keresési hiba');
+    expect(component.root.findByType(Button).props.disabled).toBe(true);
+    await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Üres űrlapról'); });
+    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    expect(c.update).not.toHaveBeenCalled();
+    expect(c.insert).not.toHaveBeenCalled();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(mockProfileContext.refreshProfile).not.toHaveBeenCalled();
+  });
+
+  it('(b2) the load has not finished: the save is disabled and a press writes nothing', async () => {
+    mockProfileContext.profile = null;
+    const c = fallbackClient(() => new Promise(() => {}) as never);
+    const navigation = nav();
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    expect(component.root.findByType(Button).props.disabled).toBe(true);
+    await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Még tölt'); });
+    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    expect(c.update).not.toHaveBeenCalled();
+    expect(c.insert).not.toHaveBeenCalled();
+  });
+
+  it('the user has no stored profile at all: the load finds nothing and the first save is an insert for them', async () => {
+    mockProfileContext.profile = null;
+    const c = fallbackClient({ data: null, error: null });
+    (supabase.functions as unknown) = { invoke: jest.fn().mockResolvedValue({}) };
+    const navigation = nav();
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    expect(component.root.findByType(Button).props.disabled).toBe(false);
+    await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Új Kft'); });
+    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    expect(c.update).not.toHaveBeenCalled();
+    expect(c.insert).toHaveBeenCalledTimes(1);
+    expect(c.insert.mock.calls[0][0][0]).toMatchObject({ user_id: 'test-user-id', company_name: 'Új Kft' });
   });
 });

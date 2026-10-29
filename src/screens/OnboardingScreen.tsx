@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import type { RouteProp } from '@react-navigation/native';
 import { useProfile } from '../context/ProfileContext';
+import type { BusinessProfile } from '../types/database';
 
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
@@ -22,7 +23,19 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
   // Card fa68ea84: the same form edits an existing profile (Settings -> Cégprofil szerkesztése).
   // Until now a profile could be filled once (onboarding or the profile gate) and never corrected.
   const { profile: existingProfile, refreshProfile } = useProfile();
-  const editMode = route?.params?.edit === true && !!existingProfile;
+  const editRequested = route?.params?.edit === true;
+  const editMode = editRequested && !!existingProfile;
+  // Opened as an edit while the context holds no profile (its fetch failed or has not finished): the screen loads the
+  // user's own row itself. Until that has worked the form stays unsaveable, so an empty form can never overwrite a
+  // stored profile (PR #249 review, Péter 11611).
+  const needsOwnLoad = editRequested && !existingProfile;
+  type OwnLoad =
+    | { state: 'idle' | 'none' } // idle = the load is pending
+    | { state: 'ready'; profile: BusinessProfile }
+    | { state: 'error'; message: string };
+  const [ownLoad, setOwnLoad] = useState<OwnLoad>({ state: 'idle' });
+  const editing = editMode || ownLoad.state === 'ready';
+  const saveBlocked = needsOwnLoad && ownLoad.state !== 'ready' && ownLoad.state !== 'none';
   // Edge-to-edge: when no banner is shown (Pro, or the ad failed), the button must still clear the navigation bar.
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
@@ -41,18 +54,48 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
     yearly_revenue: '',
     goals: '',
   });
+  const formFrom = (p: BusinessProfile) => ({
+    company_name: p.company_name ?? '',
+    tax_number: p.tax_number ?? '',
+    industry_code: p.industry_code ?? '',
+    employee_count: p.employee_count != null ? String(p.employee_count) : '',
+    yearly_revenue: p.yearly_revenue != null ? String(p.yearly_revenue) : '',
+    goals: p.goals ?? '',
+  });
   useEffect(() => {
     if (!editMode || !existingProfile) return;
-    setForm({
-      company_name: existingProfile.company_name ?? '',
-      tax_number: existingProfile.tax_number ?? '',
-      industry_code: existingProfile.industry_code ?? '',
-      employee_count: existingProfile.employee_count != null ? String(existingProfile.employee_count) : '',
-      yearly_revenue: existingProfile.yearly_revenue != null ? String(existingProfile.yearly_revenue) : '',
-      goals: existingProfile.goals ?? '',
-    });
+    setForm(formFrom(existingProfile));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editMode, existingProfile?.id]);
+  // The fallback load: the user's own row (RLS: own profile only), the whole row, to prefill the form.
+  useEffect(() => {
+    if (!needsOwnLoad) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) throw new Error('Nincs bejelentkezett felhasználó!');
+        const { data: ownRow, error: loadError } = await supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .limit(1)
+          .maybeSingle();
+        if (loadError) throw loadError;
+        if (cancelled) return;
+        if (ownRow) {
+          setForm(formFrom(ownRow as BusinessProfile));
+          setOwnLoad({ state: 'ready', profile: ownRow as BusinessProfile });
+        } else {
+          setOwnLoad({ state: 'none' });
+        }
+      } catch (e: unknown) {
+        if (!cancelled) setOwnLoad({ state: 'error', message: getErrorMessage(e) || 'ismeretlen hiba' });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsOwnLoad]);
   const [viesHint, setViesHint] = useState<string | null>(null);
   // A malformed tax number only warns, and only once the user left the field or pressed save (not mid-typing).
   const [taxTouched, setTaxTouched] = useState(false);
@@ -83,6 +126,12 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
 
   const handleSave = async () => {
+    if (saveBlocked) {
+      setError(ownLoad.state === 'error'
+        ? 'A cégprofil betöltése nem sikerült, ezért a mentés le van tiltva. Lépj vissza, és nyisd meg újra.'
+        : 'A cégprofil betöltése még tart, a mentés a betöltés után lehetséges.');
+      return;
+    }
     setTaxTouched(true);
     // Spaces are allowed in the numbers ("50 000 000"); anything else is reported at its field.
     const employeeCountStr = form.employee_count ? form.employee_count.replace(/\s/g, '') : '';
@@ -110,19 +159,9 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
         goals: form.goals,
       };
 
-      // Opened from Settings while the context holds no profile (e.g. its fetch failed): look the user's row up,
-      // so the save corrects it instead of inserting a second profile for the same user.
-      let editId = editMode && existingProfile ? existingProfile.id : null;
-      if (!editId && route?.params?.edit === true) {
-        const { data: ownRow, error: lookupError } = await supabase
-          .from('business_profiles')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .limit(1)
-          .maybeSingle();
-        if (lookupError) throw lookupError;
-        editId = ownRow?.id ?? null;
-      }
+      // The row to update: the context's profile, or the one the fallback load found (the form was prefilled from it);
+      // none at all (the user never saved a profile) is a first save, an insert.
+      const editId = editMode && existingProfile ? existingProfile.id : ownLoad.state === 'ready' ? ownLoad.profile.id : null;
 
       if (editId) {
         // Edit: update the user's own row (RLS: own profile only), refresh the context, go back.
@@ -177,9 +216,9 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
-          <Text variant="headlineMedium" style={styles.title}>{editMode ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
+          <Text variant="headlineMedium" style={styles.title}>{editRequested && ownLoad.state !== 'none' ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            {editMode
+            {editRequested && ownLoad.state !== 'none'
               ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'
               : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!'}
           </Text>
@@ -275,16 +314,24 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
               Javítsd a pirossal jelölt mezőt, és mentsd újra.
             </HelperText>
           ) : null}
+          {needsOwnLoad && ownLoad.state === 'idle' ? (
+            <HelperText type="info" visible testID="onboarding-own-loading">A cégprofil betöltése folyamatban…</HelperText>
+          ) : null}
+          {ownLoad.state === 'error' ? (
+            <HelperText type="error" visible testID="onboarding-own-load-error">
+              A cégprofil betöltése nem sikerült: {ownLoad.message}. A mentés le van tiltva, hogy az üres űrlap ne írja felül a tárolt adatokat. Lépj vissza, és nyisd meg újra.
+            </HelperText>
+          ) : null}
           {error && <HelperText type="error" visible={true}>{error}</HelperText>}
 
           <Button 
             mode="contained" 
             onPress={handleSave} 
             loading={loading}
-            disabled={loading}
+            disabled={loading || saveBlocked}
             style={styles.button}
           >
-            {editMode ? 'Mentés' : 'Mentés és keresés indítása'}
+            {editing ? 'Mentés' : 'Mentés és keresés indítása'}
           </Button>
         </Surface>
       </ScrollView>
