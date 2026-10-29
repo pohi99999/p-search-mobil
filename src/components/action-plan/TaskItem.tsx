@@ -6,13 +6,26 @@ import { ActionTask, ActionTaskStatus } from '../../types/database';
 export const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void }) => {
   return (
     // Up to 3 lines of title and 4 of description: one line cut "Részletes Pályáz..." (card a96dd8e2 #11).
+    // Card 83c9d624: Android's default "highQuality" break strategy with hyphenation still split long
+    // words mid-word ("Megfelelőség-viz|sgálat"); the title is our own Text so it wraps at spaces and
+    // hyphens only (both props are Android-only, iOS already wraps at word boundaries).
     <List.Item
-      title={task.title}
-      titleStyle={[
-        styles.taskTitle,
-        task.status === 'done' && styles.doneTaskTitle
-      ]}
-      titleNumberOfLines={3}
+      title={({ ellipsizeMode, color }) => (
+        <Text
+          ellipsizeMode={ellipsizeMode}
+          numberOfLines={3}
+          textBreakStrategy="simple"
+          android_hyphenationFrequency="none"
+          style={[
+            { color },
+            styles.taskTitle,
+            task.status === 'done' && styles.doneTaskTitle
+          ]}
+          testID={`task-title-${task.id}`}
+        >
+          {task.title}
+        </Text>
+      )}
       // Card 83c9d624: the status button used to sit in the right slot and squeezed the title into a
       // narrow column, where long words broke mid-word ("Megfelelőség-viz|sgálat"). The title now has
       // the whole row; the button goes under the description, right-aligned.
