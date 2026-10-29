@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
 import { chatJson, type Turn } from '../_shared/llm.ts';
 import {
@@ -14,6 +14,8 @@ import { refundDailyChat } from '../_shared/daily-search-refund.ts';
 import { openGrantCutoffIso } from '../_shared/matching.ts';
 import { companyContext as buildCompanyContext, type CompanyFields } from '../_shared/company-context.ts';
 import { chatProfileDecision, chatProfileId } from '../_shared/chat-profile.ts';
+import { matchOwnership } from '../_shared/match-ownership.ts';
+import { generateEmbedding } from '../_shared/gemini.ts';
 import {
   buildChatSystemPrompt,
   buildRagContext,
@@ -33,7 +35,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
-serve(async (req) => {
+// The handler takes its Supabase clients and env as deps, so the ownership checks are tested without a network
+// (the pattern of match-grants, vies-check, delete-account).
+export interface Deps {
+  createClient: (url: string, key: string, options?: Record<string, unknown>) => SupabaseClient;
+  env: (name: string) => string | undefined;
+}
+
+const defaultDeps: Deps = {
+  createClient: (url, key, options) => createClient(url, key, options),
+  env: (name) => Deno.env.get(name),
+};
+
+export async function handler(req: Request, deps: Deps = defaultDeps): Promise<Response> {
   console.log('Kérés megérkezett. Metódus:', req.method);
 
   // CORS preflight kérések kezelése
@@ -64,16 +78,16 @@ serve(async (req) => {
 
     console.log('Supabase kliens inicializálása service_role kulccsal az RLS kikerüléséhez...');
     // Supabase kliens létrehozása service_role kulccsal
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    const supabaseClient = deps.createClient(
+      deps.env('SUPABASE_URL') ?? '',
+      deps.env('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
     );
 
     console.log('Felhasználó azonosítása...');
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    const userClient = deps.createClient(
+      deps.env('SUPABASE_URL') ?? '',
+      deps.env('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -112,6 +126,32 @@ serve(async (req) => {
     const message = input.message;
     const history = input.history;
 
+    const business_profile_id =
+      requestData.business_profile_id || requestData.businessProfileId || null;
+    const requestedMatchId: string | null = requestData.match_id || requestData.matchId || null;
+
+    // The match is read with the service role below, so its owner (business_id -> business_profiles.user_id) is
+    // checked first. A foreign match is refused before the daily chat cap is touched; one that is missing or could
+    // not be checked is dropped and the chat goes on without grant data, as it did for an unknown id.
+    let match_id: string | null = null;
+    let matchBusinessId: string | null = null;
+    if (requestedMatchId) {
+      const ownership = await matchOwnership(supabaseClient, requestedMatchId, user.id);
+      if (ownership.status === 'foreign') {
+        console.error('Jogosulatlan hozzáférés a pályázati találathoz');
+        return new Response(JSON.stringify({ error: 'Nincs jogosultság a megadott pályázati találathoz' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (ownership.status === 'own') {
+        match_id = requestedMatchId;
+        matchBusinessId = ownership.businessId;
+      } else {
+        console.warn(`A találat nem használható (${ownership.status}), pályázati adat nélkül folytatom.`);
+      }
+    }
+
     const gate = await consumeDailyChat(supabaseClient, user.id);
     if (!gate.allowed) {
       return new Response(JSON.stringify(gate.body), {
@@ -121,9 +161,6 @@ serve(async (req) => {
     }
     capConsumedFor = user.id;
     capClient = supabaseClient;
-    const business_profile_id =
-      requestData.business_profile_id || requestData.businessProfileId || null;
-    const match_id = requestData.match_id || requestData.matchId || null;
 
     console.log('Kinyert prompt/üzenet:', describeText(message));
     console.log(`Profil ID: ${business_profile_id}, Match ID: ${match_id}`);
@@ -135,19 +172,7 @@ serve(async (req) => {
     let companyContext = '';
     let companyProfile: CompanyFields | null = null;
     let profileId: string | null = null;
-    let matchBusinessId: string | null = null;
     if (!business_profile_id && match_id) {
-      // A separate read (service role, like the rest here): the grant fetch below comes after the profile block.
-      // On an error the chat goes on without company data, as before; the error is logged to tell it from "no match".
-      const { data: matchOwner, error: matchOwnerError } = await supabaseClient
-        .from('grant_matches')
-        .select('business_id')
-        .eq('id', match_id)
-        .maybeSingle();
-      if (matchOwnerError) {
-        console.warn('Nem sikerült lekérni a találat profilját:', matchOwnerError);
-      }
-      matchBusinessId = matchOwner?.business_id ?? null;
       console.warn(`A kérés profil-azonosító nélkül jött (match_id: ${match_id}); a találat profilja: ${matchBusinessId ?? 'nincs'}.`);
     }
     const profileRef = chatProfileId(business_profile_id, matchBusinessId);
@@ -254,7 +279,7 @@ serve(async (req) => {
 
     console.log('API kulcs ellenőrzése a környezeti változókban...');
     // 4. Gemini API kulcs lekérése és az SDK inicializálása
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    const apiKey = deps.env('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY környezeti változó nincs beállítva a Deno környezetben.');
     }
@@ -275,15 +300,11 @@ serve(async (req) => {
     if (!discussedGrant) {
       try {
         console.log("Embedding generálása a felhasználói kérdésre ('gemini-embedding-001')...");
-        const embeddingModel = genAI.getGenerativeModel({
-          model: 'gemini-embedding-001',
-        });
-        const embedResult = await embeddingModel.embedContent({
-          content: { parts: [{ text: message }] },
-          outputDimensionality: 768,
-        });
-        if (embedResult?.embedding?.values) {
-          queryEmbedding = embedResult.embedding.values;
+        // The REST helper (_shared/gemini.ts): the SDK's embedContent typings have no outputDimensionality, so the
+        // SDK call failed `deno check`; the helper also verifies the 768 dimensions grant_chunks.embedding needs.
+        const values = await generateEmbedding(message, apiKey);
+        if (values.length > 0) {
+          queryEmbedding = values;
           debugInfo.embedding_length = queryEmbedding.length;
           console.log(`Embedding sikeresen generálva: ${queryEmbedding.length} dimenzió.`);
         } else {
@@ -519,4 +540,8 @@ serve(async (req) => {
       },
     );
   }
-});
+}
+
+if (import.meta.main) {
+  serve((req) => handler(req));
+}

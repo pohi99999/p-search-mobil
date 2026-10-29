@@ -132,3 +132,23 @@ Deno.test("the AI quota is used up: the typed 429 with the Hungarian text, and t
   assertEquals(body.search_refunded, true);
   assertEquals(calls.refunds, 1);
 });
+
+Deno.test("the AI service is overloaded: the typed 503 with the Hungarian text, and the search is given back", async () => {
+  const { deps, calls } = setup({ ...ok, run: () => Promise.reject(new GeminiUnavailableError(503)) });
+  const res = await handler(req({ business_profile_id: "bp-1" }), deps);
+  assertEquals(res.status, 503);
+  assertEquals(await res.json(), {
+    code: "gemini_busy",
+    error: "Az AI-szolgáltatás átmenetileg túlterhelt, próbáld újra egy perc múlva.",
+    search_refunded: true,
+  });
+  assertEquals(calls.refunds, 1);
+});
+
+Deno.test("a raw Google error from the run never reaches the client", async () => {
+  const raw = "[GoogleGenerativeAI Error]: [500 Internal Server Error] upstream detail";
+  const { deps } = setup({ ...ok, run: () => Promise.reject(new Error(raw)) });
+  const text = await (await handler(req({ business_profile_id: "bp-1" }), deps)).text();
+  assertEquals(text.includes("GoogleGenerativeAI"), false);
+  assertEquals(JSON.parse(text).error, "Nem sikerült lefuttatni a pályázatkeresést.");
+});

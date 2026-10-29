@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
+import { actionPlanErrorResponse } from './errors.ts';
 import { generateText } from '../_shared/llm.ts';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
@@ -265,15 +265,8 @@ Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne 
         status: 200,
       },
     );
-  } catch (err: any) {
-    if (err instanceof GeminiUnavailableError) {
-      return geminiUnavailableResponse(err, corsHeaders);
-    }
-    // The raw error text (it used to be Google's "[GoogleGenerativeAI Error] ...") stays in the log.
-    console.error('Akcióterv-generálás hiba:', err);
-    return new Response(JSON.stringify({ error: 'Nem sikerült elkészíteni az akciótervet, próbáld újra később.' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
+  } catch (err: unknown) {
+    // Gemini 429/503 -> {code, error} with that status; anything else a generic 500 (errors.ts).
+    return actionPlanErrorResponse(err, corsHeaders);
   }
 });

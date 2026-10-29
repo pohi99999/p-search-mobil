@@ -4,8 +4,8 @@
 // headcount. The app's profile context fetched at sign-in, before onboarding inserted the row, and kept the null.
 // The client is fixed too, but installed builds (vc 18, vc 19) still send null; so when the id is missing and a
 // match is discussed, the match's own business_id is used. The caller still checks that the profile is the
-// caller's; one taken from the match is then skipped, not answered with 403, so a foreign match id behaves as
-// before (card 111f80fc).
+// caller's; one taken from the match is then skipped, not answered with 403 (card 111f80fc). A foreign match id
+// itself is refused earlier, before the cap is consumed (_shared/match-ownership.ts matchOwnership).
 // Plain TypeScript, no Deno API.
 
 export type ChatProfileSource = 'request' | 'match';
