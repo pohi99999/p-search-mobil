@@ -5,7 +5,7 @@
 
 /** A minimum of 1 Ft (or less) is a placeholder, not a bound. */
 export const PLACEHOLDER_MIN_FT = 1;
-/** Above this a "maximum" is a programme budget, not a per-project amount. */
+/** Above this (exclusive) a "maximum" is a programme budget, not a per-project amount. */
 export const PROGRAMME_BUDGET_FT = 10_000_000_000;
 
 // hu-HU grouping uses a no-break space (U+00A0, on some engines U+202F); the card and the tests
@@ -23,7 +23,7 @@ const huf = (n: number): string => `${Math.round(n).toLocaleString('hu-HU').repl
 export function formatGrantAmount(amountMin: number | null | undefined, amountMax: number | null | undefined): string | null {
   const min = typeof amountMin === 'number' && amountMin > PLACEHOLDER_MIN_FT ? amountMin : null;
   const max = typeof amountMax === 'number' && amountMax > 0 ? amountMax : null;
-  if (max != null && max >= PROGRAMME_BUDGET_FT) {
+  if (max != null && max > PROGRAMME_BUDGET_FT) {
     return min != null ? `legalább ${huf(min)}, keretösszeg ${huf(max)}` : `keretösszeg ${huf(max)}`;
   }
   if (min != null && max != null) return min === max ? huf(min) : `${huf(min)} - ${huf(max)}`;
