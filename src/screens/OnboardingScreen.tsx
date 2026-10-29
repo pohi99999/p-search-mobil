@@ -110,12 +110,26 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
         goals: form.goals,
       };
 
-      if (editMode && existingProfile) {
+      // Opened from Settings while the context holds no profile (e.g. its fetch failed): look the user's row up,
+      // so the save corrects it instead of inserting a second profile for the same user.
+      let editId = editMode && existingProfile ? existingProfile.id : null;
+      if (!editId && route?.params?.edit === true) {
+        const { data: ownRow, error: lookupError } = await supabase
+          .from('business_profiles')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .limit(1)
+          .maybeSingle();
+        if (lookupError) throw lookupError;
+        editId = ownRow?.id ?? null;
+      }
+
+      if (editId) {
         // Edit: update the user's own row (RLS: own profile only), refresh the context, go back.
         const { error: updateError } = await supabase
           .from('business_profiles')
           .update(values)
-          .eq('id', existingProfile.id);
+          .eq('id', editId);
         if (updateError) throw updateError;
         track('profile_updated', profileFlags(values));
         await refreshProfile();

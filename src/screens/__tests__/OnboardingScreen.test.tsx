@@ -379,3 +379,66 @@ describe('OnboardingScreen tax number format warning (owner GO, Telegram 10614)'
     expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
   });
 });
+
+// The edit save path (Settings -> Cégprofil szerkesztése) against a mocked Supabase client.
+describe('OnboardingScreen edit save path', () => {
+  const editRoute = { key: 'o', name: 'Onboarding', params: { edit: true } } as any;
+  const nav = () => ({ replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) }) as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+  const input = (root: renderer.ReactTestInstance, label: string) => root.findAllByType(TextInput).find((n) => n.props.label === label)!;
+  let component: renderer.ReactTestRenderer;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
+    mockProfileContext.profile = { id: 'profile-1', company_name: 'Régi Kft', tax_number: '', industry_code: '6201', employee_count: 12, yearly_revenue: 180000000, goals: '' };
+    mockProfileContext.refreshProfile = jest.fn().mockResolvedValue(undefined);
+  });
+  afterEach(async () => { await act(async () => { component.unmount(); }); });
+
+  it('a failed update shows the error and stays on the form', async () => {
+    // supabase-js's PostgrestError is an Error subclass.
+    const mockEq = jest.fn().mockResolvedValue({ error: new Error('Hálózati hiba') });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
+    (supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate, insert: jest.fn() });
+    const navigation = nav();
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(component.toJSON())).toContain('Hálózati hiba');
+    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(mockProfileContext.refreshProfile).not.toHaveBeenCalled();
+  });
+
+  it('validates like the onboarding: a bad revenue saves nothing', async () => {
+    const mockUpdate = jest.fn();
+    (supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate, insert: jest.fn() });
+    const navigation = nav();
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    await act(async () => { input(component.root, 'Éves árbevétel (HUF)').props.onChangeText('sok'); });
+    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('opened as an edit while the context has no profile, it updates the user\'s row instead of inserting a second one', async () => {
+    mockProfileContext.profile = null;
+    const mockMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'profile-1' }, error: null });
+    const mockLimit = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockLookupEq = jest.fn().mockReturnValue({ limit: mockLimit });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockLookupEq });
+    const mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockUpdateEq });
+    const mockInsert = jest.fn();
+    (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect, update: mockUpdate, insert: mockInsert });
+    const navigation = nav();
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Javított Kft'); });
+    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    expect(supabase.from).toHaveBeenCalledWith('business_profiles');
+    expect(mockLookupEq).toHaveBeenCalledWith('user_id', 'test-user-id');
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockUpdate.mock.calls[0][0]).toMatchObject({ company_name: 'Javított Kft' });
+    expect(mockUpdateEq).toHaveBeenCalledWith('id', 'profile-1');
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+});
