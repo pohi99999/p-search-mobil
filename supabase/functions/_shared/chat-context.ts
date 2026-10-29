@@ -135,7 +135,11 @@ export function profileAskRule(profile: CompanyFields | null): string {
   const list = `${missing.slice(0, -1).join(', ')} és ${missing[missing.length - 1]}`;
   let rule = `- Ha a felhasználó cégéről még nem áll rendelkezésre elegendő információ a pontos pályázati szűréshez, kérdezz vissza a hiányzó kulcsfontosságú részletekre: ${list}.`;
   if (given.length > 0) {
-    rule += ` A lenti cégadatok között már szerepel ${given.join(' és ')}: ezeket ne kérdezd meg újra, és ne sorold fel bekérendő adatként, hanem használd őket.`;
+    // One given field takes the singular ("ezt ... használd"), two the plural ("ezeket ... használd őket").
+    const tail = given.length === 1
+      ? 'ezt ne kérdezd meg újra, és ne sorold fel bekérendő adatként, hanem használd.'
+      : 'ezeket ne kérdezd meg újra, és ne sorold fel bekérendő adatként, hanem használd őket.';
+    rule += ` A lenti cégadatok között már szerepel ${given.join(' és ')}: ${tail}`;
   }
   return rule;
 }

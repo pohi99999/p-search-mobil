@@ -112,7 +112,21 @@ Deno.test('empty profile: the missing data is still asked for', () => {
 Deno.test('half-filled profile: only the missing one is asked for', () => {
   const rule = profileAskRule({ ...LUMEN, employee_count: null });
   assert(rule.includes('részletekre: cégforma, aktuális foglalkoztatotti létszám és székhely/telephely régió.'), rule);
-  assert(rule.includes('már szerepel az éves árbevétel: ezeket ne kérdezd meg újra'), rule);
+  // one given field: singular "ezt", not "ezeket"
+  assert(rule.includes('már szerepel az éves árbevétel: ezt ne kérdezd meg újra, és ne sorold fel bekérendő adatként, hanem használd.'), rule);
+  assert(!rule.includes('ezeket') && !rule.includes('őket'), rule);
+});
+
+Deno.test('one field given (only the headcount): the rule speaks of it in the singular', () => {
+  const rule = profileAskRule({ ...LUMEN, yearly_revenue: null });
+  assert(rule.includes('részletekre: cégforma, éves árbevétel és székhely/telephely régió.'), rule);
+  assert(rule.includes('már szerepel a foglalkoztatotti létszám: ezt ne kérdezd meg újra'), rule);
+  assert(!rule.includes('ezeket') && !rule.includes('őket'), rule);
+});
+
+Deno.test('both fields given: the plural stays', () => {
+  const rule = profileAskRule(LUMEN);
+  assert(rule.endsWith('ezeket ne kérdezd meg újra, és ne sorold fel bekérendő adatként, hanem használd őket.'), rule);
 });
 
 Deno.test('the sample reply asks for no company data', () => {
