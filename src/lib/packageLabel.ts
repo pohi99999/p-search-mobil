@@ -25,7 +25,8 @@ export function packageLabel(pkg: Pick<PurchasesPackage, 'packageType' | 'identi
     case 'LIFETIME':
       return `${PRO_BRAND} örökös`;
     default:
-      return PRO_BRAND;
+      // A package type we have no own name for (CUSTOM, UNKNOWN): still a readable product name.
+      return `${PRO_BRAND} előfizetés`;
   }
 }
 
