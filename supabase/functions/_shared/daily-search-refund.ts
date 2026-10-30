@@ -13,10 +13,12 @@ export function todayIsoDate(now: Date = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
 
-type Counter = { count: 'daily_search_count' | 'daily_chat_count'; date: 'daily_search_date' | 'daily_chat_date'; label: string };
+type Counter = { count: 'daily_search_count' | 'daily_chat_count' | 'daily_ocr_count'; date: 'daily_search_date' | 'daily_chat_date' | 'daily_ocr_date'; label: string };
 const SEARCH: Counter = { count: 'daily_search_count', date: 'daily_search_date', label: 'refundDailySearch' };
 // Card [L]: the daily chat cap (consume_daily_chat) is given back the same way when the AI call fails.
 const CHAT: Counter = { count: 'daily_chat_count', date: 'daily_chat_date', label: 'refundDailyChat' };
+// Kenshin P1-5 (kör 2): the daily OCR cap (consume_daily_ocr) is given back when the vision call did not run through.
+const OCR: Counter = { count: 'daily_ocr_count', date: 'daily_ocr_date', label: 'refundDailyOcr' };
 
 async function refundDailyCounter(client: MinimalClient, userId: string, c: Counter, now: Date): Promise<number | null> {
   try {
@@ -46,4 +48,9 @@ export function refundDailySearch(client: MinimalClient, userId: string, now: Da
 /** The same for daily_chat_count, after a Copilot chat message whose AI call failed. */
 export function refundDailyChat(client: MinimalClient, userId: string, now: Date = new Date()): Promise<number | null> {
   return refundDailyCounter(client, userId, CHAT, now);
+}
+
+/** The same for daily_ocr_count, after an upload whose OCR did not run through (kör 2, P1-5). */
+export function refundDailyOcr(client: MinimalClient, userId: string, now: Date = new Date()): Promise<number | null> {
+  return refundDailyCounter(client, userId, OCR, now);
 }
