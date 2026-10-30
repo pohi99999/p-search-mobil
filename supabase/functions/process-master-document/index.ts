@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 import { extractJson } from "../_shared/llm.ts";
 import { documentSizeError } from "../_shared/input-limits.ts";
+import { extractedLog, ocrAnswerLog, parseOcrJson } from "./ocr.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -205,7 +206,7 @@ serve(async (req) => {
         },
       );
     }
-    console.log(`Profil tulajdonos ellenőrizve: ${profile.company_name}`);
+    console.log("Profil tulajdonos ellenőrizve.");
 
     // ------------------------------------------------------------------
     // 5. financial_documents rekord létrehozása 'processing' státusszal
@@ -270,26 +271,15 @@ serve(async (req) => {
       ]);
       return geminiResult.response.text();
     }, 1024);
-    console.log("Gemini OCR nyers válasz:", rawOcrText);
+    // P-Search kör 2 (Kenshin P1-4): the statement's text never reaches the log, only its size.
+    console.log(ocrAnswerLog(rawOcrText));
 
     // ------------------------------------------------------------------
     // 7. JSON parse és validálás
     // ------------------------------------------------------------------
-    let extracted: Record<string, unknown> = {};
-    try {
-      extracted = JSON.parse(rawOcrText.trim());
-    } catch (parseErr) {
-      console.error(
-        "JSON parse hiba a Gemini válaszban:",
-        parseErr,
-        "Nyers szöveg:",
-        rawOcrText,
-      );
-      throw new Error(
-        `A Gemini nem adott vissza érvényes JSON-t. Nyers válasz: ${rawOcrText.slice(0, 200)}`,
-      );
-    }
-    console.log("Kinyert pénzügyi adatok:", JSON.stringify(extracted));
+    // A parse error names the text's size, not its content (the message is logged and stored below).
+    const extracted = parseOcrJson(rawOcrText);
+    console.log(extractedLog(extracted));
 
     // ------------------------------------------------------------------
     // 8. business_profiles upsert — csak érvényes (nem null) értékeket írunk
