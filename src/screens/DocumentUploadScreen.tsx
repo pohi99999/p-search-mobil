@@ -148,7 +148,22 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        // P-Search kör 2, P1-5 (Péter 12036): the 4th upload of the day gets 429 with the server's Hungarian text
+        // ("Mára elérted a dokumentumfeltöltések keretét..."); show that, not the generic failure.
+        const status = (error as { context?: { status?: number } })?.context?.status;
+        if (status === 429) {
+          let message = '';
+          try {
+            const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+            message = (ctx?.json ? (await ctx.json())?.error : '') ?? '';
+          } catch { /* fall through to the default text */ }
+          track('document_uploaded', { ok: false });
+          showSnackbar(message || 'Mára elérted a dokumentumfeltöltések keretét. Holnap újra feltölthetsz.');
+          return;
+        }
+        throw error;
+      }
       if (!data || !data.success || data.error) {
         throw new Error(data?.error ?? 'A dokumentum feldolgozása sikertelen.');
       }

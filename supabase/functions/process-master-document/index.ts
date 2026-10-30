@@ -4,6 +4,8 @@ import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 import { extractJson } from "../_shared/llm.ts";
 import { documentSizeError } from "../_shared/input-limits.ts";
 import { extractedLog, ocrAnswerLog, parseOcrJson } from "./ocr.ts";
+import { consumeDailyOcr } from "../_shared/daily-ocr.ts";
+import { refundDailyOcr } from "../_shared/daily-search-refund.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -84,6 +86,12 @@ serve(async (req) => {
   );
 
   let docId: string | null = null;
+
+  // Kenshin P1-5 (kör 2): whose daily OCR was consumed, and whether the vision call ran through (else refund).
+
+  let ocrCapUser: string | null = null;
+
+  let ocrRan = false;
 
   try {
     // ------------------------------------------------------------------
@@ -208,6 +216,17 @@ serve(async (req) => {
     }
     console.log("Profil tulajdonos ellenőrizve.");
 
+    // Kenshin P1-5 (Péter 12036): at most DAILY_OCR_CAP OCRs a day per user, consumed before the paid vision
+    // call (service role: only it may execute consume_daily_ocr), given back below when the OCR does not run.
+    const ocrGate = await consumeDailyOcr(supabaseAdmin, user.id);
+    if (!ocrGate.allowed) {
+      return new Response(JSON.stringify(ocrGate.body), {
+        status: ocrGate.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    ocrCapUser = user.id;
+
     // ------------------------------------------------------------------
     // 5. financial_documents rekord létrehozása 'processing' státusszal
     // ------------------------------------------------------------------
@@ -271,6 +290,7 @@ serve(async (req) => {
       ]);
       return geminiResult.response.text();
     }, 1024);
+    ocrRan = true;
     // P-Search kör 2 (Kenshin P1-4): the statement's text never reaches the log, only its size.
     console.log(ocrAnswerLog(rawOcrText));
 
@@ -361,6 +381,8 @@ serve(async (req) => {
     );
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    // The vision call did not run through: the user gets the consumed OCR back (P1-5).
+    if (ocrCapUser && !ocrRan) await refundDailyOcr(supabaseAdmin, ocrCapUser);
     console.error(
       "Végzetes hiba a process-master-document futása során:",
       errMsg,

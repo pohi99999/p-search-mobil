@@ -204,6 +204,32 @@ describe('DocumentUploadScreen', () => {
     expect(trackCalls('document_uploaded')).toEqual([['document_uploaded', { ok: false }]]);
   });
 
+  // P-Search kör 2, P1-5: the 4th upload of the day shows the server's daily-cap text, not the generic failure.
+  it('shows the daily-cap message of a 429 answer', async () => {
+    const limitError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 429, json: () => Promise.resolve({ success: false, error: 'Mára elérted a dokumentumfeltöltések keretét (napi 3). Holnap újra feltölthetsz.', code: 'ocr_daily_limit' }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: limitError });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderDocumentUploadScreen(); });
+    const uploadButton = component!.root.findAllByType(Button).find((button) => button.props.children === 'Dokumentum kiválasztása');
+    await act(async () => { await uploadButton!.props.onPress(); });
+    const tree = JSON.stringify(component!.toJSON());
+    expect(tree).toContain('Mára elérted a dokumentumfeltöltések keretét (napi 3)');
+    expect(tree).not.toContain('Nem sikerült feldolgozni a dokumentumot');
+    expect(trackCalls('document_uploaded')).toEqual([['document_uploaded', { ok: false }]]);
+  });
+
+  it('a non-429 failure still shows the generic text', async () => {
+    const other = Object.assign(new Error('boom'), { context: { status: 500, json: () => Promise.resolve({ error: 'belső' }) } });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: other });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderDocumentUploadScreen(); });
+    const uploadButton = component!.root.findAllByType(Button).find((button) => button.props.children === 'Dokumentum kiválasztása');
+    await act(async () => { await uploadButton!.props.onPress(); });
+    expect(JSON.stringify(component!.toJSON())).toContain('Nem sikerült feldolgozni a dokumentumot');
+  });
+
   it('shows snackbar for unsupported mime types', async () => {
     (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValueOnce({
       canceled: false,
