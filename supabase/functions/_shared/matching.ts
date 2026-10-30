@@ -23,6 +23,7 @@
 import { generateEmbedding, parseJsonFromModel } from './gemini.ts';
 import { generateText } from './llm.ts';
 import { formatAmountHu, formatDeadlineHu } from './grant-text.ts';
+import { isSmeCandidate } from './candidate-filter.ts';
 
 /** Minimal shape of the Supabase client methods this module relies on. */
 // deno-lint-ignore no-explicit-any
@@ -183,7 +184,9 @@ export async function collectCandidateGrants(
     ranked.push(grant);
   }
 
-  return ranked.slice(0, MAX_CANDIDATES);
+  // P-Search kör 2 (Irisz P1-0): a call only public bodies may apply to, or a technical / HVSZ / intermediaries'
+  // cost frame, never takes one of the scoring places; the filter runs before the cut, so an SME grant moves up.
+  return ranked.filter(isSmeCandidate).slice(0, MAX_CANDIDATES);
 }
 
 /**
