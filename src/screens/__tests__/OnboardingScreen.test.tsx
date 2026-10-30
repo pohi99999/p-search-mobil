@@ -105,7 +105,7 @@ describe('OnboardingScreen Database Error Handling', () => {
       companyNameInput!.props.onChangeText('Test Company');
     });
 
-    const saveButton = root.findByType(Button);
+    const saveButton = root.find((n) => n.type === Button && n.props.testID === 'onboarding-save');
     expect(saveButton).toBeTruthy();
 
     await act(async () => {
@@ -166,7 +166,7 @@ describe('OnboardingScreen Webhook Handling', () => {
       companyNameInput.props.onChangeText('Test Company');
     });
 
-    const saveButton = root.findByType(Button);
+    const saveButton = root.find((n) => n.type === Button && n.props.testID === 'onboarding-save');
 
     await act(async () => {
       await saveButton.props.onPress();
@@ -217,7 +217,7 @@ describe('OnboardingScreen edit mode', () => {
     const goalsInput = root.findAllByType(TextInput).find((node) => String(node.props.label).startsWith('Fejlesztési'));
     if (goalsInput) await act(async () => { goalsInput.props.onChangeText('új célok'); });
 
-    await act(async () => { await root.findByType(Button).props.onPress(); });
+    await act(async () => { await root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
 
     expect(mockInsert).not.toHaveBeenCalled();
     expect(mockUpdate).toHaveBeenCalledTimes(1);
@@ -247,7 +247,7 @@ describe('OnboardingScreen edit mode', () => {
     const root = component!.root;
     const companyNameInput = root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
     await act(async () => { companyNameInput!.props.onChangeText('Új Kft'); });
-    await act(async () => { await root.findByType(Button).props.onPress(); });
+    await act(async () => { await root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalledTimes(1);
     // Card [G2]: a new profile is onboarding_done, never profile_updated, and carries no company name.
@@ -274,7 +274,7 @@ describe('OnboardingScreen new profile refreshes the context', () => {
     const root = component!.root;
     const companyNameInput = root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
     await act(async () => { companyNameInput!.props.onChangeText('Új Kft'); });
-    await act(async () => { await root.findByType(Button).props.onPress(); });
+    await act(async () => { await root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     await act(async () => { component!.unmount(); });
   };
 
@@ -327,7 +327,7 @@ describe('OnboardingScreen tax number format warning (owner GO, Telegram 10614)'
     await act(async () => { taxInput.props.onBlur(); });
   };
   const warning = () => component.root.findAllByProps({ testID: 'onboarding-tax-warning' }).filter((n) => n.type === HelperText);
-  const save = async () => { await act(async () => { await component.root.findByType(Button).props.onPress(); }); };
+  const save = async () => { await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); }); };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -402,7 +402,7 @@ describe('OnboardingScreen edit save path', () => {
     (supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate, insert: jest.fn() });
     const navigation = nav();
     await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
-    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(component.toJSON())).toContain('Hálózati hiba');
     expect(navigation.goBack).not.toHaveBeenCalled();
@@ -415,7 +415,7 @@ describe('OnboardingScreen edit save path', () => {
     const navigation = nav();
     await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
     await act(async () => { input(component.root, 'Éves árbevétel (HUF)').props.onChangeText('sok'); });
-    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
@@ -447,7 +447,7 @@ describe('OnboardingScreen edit save path', () => {
       'Alkalmazottak száma': '12', 'Éves árbevétel (HUF)': '180000000',
     });
     await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Javított Kft'); });
-    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(c.insert).not.toHaveBeenCalled();
     expect(c.update).toHaveBeenCalledTimes(1);
     expect(c.update.mock.calls[0][0]).toEqual({
@@ -464,9 +464,9 @@ describe('OnboardingScreen edit save path', () => {
     const navigation = nav();
     await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
     expect(JSON.stringify(component.toJSON())).toContain('Keresési hiba');
-    expect(component.root.findByType(Button).props.disabled).toBe(true);
+    expect(component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.disabled).toBe(true);
     await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Üres űrlapról'); });
-    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(c.update).not.toHaveBeenCalled();
     expect(c.insert).not.toHaveBeenCalled();
     expect(navigation.goBack).not.toHaveBeenCalled();
@@ -479,9 +479,9 @@ describe('OnboardingScreen edit save path', () => {
     const c = fallbackClient(() => new Promise(() => {}) as never);
     const navigation = nav();
     await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
-    expect(component.root.findByType(Button).props.disabled).toBe(true);
+    expect(component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.disabled).toBe(true);
     await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Még tölt'); });
-    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(c.update).not.toHaveBeenCalled();
     expect(c.insert).not.toHaveBeenCalled();
   });
@@ -492,11 +492,53 @@ describe('OnboardingScreen edit save path', () => {
     (supabase.functions as unknown) = { invoke: jest.fn().mockResolvedValue({}) };
     const navigation = nav();
     await act(async () => { component = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
-    expect(component.root.findByType(Button).props.disabled).toBe(false);
+    expect(component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.disabled).toBe(false);
     await act(async () => { input(component.root, 'Cégnév *').props.onChangeText('Új Kft'); });
-    await act(async () => { await component.root.findByType(Button).props.onPress(); });
+    await act(async () => { await component.root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
     expect(c.update).not.toHaveBeenCalled();
     expect(c.insert).toHaveBeenCalledTimes(1);
     expect(c.insert.mock.calls[0][0][0]).toMatchObject({ user_id: 'test-user-id', company_name: 'Új Kft' });
+  });
+});
+
+// Round 2 (Lumen P2-3, P2-4): the editor opened from Settings had no way back but the system button, and
+// its fields had no accessible name (the outlined label is only drawn).
+describe('OnboardingScreen round 2: way back and field names', () => {
+  const editRoute = { key: 'o', name: 'Onboarding', params: { edit: true } } as any;
+  const nav = () => ({ replace: jest.fn(), goBack: jest.fn(), navigate: jest.fn(), canGoBack: jest.fn(() => true) }) as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+  const byTestID = (c: renderer.ReactTestRenderer, id: string) => c.root.findAll((n) => n.props.testID === id && typeof n.type !== 'string');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockProfileContext.profile = { id: 'profile-1', company_name: 'Régi Kft', tax_number: '', industry_code: '6201', employee_count: 12, yearly_revenue: 180000000, goals: '' };
+  });
+
+  it('in edit mode the header arrow and Mégse both go back without saving', async () => {
+    const navigation = nav();
+    let c!: renderer.ReactTestRenderer;
+    await act(async () => { c = renderer.create(<OnboardingScreen navigation={navigation} route={editRoute} />); });
+    await act(async () => { byTestID(c, 'onboarding-back')[0].props.onPress(); });
+    await act(async () => { byTestID(c, 'onboarding-cancel')[0].props.onPress(); });
+    expect((navigation as any).goBack).toHaveBeenCalledTimes(2);
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(byTestID(c, 'onboarding-back')[0].props.accessibilityLabel).toBe('Vissza a beállításokhoz');
+  });
+
+  it('the first-time form (no edit) has neither, the save is the only way on', async () => {
+    mockProfileContext.profile = null;
+    let c!: renderer.ReactTestRenderer;
+    await act(async () => { c = renderer.create(<OnboardingScreen navigation={nav()} />); });
+    expect(byTestID(c, 'onboarding-back')).toHaveLength(0);
+    expect(byTestID(c, 'onboarding-cancel')).toHaveLength(0);
+  });
+
+  it('every field has an accessible name equal to its label', async () => {
+    let c!: renderer.ReactTestRenderer;
+    await act(async () => { c = renderer.create(<OnboardingScreen navigation={nav()} route={editRoute} />); });
+    const inputs = c.root.findAllByType(TextInput);
+    expect(inputs).toHaveLength(6);
+    for (const i of inputs) {
+      expect(i.props.accessibilityLabel).toBe(String(i.props.label).replace(' *', ''));
+    }
   });
 });

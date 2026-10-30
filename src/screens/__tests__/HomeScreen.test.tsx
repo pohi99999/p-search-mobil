@@ -366,7 +366,9 @@ describe('HomeScreen', () => {
     expect(mockHandleNewSearch).toHaveBeenCalled();
   });
 
-  it('calls signOut on logout button press', () => {
+  // Round 2 (Lumen P2-8): sign-out moved to Settings behind a confirmation; one tap next to the cog logged
+  // the user out, and the text button squeezed the company name onto three lines.
+  it('the header has no one-tap sign-out', () => {
     const mockSignOut = jest.fn();
     (useHomeData as jest.Mock).mockReturnValue({
       loading: false,
@@ -379,14 +381,12 @@ describe('HomeScreen', () => {
     });
 
     const root = renderScreen();
-    const buttons = root.root.findAllByType('Button');
-    const logoutButton = buttons.find((b: any) => b.props.children === 'Kijelentkezés');
-
-    act(() => {
-      logoutButton?.props.onPress();
-    });
-
-    expect(mockSignOut).toHaveBeenCalled();
+    const labels = root.root
+      .findAll((n) => typeof n.props.accessibilityLabel === 'string')
+      .map((n) => n.props.accessibilityLabel as string);
+    expect(labels).toContain('Beállítások megnyitása');
+    expect(labels.some((l) => /kijelentkez/i.test(l))).toBe(false);
+    expect(mockSignOut).not.toHaveBeenCalled();
   });
 
   // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.

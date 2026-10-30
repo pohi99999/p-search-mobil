@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, Button, AnimatedFAB, MD3Colors, IconButton } from 'react-native-paper';
+import { Text, AnimatedFAB, MD3Colors, IconButton } from 'react-native-paper';
 
 import { AdBanner } from '../components/AdBanner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +25,6 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     matches,
     isPro,
     fetchData,
-    signOut,
     handleNewSearch
   } = useHomeData(navigation);
 
@@ -78,9 +77,6 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
             accessibilityLabel="Beállítások megnyitása"
             testID="home-settings-button"
           />
-          <Button mode="text" onPress={signOut} compact accessibilityLabel="Kijelentkezés">
-            Kijelentkezés
-          </Button>
         </View>
       </View>
       

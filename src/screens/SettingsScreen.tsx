@@ -6,7 +6,6 @@ import {
   Card,
   IconButton,
   List,
-  RadioButton,
   Snackbar,
   Surface,
   Text,
@@ -18,6 +17,7 @@ import { formatNextScan } from '../lib/scheduleLabel';
 import { getErrorMessage } from '../utils/error';
 import { getAppVersionLabel } from '../lib/appVersion';
 import { useBilling } from '../context/BillingContext';
+import { clearStoredChatHistory } from '../hooks/useCopilotChat';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // The privacy notice lives on the Pohánka site since 2026-10-03 (my_websitev2 PR #128); Google Play's
@@ -88,6 +88,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Sign-out lives here, behind a confirmation (round 2, Lumen P2-8): on Home it was one tap next to the cog.
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [deleteWord, setDeleteWord] = useState('');
   const [deleting, setDeleting] = useState(false);
 
@@ -185,6 +188,17 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
     }
   };
 
+  const handleSignOut = async () => {
+    setLoggingOut(true);
+    // The local chat history first, so a failed network sign-out does not leave the old chat on the device.
+    try {
+      await clearStoredChatHistory();
+    } catch (err: unknown) {
+      logger.error('SettingsScreen: a chat-előzmény törlése kijelentkezéskor nem sikerült:', getErrorMessage(err));
+    }
+    await supabase.auth.signOut();
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -251,30 +265,31 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             style={styles.cardTitle}
           />
           <Card.Content>
-            <RadioButton.Group
-              onValueChange={(value) => {
-                if (isSearchFrequency(value)) {
-                  setSelectedFrequency(value);
-                }
-              }}
-              value={selectedFrequency}
-            >
-              {frequencyOptions.map((option) => (
-                <List.Item
-                  key={option.value}
-                  title={option.label}
-                  description={option.description}
-                  onPress={() => setSelectedFrequency(option.value)}
-                  accessibilityLabel={`${option.label} keresési gyakoriság kiválasztása`}
-                  left={() => (
-                    <RadioButton
-                      value={option.value}
-                      status={selectedFrequency === option.value ? 'checked' : 'unchecked'}
-                    />
-                  )}
-                />
-              ))}
-            </RadioButton.Group>
+            {/* Round 2, Lumen P2-2: the row itself is the radio (role + checked state), the circle is only an icon.
+                With a separate RadioButton inside, screen readers met an unnamed radio without its state. */}
+            <View accessibilityRole="radiogroup" accessibilityLabel="Automatikus AI keresés gyakorisága">
+              {frequencyOptions.map((option) => {
+                const checked = selectedFrequency === option.value;
+                return (
+                  <List.Item
+                    key={option.value}
+                    title={option.label}
+                    description={option.description}
+                    onPress={() => setSelectedFrequency(option.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked }}
+                    aria-checked={checked}
+                    accessibilityLabel={`${option.label} ${option.description}`}
+                    testID={`frequency-${option.value}`}
+                    left={(props) => (
+                      <View aria-hidden importantForAccessibility="no-hide-descendants">
+                        <List.Icon {...props} icon={checked ? 'radiobox-marked' : 'radiobox-blank'} color={checked ? '#1976D2' : '#616161'} />
+                      </View>
+                    )}
+                  />
+                );
+              })}
+            </View>
           </Card.Content>
         </Card>
 
@@ -323,6 +338,36 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             accessibilityLabel="Adatvédelmi tájékoztató megnyitása"
             testID="settings-privacy-entry"
           />
+        </Card>
+
+        <Card style={styles.card} mode="elevated" testID="logout-card">
+          {!logoutOpen ? (
+            <List.Item
+              title="Kijelentkezés"
+              description="Kilépés ebből a fiókból ezen az eszközön."
+              left={(props) => (
+                <View aria-hidden importantForAccessibility="no-hide-descendants">
+                  <List.Icon {...props} icon="logout" />
+                </View>
+              )}
+              onPress={() => setLogoutOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Kijelentkezés: Kilépés ebből a fiókból ezen az eszközön."
+              testID="logout-open"
+            />
+          ) : (
+            <Card.Content style={styles.logoutContent}>
+              <Text variant="bodyMedium">Biztosan kijelentkezel?</Text>
+              <View style={styles.dangerRow}>
+                <Button mode="text" onPress={() => setLogoutOpen(false)} disabled={loggingOut} testID="logout-cancel">
+                  Mégse
+                </Button>
+                <Button mode="contained" onPress={handleSignOut} loading={loggingOut} disabled={loggingOut} testID="logout-confirm">
+                  Kijelentkezés
+                </Button>
+              </View>
+            </Card.Content>
+          )}
         </Card>
 
         <Card style={styles.dangerCard} mode="outlined" testID="delete-account-card">
@@ -483,6 +528,10 @@ const styles = StyleSheet.create({
   dangerInput: {
     marginBottom: 12,
   },
+  logoutContent: {
+    paddingTop: 16,
+    gap: 8,
+  },
   dangerRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -490,7 +539,8 @@ const styles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
-    color: '#888888',
+    // Round 2 (Lumen P2-7): #888888 was 3.25:1 on the #F5F5F5 page.
+    color: '#616161',
     marginTop: 24,
   },
 });

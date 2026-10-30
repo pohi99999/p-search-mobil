@@ -55,6 +55,7 @@ export function ActionPlanCard({
             progress={progress}
             color={progress === 1 ? '#4CAF50' : '#1976D2'}
             style={styles.progressBar}
+            accessibilityLabel={`Felkészültség: ${completedTasks} kész a ${totalTasks} feladatból`}
           />
         </View>
       </Card.Content>
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   },
   noTasksText: {
     fontStyle: 'italic',
-    color: '#9E9E9E',
+    color: '#616161',
     padding: 16,
     textAlign: 'center',
   },

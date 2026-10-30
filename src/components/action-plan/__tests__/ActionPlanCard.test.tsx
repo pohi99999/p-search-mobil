@@ -311,3 +311,34 @@ describe('ActionPlanCard PDF Generation', () => {
     expect(supabase.functions.invoke).not.toHaveBeenCalled();
   });
 });
+
+// Round 2 (Lumen P2-5, P2-7): the progress bar had no name; the empty-plan line was #9E9E9E, 2.67:1.
+describe('ActionPlanCard round 2 accessibility', () => {
+  const { contrastRatio } = require('../../../test-utils/contrast');
+  const props = {
+    plan: { id: 'plan-9', title: 'Terv', created_at: '2024-01-01T00:00:00Z', match_id: 'm', ai_context: {}, business_profile_id: 'p' },
+    planTasks: [],
+    planStats: { 'plan-9': { totalTasks: 4, completedTasks: 1, progress: 0.25, percentage: 25 } },
+    handleStatusChange: jest.fn(),
+    profile: { id: 'p' },
+    pdfLoading: false,
+    setPdfLoading: jest.fn(),
+    showAdIfAvailable: jest.fn(),
+    refetch: jest.fn(),
+  } as any;
+
+  it('the progress bar is named with what it shows', async () => {
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<ActionPlanCard {...props} />); });
+    const bar = root.root.find((n) => (n.type as unknown) === 'ProgressBar');
+    expect(bar.props.accessibilityLabel).toBe('Felkészültség: 1 kész a 4 feladatból');
+  });
+
+  it('the empty-plan line is at least 4.5:1 on white', async () => {
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<ActionPlanCard {...props} />); });
+    const node = root.root.find((n) => (n.type as unknown) === 'Text' && n.props.children === 'Nincsenek feladatok ehhez az akciótervhez.');
+    const style = [node.props.style].flat(3).reduce((a: any, s: any) => ({ ...a, ...(s || {}) }), {});
+    expect(contrastRatio(style.color, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+  });
+});

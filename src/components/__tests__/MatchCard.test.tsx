@@ -268,3 +268,36 @@ describe('deadline line (card [A])', () => {
     expect(text).toBe('Beadási határidő: nincs megadva');
   });
 });
+
+// Round 2 (Lumen P2-6, P2-7).
+describe('round 2: the details button name and the stale subtitle contrast', () => {
+  const { contrastRatio, textColor } = require('../../test-utils/contrast');
+  const { StyleSheet } = require('react-native');
+
+  it('the details button name starts with the word it shows, then names the grant', async () => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={{ id: 'm', business_id: 'b', grant_id: 'g', match_score: 70, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'GINOP Plusz', provider: 'X', description: '', amount_min: null, amount_max: null } } as any} onPress={() => {}} />); });
+    const labels = tree!.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && /GINOP Plusz/.test(n.props.accessibilityLabel)).map((n) => n.props.accessibilityLabel);
+    expect(labels).toContain('Részletek: GINOP Plusz');
+  });
+
+  it('the stale subtitle stays at least 4.5:1 on white, with the card opacity counted in', async () => {
+    const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: '', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi pályázat', provider: 'X', description: '', amount_min: null, amount_max: null } } as any;
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+    const node = tree!.root.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string' && n.props.children.startsWith('Korábbi keresés találata'))[0];
+    let opacity = 1;
+    // host elements only: a composite passes the same style down, and would count it more than once
+    for (let p: any = node; p; p = p.parent) {
+      if (typeof p.type !== 'string') continue;
+      const o = StyleSheet.flatten(p.props?.style)?.opacity;
+      if (typeof o === 'number') opacity *= o;
+    }
+    const fg = textColor(node.props.style);
+    // the colour as it lands on the white card under the opacity
+    const ch = (i: number) => Math.round(parseInt(fg.slice(1 + i * 2, 3 + i * 2), 16) * opacity + 255 * (1 - opacity));
+    const blended = '#' + [0, 1, 2].map((i) => ch(i).toString(16).padStart(2, '0')).join('');
+    expect(opacity).toBeLessThan(1);
+    expect(contrastRatio(blended, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+  });
+});
