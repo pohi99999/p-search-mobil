@@ -3,6 +3,7 @@
 // action plan: "Árbevétel: Ismeretlen Ft"), so the model wrote "Mivel a cég TEÁOR kódja nincs megadva,
 // feltételezzük..." into a document meant to be submitted. Only the filled fields reach the prompt now,
 // the prompt says not to name missing data, and mentionsMissingData lets the caller check the answer.
+import { formatAmountHu, formatDeadlineHu } from "./grant-text.ts";
 
 export interface CompanyFields {
   company_name?: string | null;
@@ -15,6 +16,8 @@ export interface CompanyFields {
 export interface GrantFields {
   title?: string | null;
   provider?: string | null;
+  grant_type?: string | null;
+  deadline?: string | null;
   amount_min?: number | null;
   amount_max?: number | null;
   eligibility_criteria?: string | null;
@@ -38,17 +41,36 @@ export function companyContext(p: CompanyFields): string {
   return lines.join("\n");
 }
 
+/**
+ * The grant for the document and the action-plan prompt (P-Search kör 2, Kenshin P1-1, Irisz P1-1): one line
+ * per FILLED field. The amount and the deadline are the app's own (grant-text.ts formatAmountHu /
+ * formatDeadlineHu): a placeholder minimum ("1 Ft") is dropped and a programme budget reads "keretösszeg",
+ * so the model never gets "1 - 138 937 500 000 Ft" to copy into a document.
+ */
 export function grantContext(g: GrantFields | null | undefined): string {
   const lines: string[] = [`Pályázat címe: ${g?.title?.trim() || "Kiválasztott pályázat"}`];
   if (filled(g?.provider)) lines.push(`Kiíró: ${String(g!.provider).trim()}`);
-  const min = Number(g?.amount_min) > 0 ? groupThousands(Number(g!.amount_min)) : null;
-  const max = Number(g?.amount_max) > 0 ? groupThousands(Number(g!.amount_max)) : null;
-  if (min && max) lines.push(`Támogatás összege: ${min} - ${max} Ft`);
-  else if (min) lines.push(`Támogatás összege: legalább ${min} Ft`);
-  else if (max) lines.push(`Támogatás összege: legfeljebb ${max} Ft`);
+  if (filled(g?.grant_type)) lines.push(`Típus: ${String(g!.grant_type).trim()}`);
+  const amount = formatAmountHu(g?.amount_min ?? null, g?.amount_max ?? null);
+  if (amount) lines.push(`Támogatás összege: ${amount}`);
+  const deadline = formatDeadlineHu(g?.deadline ?? null);
+  if (deadline) lines.push(`Beadási határidő: ${deadline}`);
   if (filled(g?.eligibility_criteria)) lines.push(`Kritériumok: ${String(g!.eligibility_criteria).trim()}`);
   if (filled(g?.description)) lines.push(`Pályázat leírása: ${String(g!.description).trim()}`);
   return lines.join("\n");
+}
+
+/**
+ * Irisz P1-1 (P-Search kör 2): the action plan's next steps are timed to the submission deadline, and the plan
+ * names no date or amount the grant lines above do not give (with temperature 1.0 and the "do not name missing
+ * data" rule, an untold deadline could otherwise be invented).
+ */
+export const PLAN_TIMING_RULE = `Az akcióterv "Következő lépések" részét a fent megadott beadási határidőhöz időzítsd (ha van ilyen).
+Más dátumot, határidőt vagy támogatási összeget ne írj, mint ami a pályázat adatai között fent szerepel.`;
+
+/** The grant part of the action-plan prompt: the same grant lines as the document gets, then the timing rule. */
+export function planGrantSection(g: GrantFields | null | undefined): string {
+  return `Kiválasztott pályázat:\n${grantContext(g)}\n\n${PLAN_TIMING_RULE}`;
 }
 
 export const NO_MISSING_DATA_RULE = `FONTOS: a szöveg egy beadható dokumentum része. Csak a fent megadott adatokra építs.

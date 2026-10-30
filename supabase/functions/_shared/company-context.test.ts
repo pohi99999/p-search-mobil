@@ -1,5 +1,5 @@
 import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { companyContext, grantContext, NO_MISSING_DATA_RULE, mentionsMissingData } from "./company-context.ts";
+import { companyContext, grantContext, NO_MISSING_DATA_RULE, mentionsMissingData, planGrantSection, PLAN_TIMING_RULE } from "./company-context.ts";
 
 // Common test 2026-10-07 (card 431a496e): Péter's profile had only the company name, and the PDF said
 // "Mivel a cég TEÁOR kódja nincs megadva, feltételezzük..." because the prompt itself carried
@@ -38,4 +38,35 @@ Deno.test("the output check catches the 2026-10-07 phrases and lets a clean text
   assert(mentionsMissingData("A pontos létszám ismeretlen, ezért"));
   assert(mentionsMissingData("Feltételezve, hogy a cég"));
   assert(!mentionsMissingData("A Minta Kft. a támogatásból új fejlesztői kapacitást épít ki."));
+});
+
+// P-Search kör 2 (Kenshin P1-1, Irisz P1-1): the document and the action plan get the amount and the deadline as
+// the app shows them; "1 - 138 937 500 000 Ft" (a placeholder minimum and a programme budget) never reaches them.
+Deno.test("grantContext: a placeholder minimum is dropped and a programme budget reads keretösszeg", () => {
+  const g = grantContext({ title: "KEHOP", amount_min: 1, amount_max: 138937500000 });
+  assert(g.includes("Támogatás összege: keretösszeg 138 937 500 000 Ft"), g);
+  assert(!g.includes("1 - 138"), g);
+  const normal = grantContext({ title: "GINOP", amount_min: 2000000, amount_max: 30000000 });
+  assert(normal.includes("Támogatás összege: 2 000 000 Ft - 30 000 000 Ft"), normal);
+  const none = grantContext({ title: "X", amount_min: 1, amount_max: null });
+  assert(!/Támogatás összege/.test(none), "only a placeholder: no amount line at all");
+});
+
+Deno.test("grantContext: the deadline as the app shows it, and the type, each only when filled", () => {
+  const g = grantContext({ title: "BAY Voucher", grant_type: "vissza nem térítendő", deadline: "2026-12-01T23:00:00.000Z" });
+  assert(g.includes("Beadási határidő: 2026. 12. 02."), g);
+  assert(g.includes("Típus: vissza nem térítendő"), g);
+  const bare = grantContext({ title: "X" });
+  assertEquals(bare, "Pályázat címe: X");
+});
+
+Deno.test("planGrantSection: the action plan gets the grant lines and the deadline-timing rule, no missing-data words", () => {
+  const s = planGrantSection({ title: "BAY Voucher", amount_min: 1, amount_max: 3000000, deadline: "2026-12-01T23:00:00.000Z", eligibility_criteria: "KKV" });
+  assert(s.startsWith("Kiválasztott pályázat:\nPályázat címe: BAY Voucher"), s);
+  assert(s.includes("Beadási határidő: 2026. 12. 02."), s);
+  assert(s.includes("Támogatás összege: legfeljebb 3 000 000 Ft"), s);
+  assert(s.includes("Kritériumok: KKV"), s);
+  assert(s.includes(PLAN_TIMING_RULE), s);
+  assert(/határidőhöz időzítsd/.test(PLAN_TIMING_RULE) && /Más dátumot/.test(PLAN_TIMING_RULE));
+  assert(!mentionsMissingData(s), s);
 });

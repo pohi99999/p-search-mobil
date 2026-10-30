@@ -5,7 +5,7 @@ import { generateText } from '../_shared/llm.ts';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
 import { extractNextSteps, stripMarkdownFence } from './tasks.ts';
-import { companyContext, mentionsMissingData, NO_MISSING_DATA_RULE } from '../_shared/company-context.ts';
+import { companyContext, mentionsMissingData, NO_MISSING_DATA_RULE, planGrantSection } from '../_shared/company-context.ts';
 import { actionPlanHint, grantKind } from '../_shared/grant-kind.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
@@ -157,7 +157,8 @@ serve(async (req) => {
         }
 
         // Card e388efe1: the plan knows the programme type; a loan or a hybrid gets its own next steps.
-        const typeLine = grantData?.grant_type ? `- Típus: ${grantData.grant_type}\n` : '';
+        // P-Search kör 2 (Irisz P1-1): the plan gets the grant as the document does (grantContext: type, amount,
+        // deadline, eligibility, each only when filled), and its next steps are timed to the deadline.
         const kindHint = grantData ? actionPlanHint(grantKind(grantData.grant_type)) : '';
 
         const systemPrompt = `Te egy Professzionális Pályázati és Digitalizációs Szakértő Copilot vagy.
@@ -170,7 +171,7 @@ Az akciótervnek tartalmaznia kell:
 Cég adatai:
 ${companyContext(businessData ?? {})}
 
-${grantData ? `Kiválasztott pályázat:\n- Cím: ${grantData.title}\n- Leírás: ${grantData.description}\n${typeLine}` : ''}${kindHint ? `\n${kindHint}\n` : ''}
+${grantData ? `${planGrantSection(grantData)}\n` : ''}${kindHint ? `\n${kindHint}\n` : ''}
 
 Eddigi beszélgetés előzményei (ha van):
 ${chat_history ? JSON.stringify(chat_history) : 'Nincs előzmény'}
