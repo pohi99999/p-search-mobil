@@ -70,6 +70,8 @@ describe('PaywallScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     jest.spyOn(logger, 'error').mockImplementation(() => {});
     jest.clearAllMocks();
+    mockBilling.purchasePackage.mockResolvedValue('purchased');
+    mockBilling.restorePurchases.mockResolvedValue({ isPro: true });
     (useNavigation as jest.Mock).mockReturnValue(mockNavigation);
     (useBilling as jest.Mock).mockReturnValue(mockBilling);
     // hide unhelpful react-native-paper warnings about Surface overflow
@@ -300,7 +302,35 @@ describe('PaywallScreen', () => {
     });
 
     expect(mockBilling.restorePurchases).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Vásárlások sikeresen ellenőrizve!');
+    expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Előfizetés visszaállítva.');
+  });
+
+  // P-Search kör 2 (Kenshin P1-3): "Siker" only when a Pro subscription came back.
+  it('a restore that finds no subscription says so, not "Siker"', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, restorePurchases: jest.fn().mockResolvedValue({ isPro: false }) });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderWithSafeArea(<PaywallScreen />); });
+    const restore = component!.root.findAllByType(Button).find((b) => b.props.children === 'Korábbi vásárlások visszaállítása');
+    await act(async () => { await restore!.props.onPress(); });
+    expect(Alert.alert).toHaveBeenCalledWith('Nincs előfizetés', 'Nem találtunk aktív előfizetést ehhez a fiókhoz.');
+    expect(Alert.alert).not.toHaveBeenCalledWith('Siker', expect.anything());
+  });
+
+  // Kenshin P1-2: purchase_done only for a purchase that went through.
+  it.each([
+    ['cancelled', null],
+    ['failed', ['Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.']],
+    ['unavailable', ['Hiba', 'A vásárlás most nem érhető el. Kérjük, próbáld újra később.']],
+  ])('a %s purchase records no purchase_done', async (result, alert) => {
+    const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [pkg], purchasePackage: jest.fn().mockResolvedValue(result) });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderWithSafeArea(<PaywallScreen />); });
+    const buy = component!.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+    await act(async () => { await buy.props.onPress(); });
+    expect(trackCalls('purchase_done')).toEqual([]);
+    if (alert) expect(Alert.alert).toHaveBeenCalledWith(...(alert as [string, string]));
+    else expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   it('handles restore purchases error', async () => {

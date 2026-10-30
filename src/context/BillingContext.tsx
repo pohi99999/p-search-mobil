@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { API_KEY_ANDROID, API_KEY_IOS } from '../config/env';
 import { getErrorMessage, isPurchasesError } from '../utils/error';
@@ -7,19 +7,31 @@ import { logger } from '../utils/logger';
 import { supabase } from '../lib/supabase';
 
 
+/**
+ * What a purchase came to (P-Search kör 2, Kenshin P1-2). The caller decides what to show and what to record:
+ * until 2026-10-30 every outcome resolved the same way, so the paywall recorded purchase_done after a cancel,
+ * a failure or with RevenueCat not configured.
+ */
+export type PurchaseResult = 'purchased' | 'cancelled' | 'failed' | 'unavailable';
+
+/** A restore's outcome: whether the account has an active Pro entitlement now (Kenshin P1-3). Throws on failure. */
+export interface RestoreResult {
+  isPro: boolean;
+}
+
 interface BillingContextType {
   isPro: boolean;
   packages: PurchasesPackage[];
-  purchasePackage: (pack: PurchasesPackage) => Promise<void>;
-  restorePurchases: () => Promise<void>;
+  purchasePackage: (pack: PurchasesPackage) => Promise<PurchaseResult>;
+  restorePurchases: () => Promise<RestoreResult>;
   isLoading: boolean;
 }
 
 const BillingContext = createContext<BillingContextType>({
   isPro: false,
   packages: [],
-  purchasePackage: async () => {},
-  restorePurchases: async () => {},
+  purchasePackage: async () => 'unavailable',
+  restorePurchases: async () => { throw new Error('RevenueCat is not configured.'); },
   isLoading: true,
 });
 
@@ -31,17 +43,11 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(true);
   const [configured, setConfigured] = useState(false);
 
-  const checkProStatus = (customerInfo: CustomerInfo) => {
-    if (__DEV__) {
-      setIsPro(true);
-      return;
-    }
-    // Check if the user has an active entitlement called 'pro'
-    if (typeof customerInfo.entitlements.active['pro'] !== 'undefined') {
-      setIsPro(true);
-    } else {
-      setIsPro(false);
-    }
+  /** Sets isPro from the customer info and returns it (an active entitlement called 'pro'; always true in __DEV__). */
+  const checkProStatus = (customerInfo: CustomerInfo): boolean => {
+    const pro = __DEV__ ? true : typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+    setIsPro(pro);
+    return pro;
   };
 
   useEffect(() => {
@@ -126,37 +132,40 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => { authSub.subscription.unsubscribe(); };
   }, [configured]);
 
-  const purchasePackage = async (pack: PurchasesPackage) => {
+  // The paywall shows the message for each outcome; this context only reports it (no Alert of its own, so a
+  // failure is never announced twice).
+  const purchasePackage = async (pack: PurchasesPackage): Promise<PurchaseResult> => {
     if (!configured) {
       logger.warn('Cannot purchase package: RevenueCat is not configured.');
-      return;
+      return 'unavailable';
     }
     try {
       setIsLoading(true);
       const { customerInfo } = await Purchases.purchasePackage(pack);
       checkProStatus(customerInfo);
+      return 'purchased';
     } catch (e: unknown) {
       const isCancelled = isPurchasesError(e) && (e.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR || e.userCancelled);
-      if (!isCancelled) {
-        logger.error('Error purchasing package:', getErrorMessage(e));
-        Alert.alert('Hiba', 'Sikertelen vásárlás');
-      }
+      if (isCancelled) return 'cancelled';
+      logger.error('Error purchasing package:', getErrorMessage(e));
+      return 'failed';
     } finally {
       setIsLoading(false);
     }
   };
 
-  const restorePurchases = async () => {
+  const restorePurchases = async (): Promise<RestoreResult> => {
     if (!configured) {
       logger.warn('Cannot restore purchases: RevenueCat is not configured.');
-      return;
+      throw new Error('RevenueCat is not configured.');
     }
     try {
       setIsLoading(true);
       const customerInfo = await Purchases.restorePurchases();
-      checkProStatus(customerInfo);
+      return { isPro: checkProStatus(customerInfo) };
     } catch (e) {
       logger.error('Error restoring purchases:', getErrorMessage(e));
+      throw e;
     } finally {
       setIsLoading(false);
     }

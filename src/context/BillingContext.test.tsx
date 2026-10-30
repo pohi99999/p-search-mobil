@@ -236,10 +236,12 @@ describe('BillingContext', () => {
       (Purchases.purchasePackage as jest.Mock).mockRejectedValueOnce(cancelError);
       (isPurchasesError as jest.Mock).mockReturnValue(true);
 
+      let result: unknown;
       await act(async () => {
-        await getContext().purchasePackage({ identifier: 'pro' });
+        result = await getContext().purchasePackage({ identifier: 'pro' });
       });
 
+      expect(result).toBe('cancelled');
       expect(logger.error).not.toHaveBeenCalled();
       expect(getContext().isLoading).toBe(false);
     });
@@ -253,10 +255,12 @@ describe('BillingContext', () => {
       (Purchases.purchasePackage as jest.Mock).mockRejectedValueOnce(otherError);
       (isPurchasesError as jest.Mock).mockReturnValue(true);
 
+      let result: unknown;
       await act(async () => {
-        await getContext().purchasePackage({ identifier: 'pro' });
+        result = await getContext().purchasePackage({ identifier: 'pro' });
       });
 
+      expect(result).toBe('failed');
       expect(logger.error).toHaveBeenCalledWith('Error purchasing package:', 'Network Error');
       expect(getContext().isLoading).toBe(false);
     });
@@ -264,10 +268,12 @@ describe('BillingContext', () => {
       mockEnv.API_KEY_IOS = 'placeholder-key'; // skip init
       const { getContext } = await renderProvider();
 
+      let result: unknown;
       await act(async () => {
-        await getContext().purchasePackage({ identifier: 'pro' });
+        result = await getContext().purchasePackage({ identifier: 'pro' });
       });
 
+      expect(result).toBe('unavailable');
       expect(logger.warn).toHaveBeenCalledWith('Cannot purchase package: RevenueCat is not configured.');
       expect(Purchases.purchasePackage).not.toHaveBeenCalled();
     });
@@ -278,10 +284,12 @@ describe('BillingContext', () => {
         customerInfo: { entitlements: { active: { pro: {} } } }
       });
 
+      let result: unknown;
       await act(async () => {
-        await getContext().purchasePackage({ identifier: 'pro' });
+        result = await getContext().purchasePackage({ identifier: 'pro' });
       });
 
+      expect(result).toBe('purchased');
       expect(Purchases.purchasePackage).toHaveBeenCalled();
       expect(getContext().isPro).toBe(true);
       expect(getContext().isLoading).toBe(false);
@@ -310,12 +318,15 @@ describe('BillingContext', () => {
       (Purchases.purchasePackage as jest.Mock).mockRejectedValueOnce(error);
       (isPurchasesError as jest.Mock).mockReturnValue(false);
 
+      let result: unknown;
       await act(async () => {
-        await getContext().purchasePackage({ identifier: 'pro' });
+        result = await getContext().purchasePackage({ identifier: 'pro' });
       });
 
+      expect(result).toBe('failed');
       expect(logger.error).toHaveBeenCalledWith('Error purchasing package:', 'Generic error');
-      expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Sikertelen vásárlás');
+      // the paywall announces the failure; the context adds no second alert (kör 2)
+      expect(Alert.alert).not.toHaveBeenCalled();
       expect(getContext().isLoading).toBe(false);
     });
   });
@@ -326,10 +337,12 @@ describe('BillingContext', () => {
       const testError = new Error('Test restore error');
       (Purchases.restorePurchases as jest.Mock).mockRejectedValueOnce(testError);
 
+      let thrown: unknown;
       await act(async () => {
-        await getContext().restorePurchases();
+        thrown = await getContext().restorePurchases().then(() => null, (e) => e);
       });
 
+      expect(thrown).toBe(testError);
       expect(logger.error).toHaveBeenCalledWith('Error restoring purchases:', 'Test restore error');
     });
 
@@ -337,10 +350,12 @@ describe('BillingContext', () => {
       mockEnv.API_KEY_IOS = 'placeholder-key'; // skip init
       const { getContext } = await renderProvider();
 
+      let thrown: unknown;
       await act(async () => {
-        await getContext().restorePurchases();
+        thrown = await getContext().restorePurchases().then(() => null, (e) => e);
       });
 
+      expect(thrown).toBeInstanceOf(Error);
       expect(logger.warn).toHaveBeenCalledWith('Cannot restore purchases: RevenueCat is not configured.');
       expect(Purchases.restorePurchases).not.toHaveBeenCalled();
     });
@@ -351,10 +366,12 @@ describe('BillingContext', () => {
         entitlements: { active: { pro: {} } }
       });
 
+      let result: unknown;
       await act(async () => {
-        await getContext().restorePurchases();
+        result = await getContext().restorePurchases();
       });
 
+      expect(result).toEqual({ isPro: true });
       expect(Purchases.restorePurchases).toHaveBeenCalled();
       expect(getContext().isPro).toBe(true);
       expect(getContext().isLoading).toBe(false);
@@ -366,7 +383,7 @@ describe('BillingContext', () => {
       (Purchases.restorePurchases as jest.Mock).mockRejectedValueOnce(error);
 
       await act(async () => {
-        await getContext().restorePurchases();
+        await getContext().restorePurchases().catch(() => {});
       });
 
       expect(Purchases.restorePurchases).toHaveBeenCalled();
