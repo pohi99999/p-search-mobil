@@ -64,11 +64,12 @@ export function MatchCard({ item, onPress, rank }: MatchCardProps) {
             style={styles.feedback}
           />
         )}
-        {/* Card [J]: every card's button read "Részletek"; the label names the grant. */}
+        {/* Card [J]: every card's button read "Részletek"; the label names the grant. Round 2 (Lumen P2-6): the
+            visible word comes first, so voice control finds the button by what it shows. */}
         <Button
           mode="outlined"
           onPress={onPress}
-          accessibilityLabel={`${item.grants?.title || 'Ismeretlen pályázat'} részletei`}
+          accessibilityLabel={`Részletek: ${item.grants?.title || 'Ismeretlen pályázat'}`}
           style={styles.details}
         >
           Részletek
@@ -92,8 +93,9 @@ const styles = StyleSheet.create({
   staleCard: {
     opacity: 0.75,
   },
+  // Round 2 (Lumen P2-7): #9E9E9E was 2.67:1, and the stale card adds opacity 0.75; #424242 stays about 4.8:1 under it.
   staleSubtitle: {
-    color: '#9E9E9E',
+    color: '#424242',
   },
   deadline: {
     marginBottom: 8,

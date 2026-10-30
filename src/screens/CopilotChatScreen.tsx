@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     color: '#C5CAE9',
   },
   aiTimestamp: {
-    color: '#9E9E9E',
+    color: '#616161',
   },
   typingContainer: {
     flexDirection: 'row',

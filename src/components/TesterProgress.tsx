@@ -60,6 +60,7 @@ export const TesterProgress: React.FC = () => {
         progress={progress}
         color={isCompleted ? "#4CAF50" : "#1976D2"}
         style={styles.progressBar}
+        accessibilityLabel={`Tesztelési napok: ${daysCount} a ${REQUIRED_DAYS}-ből`}
       />
 
       <Text variant="bodySmall" style={styles.description}>

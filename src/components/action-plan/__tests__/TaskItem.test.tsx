@@ -41,3 +41,15 @@ it('the title wraps at word boundaries on Android, not mid-word', () => {
   expect(title.props.numberOfLines).not.toBe(1);
   expect(root.root.find((n) => (n.type as unknown) === 'List.Item').props.right).toBeUndefined();
 });
+
+// Round 2 (Lumen P2-7): a done task's title was #9E9E9E, 2.67:1 on white.
+it('a done task title is still readable: at least 4.5:1 on white', () => {
+  const { contrastRatio } = require('../../../test-utils/contrast');
+  const done = { ...TASK, status: 'done' } as ActionTask;
+  let root!: renderer.ReactTestRenderer;
+  act(() => { root = renderer.create(<TaskItem task={done} onStatusChange={jest.fn()} />); });
+  const title = renderTitle(root.root.find((n) => (n.type as unknown) === 'List.Item'));
+  const style = [title.props.style].flat(3).reduce((a: any, s: any) => ({ ...a, ...(s || {}) }), {});
+  expect(style.textDecorationLine).toBe('line-through');
+  expect(contrastRatio(style.color, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+});

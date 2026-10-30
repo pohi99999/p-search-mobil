@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   },
   doneTaskTitle: {
     textDecorationLine: 'line-through',
-    color: '#9E9E9E',
+    color: '#616161',
   },
   taskDescription: {
     fontSize: 13,

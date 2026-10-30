@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { TextInput, Button, Text, Surface, HelperText } from 'react-native-paper';
+import { TextInput, Button, Text, Surface, HelperText, IconButton } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { huTaxNumberWarning, normalizeHuTaxNumber } from '../lib/taxNumber';
 import { AdBanner } from '../components/AdBanner';
@@ -214,6 +214,21 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+      {/* Round 2, Lumen P2-3: opened from Settings, the editor had no way back but the system back button. */}
+      {editRequested ? (
+        <View style={styles.header}>
+          <IconButton
+            icon="arrow-left"
+            size={24}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Settings'))}
+            accessibilityLabel="Vissza a beállításokhoz"
+            testID="onboarding-back"
+          />
+          <Text variant="titleLarge" style={styles.headerTitle}>
+            Cégprofil
+          </Text>
+        </View>
+      ) : null}
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
           <Text variant="headlineMedium" style={styles.title}>{editRequested && ownLoad.state !== 'none' ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
@@ -225,6 +240,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
           <TextInput
             label="Cégnév *"
+            accessibilityLabel="Cégnév"
             value={form.company_name}
             onChangeText={(text) => {
               setForm({ ...form, company_name: text });
@@ -238,6 +254,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
           <TextInput
             label="Adószám"
+            accessibilityLabel="Adószám"
             value={form.tax_number}
             onChangeText={(text) => {
               setForm({ ...form, tax_number: text });
@@ -264,6 +281,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
           <TextInput
             label="Főtevékenység (TEÁOR)"
+            accessibilityLabel="Főtevékenység (TEÁOR)"
             value={form.industry_code}
             onChangeText={(text) => setForm({ ...form, industry_code: text })}
             style={styles.input}
@@ -272,6 +290,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
           <TextInput
             label="Alkalmazottak száma"
+            accessibilityLabel="Alkalmazottak száma"
             value={form.employee_count}
             onChangeText={(text) => {
               setForm({ ...form, employee_count: text });
@@ -286,6 +305,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
           <TextInput
             label="Éves árbevétel (HUF)"
+            accessibilityLabel="Éves árbevétel (HUF)"
             value={form.yearly_revenue}
             onChangeText={(text) => {
               setForm({ ...form, yearly_revenue: text });
@@ -300,6 +320,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
 
           <TextInput
             label="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
+            accessibilityLabel="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
             value={form.goals}
             onChangeText={(text) => setForm({ ...form, goals: text })}
             style={styles.input}
@@ -330,9 +351,21 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
             loading={loading}
             disabled={loading || saveBlocked}
             style={styles.button}
+            testID="onboarding-save"
           >
             {editing ? 'Mentés' : 'Mentés és keresés indítása'}
           </Button>
+          {editRequested ? (
+            <Button
+              mode="text"
+              onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Settings'))}
+              disabled={loading}
+              style={styles.cancelButton}
+              testID="onboarding-cancel"
+            >
+              Mégse
+            </Button>
+          ) : null}
         </Surface>
       </ScrollView>
       <AdBanner />
@@ -362,6 +395,21 @@ function FieldError({ message }: { message?: string }) {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
+    elevation: 2,
+  },
+  headerTitle: {
+    flex: 1,
+    fontWeight: 'bold',
+    color: '#1A237E',
+  },
+  cancelButton: {
+    marginTop: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
