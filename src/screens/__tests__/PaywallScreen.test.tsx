@@ -84,28 +84,81 @@ describe('PaywallScreen', () => {
     jest.restoreAllMocks();
   });
 
-  it('renders success view when isPro is true and navigates back on button press', async () => {
-    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+  // Round 2 (Lumen P1-1): an existing Pro subscriber got "Sikeres Pro előfizetés! 🎉" on every opening, with
+  // no way to manage or restore. Now: the manage view; the success screen only right after a purchase.
+  describe('a Pro subscriber', () => {
+    const { Linking } = require('react-native');
+    const { PLAY_SUBSCRIPTIONS_URL } = require('../../components/paywall');
+    const byTestID = (c: renderer.ReactTestRenderer, id: string) => c.root.findAll((n) => n.props.testID === id && typeof n.type !== 'string')[0];
 
-    let component: renderer.ReactTestRenderer;
-    await act(async () => {
-      component = renderWithSafeArea(<PaywallScreen />);
+    it('an existing subscriber sees the manage view, not the purchase celebration', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const tree = JSON.stringify(c.toJSON());
+      expect(tree).toContain('Aktív Pro előfizetés');
+      expect(tree).not.toContain('Sikeres Pro előfizetés');
+      await act(async () => { byTestID(c, 'active-pro-close').props.onPress(); });
+      expect(mockNavigation.goBack).toHaveBeenCalled();
     });
 
-    const root = component!.root;
-    const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sikeres Pro előfizetés! 🎉');
-
-    const backButton = root.findAllByType(Button).find(
-      (b) => b.props.children === 'Vissza a kezdőlapra'
-    );
-    expect(backButton).toBeDefined();
-
-    await act(async () => {
-      backButton!.props.onPress();
+    it('"Előfizetés kezelése" opens the Play subscription page of this app', async () => {
+      const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      await act(async () => { byTestID(c, 'active-pro-manage').props.onPress(); });
+      expect(open).toHaveBeenCalledWith(PLAY_SUBSCRIPTIONS_URL);
+      expect(PLAY_SUBSCRIPTIONS_URL).toBe('https://play.google.com/store/account/subscriptions?package=com.pohankaestarsa.psearch');
     });
 
-    expect(mockNavigation.goBack).toHaveBeenCalled();
+    it('"Vásárlás visszaállítása" runs the restore with its honest message', async () => {
+      const restore = jest.fn().mockResolvedValue({ isPro: true });
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true, restorePurchases: restore });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      await act(async () => { await byTestID(c, 'active-pro-restore').props.onPress(); });
+      expect(restore).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Előfizetés visszaállítva.');
+    });
+
+    it('the text button and the note stay at least 4.5:1 on the page background', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      expect(contrastRatio(byTestID(c, 'active-pro-restore').props.textColor, '#FAFBFD')).toBeGreaterThanOrEqual(4.5);
+      const note = c.root.findAll((n) => typeof n.props.children === 'string' && n.props.children.startsWith('A lemondás és a fizetési mód'))[0];
+      expect(contrastRatio(textColor(note.props.style), '#FAFBFD')).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('a purchase made on this screen still gets the success screen', async () => {
+      const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+      const billing = { ...mockBilling, packages: [pkg], purchasePackage: jest.fn().mockResolvedValue('purchased') };
+      (useBilling as jest.Mock).mockReturnValue(billing);
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const buy = c.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+      await act(async () => { await buy.props.onPress(); });
+      // RevenueCat now reports the entitlement
+      (useBilling as jest.Mock).mockReturnValue({ ...billing, isPro: true });
+      await act(async () => { c.update(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><PaywallScreen /></SafeAreaProvider>); });
+      const tree = JSON.stringify(c.toJSON());
+      expect(tree).toContain('Sikeres Pro előfizetés! 🎉');
+      expect(tree).not.toContain('Aktív Pro előfizetés');
+    });
+
+    it('a cancelled purchase does not turn into a celebration later', async () => {
+      const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+      const billing = { ...mockBilling, packages: [pkg], purchasePackage: jest.fn().mockResolvedValue('cancelled') };
+      (useBilling as jest.Mock).mockReturnValue(billing);
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const buy = c.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+      await act(async () => { await buy.props.onPress(); });
+      (useBilling as jest.Mock).mockReturnValue({ ...billing, isPro: true });
+      await act(async () => { c.update(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><PaywallScreen /></SafeAreaProvider>); });
+      expect(JSON.stringify(c.toJSON())).not.toContain('Sikeres Pro előfizetés');
+    });
   });
 
   // Card bc8e4135, owner test 2026-10-04: the footer sat under the Android navigation bar
