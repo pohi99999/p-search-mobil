@@ -35,12 +35,20 @@ export const PaywallScreen = () => {
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // P-Search kör 2 (Kenshin P1-2): purchase_done only for a purchase that went through; a cancel shows nothing,
+  // a failure or an unavailable store says so.
   const handlePurchase = async (pkg: PurchasesPackage) => {
     setPurchasing(true);
     try {
-      await purchasePackage(pkg);
-      // The RevenueCat package id ($rc_monthly...), never the price.
-      track('purchase_done', { package: pkg.identifier });
+      const result = await purchasePackage(pkg);
+      if (result === 'purchased') {
+        // The RevenueCat package id ($rc_monthly...), never the price.
+        track('purchase_done', { package: pkg.identifier });
+      } else if (result === 'failed') {
+        Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
+      } else if (result === 'unavailable') {
+        Alert.alert('Hiba', 'A vásárlás most nem érhető el. Kérjük, próbáld újra később.');
+      }
     } catch (err: unknown) {
       logger.error('Vásárlási hiba:', getErrorMessage(err));
       Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
@@ -49,11 +57,13 @@ export const PaywallScreen = () => {
     }
   };
 
+  // Kenshin P1-3: "Siker" only when a Pro subscription was found; none found and an error each say so.
   const handleRestore = async () => {
     setPurchasing(true);
     try {
-      await restorePurchases();
-      Alert.alert('Siker', 'Vásárlások sikeresen ellenőrizve!');
+      const { isPro: restored } = await restorePurchases();
+      if (restored) Alert.alert('Siker', 'Előfizetés visszaállítva.');
+      else Alert.alert('Nincs előfizetés', 'Nem találtunk aktív előfizetést ehhez a fiókhoz.');
     } catch (err: unknown) {
       logger.error('Visszaállítási hiba:', getErrorMessage(err));
       Alert.alert('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
