@@ -14,7 +14,9 @@ export interface CandidateFields {
 const PUBLIC_BENEFICIARY_RE = /államháztartáson\s+belül|költségvetési\s+szerv/i;
 
 /** Frames that pay the programme's own operation, not a beneficiary's project. */
-const TECHNICAL_TITLE_RE = /technikai\s+(?:segítségnyújtás|felhasználás)|\bHVSZ\b|közvetítő\w*\s+költségtérítés/i;
+// Measured on the 55 open grants of 2026-10-30: the source names these "... - technikai felhívás" (loan frames,
+// combined frames, HVSZ and intermediaries' costs, a 1 Ft minimum), 11 rows.
+const TECHNICAL_TITLE_RE = /technikai\s+(?:felhívás|segítségnyújtás|felhasználás)|\bHVSZ\b|közvetítő\w*\s+költségtérítés/i;
 
 export type CandidateVerdict = { keep: true } | { keep: false; reason: 'public_only' | 'technical_frame' };
 

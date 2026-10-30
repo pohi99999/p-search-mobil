@@ -9,7 +9,12 @@ Deno.test("a call only public bodies inside the state budget may apply to is lef
 });
 
 Deno.test("a technical-assistance, HVSZ or intermediaries' cost frame is left out", () => {
-  for (const title of ["DIMOP Plusz technikai segítségnyújtás", "Technikai felhasználás 2026", "HVSZ keret", "Közvetítők költségtérítése"]) {
+  for (const title of [
+    "DIMOP Plusz technikai segítségnyújtás", "Technikai felhasználás 2026", "HVSZ keret", "Közvetítők költségtérítése",
+    // real titles of 2026-10-30 (a 1 Ft minimum, 65 and 138 billion Ft maxima)
+    "Hitelkeret GINOP PLUSZ 1.prioritás keretében fejlettebb régióban -technikai felhívás",
+    "Kombinált keret GINOP PLUSZ 1.prioritás keretében kevésbé fejlett régióban -technikai felhívás",
+  ]) {
     assertEquals(isSmeCandidate({ title, eligibility_criteria: "Mikrovállalkozás" }), false, title);
   }
 });
