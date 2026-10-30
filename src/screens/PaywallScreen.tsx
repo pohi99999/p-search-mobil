@@ -15,7 +15,8 @@ import {
   PaywallFeatures,
   PaywallPackages,
   PaywallOverlay,
-  PaywallSuccess
+  PaywallSuccess,
+  PaywallActivePro
 } from '../components/paywall';
 
 export const PaywallScreen = () => {
@@ -25,6 +26,8 @@ export const PaywallScreen = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'Paywall'>>();
   const [purchasing, setPurchasing] = useState(false);
+  // Round 2 (Lumen P1-1): the success screen is for a purchase made right now, not for every later opening.
+  const [justPurchased, setJustPurchased] = useState(false);
   // [G2]: one paywall_view per opening, with where it came from (a Pro user sees the success view, not the offer).
   const source = route.params?.source;
   useEffect(() => {
@@ -42,6 +45,7 @@ export const PaywallScreen = () => {
     try {
       const result = await purchasePackage(pkg);
       if (result === 'purchased') {
+        setJustPurchased(true);
         // The RevenueCat package id ($rc_monthly...), never the price.
         track('purchase_done', { package: pkg.identifier });
       } else if (result === 'failed') {
@@ -72,9 +76,10 @@ export const PaywallScreen = () => {
     }
   };
 
-  // Ha a felhasználó már Pro előfizető, sikeres állapotot mutatunk neki
+  // A purchase made on this screen gets the success screen; an existing Pro subscriber gets the manage view.
   if (isPro) {
-    return <PaywallSuccess onBack={() => navigation.goBack()} />;
+    if (justPurchased) return <PaywallSuccess onBack={() => navigation.goBack()} />;
+    return <PaywallActivePro onClose={() => navigation.goBack()} onRestore={handleRestore} busy={purchasing} />;
   }
 
   return (
