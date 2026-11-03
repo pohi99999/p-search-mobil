@@ -3,6 +3,9 @@
 -- already denied, this states it explicitly. Applied to the live project on 2026-10-04 11:32
 -- (owner GO, Telegram 5903); measured after: anon SELECT [] and INSERT 42501, the webhook's
 -- service-role insert path still answers 200.
+-- Idempotent (round 3, 2026-11-03): the policy is already live, so a replay of this file (migration repair, a fresh
+-- branch database) must not fail on "policy already exists".
+drop policy if exists "No client access (service role only)" on public.processed_webhook_events;
 create policy "No client access (service role only)" on public.processed_webhook_events
   as permissive for all to anon, authenticated using (false) with check (false);
 
