@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { TextInput, Button, Text, Surface, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import { PRIVACY_POLICY_URL, TERMS_URL } from '../lib/legalLinks';
+import { logger } from '../utils/logger';
+
+/** The minimum the sign-up check below enforces; shown under the password field before the user types. */
+export const PASSWORD_MIN_LENGTH = 8;
 
 /** True when Supabase reports the e-mail is already registered (empty identities, no mail sent). */
 export function isRepeatedSignUp(user: { identities?: unknown[] | null } | null | undefined): boolean {
@@ -14,6 +19,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const theme = useTheme();
 
 
@@ -31,7 +37,7 @@ export function AuthScreen() {
       Alert.alert('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
       return false;
     }
-    if (password.length < 8) {
+    if (password.length < PASSWORD_MIN_LENGTH) {
       Alert.alert('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
       return false;
     }
@@ -123,20 +129,44 @@ export function AuthScreen() {
             value={email}
             placeholder="ceged@pelda.hu"
             autoCapitalize={'none'}
+            // Round 3 (Lumen P1): the e-mail keyboard and the password manager's autofill on phones.
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCorrect={false}
             mode="outlined"
             style={styles.input}
+            testID="auth-email"
           />
           <TextInput
             label="Jelszó"
             left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} />}
             onChangeText={(text) => setPassword(text)}
             value={password}
-            secureTextEntry={true}
+            secureTextEntry={!showPassword}
             placeholder="Jelszó"
             autoCapitalize={'none'}
+            autoCorrect={false}
+            // A new account gets the password manager's "suggest a strong password", sign-in its saved one.
+            autoComplete={isLogin ? 'current-password' : 'new-password'}
+            textContentType={isLogin ? 'password' : 'newPassword'}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowPassword(!showPassword)}
+                accessibilityLabel={showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
+                testID="auth-password-toggle"
+              />
+            }
             mode="outlined"
             style={styles.input}
+            testID="auth-password"
           />
+          {!isLogin && (
+            <Text variant="bodySmall" style={styles.hint} testID="auth-password-rule">
+              {`Legalább ${PASSWORD_MIN_LENGTH} karakter.`}
+            </Text>
+          )}
 
           <Button
             mode="contained"
@@ -147,6 +177,31 @@ export function AuthScreen() {
           >
             {isLogin ? 'Bejelentkezés' : 'Regisztráció'}
           </Button>
+
+          {!isLogin && (
+            // Round 3 (Lumen P1): the sign-up names the terms and the privacy notice, with links.
+            <Text variant="bodySmall" style={styles.consent} testID="auth-consent">
+              {'A regisztrációval elfogadod az '}
+              <Text
+                style={styles.link}
+                accessibilityRole="link"
+                onPress={() => openLegal(TERMS_URL)}
+                testID="auth-terms-link"
+              >
+                ÁSZF
+              </Text>
+              {'-et és az '}
+              <Text
+                style={styles.link}
+                accessibilityRole="link"
+                onPress={() => openLegal(PRIVACY_POLICY_URL)}
+                testID="auth-privacy-link"
+              >
+                Adatkezelési tájékoztatót
+              </Text>
+              {'.'}
+            </Text>
+          )}
 
           {isLogin && (
             <Button
@@ -173,7 +228,23 @@ export function AuthScreen() {
   );
 }
 
+function openLegal(url: string) {
+  Linking.openURL(url).catch((err) => logger.error('A jogi oldal nem nyílt meg:', err));
+}
+
 const styles = StyleSheet.create({
+  hint: {
+    marginTop: -8,
+    color: '#616161',
+  },
+  consent: {
+    color: '#424242',
+    textAlign: 'center',
+  },
+  link: {
+    color: '#1565C0',
+    textDecorationLine: 'underline',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',

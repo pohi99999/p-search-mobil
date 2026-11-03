@@ -20,9 +20,8 @@ import { useBilling } from '../context/BillingContext';
 import { clearStoredChatHistory } from '../hooks/useCopilotChat';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// The privacy notice lives on the Pohánka site since 2026-10-03 (my_websitev2 PR #128); Google Play's
-// User Data policy wants it reachable from inside the app too.
-export const PRIVACY_POLICY_URL = 'https://www.pohankaestarsa.com/p-search/adatvedelem';
+import { PRIVACY_POLICY_URL } from '../lib/legalLinks';
+export { PRIVACY_POLICY_URL };
 import type { SettingsScreenProps } from '../types/navigation';
 
 type SearchFrequency = 'daily' | 'weekly' | 'manual';
