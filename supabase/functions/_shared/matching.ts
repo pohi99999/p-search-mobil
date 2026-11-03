@@ -20,7 +20,10 @@
  *      schedule and the project is on free-tier API quota.
  */
 
-import { generateEmbedding, generateText, parseJsonFromModel } from './gemini.ts';
+import { generateEmbedding, parseJsonFromModel } from './gemini.ts';
+import { generateText } from './llm.ts';
+import { formatAmountHu, formatDeadlineHu } from './grant-text.ts';
+import { isSmeCandidate } from './candidate-filter.ts';
 
 /** Minimal shape of the Supabase client methods this module relies on. */
 // deno-lint-ignore no-explicit-any
@@ -70,6 +73,21 @@ export const MIN_MATCH_SCORE = 40;
 const MAX_CANDIDATES = 12;
 
 /**
+ * Card [C] (review 2026-10-25): the earliest deadline that still counts as open. A grant stays a candidate for its
+ * whole deadline day in Budapest (the deadline is often stored as that day's midnight), the same cut the app uses.
+ */
+export function openGrantCutoffIso(now: Date = new Date(), timeZone = 'Europe/Budapest'): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(now).map((p) => [p.type, p.value]),
+  );
+  const wall = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  const offsetMs = wall - Math.floor(now.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day) - offsetMs).toISOString();
+}
+
+/**
  * Renders the company profile as the text that gets embedded and shown to the
  * scoring model. Missing fields are labelled rather than omitted so the model
  * can explicitly reason about gaps in the profile.
@@ -102,12 +120,13 @@ export async function collectCandidateGrants(
   supabase: SupabaseClient,
   profileText: string,
   geminiApiKey: string,
+  embed: (text: string, apiKey: string) => Promise<number[]> = generateEmbedding,
 ): Promise<GrantRow[]> {
-  const nowIso = new Date().toISOString();
+  const nowIso = openGrantCutoffIso();
   const orderedIds: string[] = [];
 
   try {
-    const embedding = await generateEmbedding(profileText, geminiApiKey);
+    const embedding = await embed(profileText, geminiApiKey);
     const { data: chunks, error } = await supabase.rpc('match_grant_chunks', {
       query_embedding: embedding,
       match_threshold: 0.2,
@@ -129,22 +148,26 @@ export async function collectCandidateGrants(
     console.warn('Embedding alapú keresés sikertelen, fallback ág következik:', err);
   }
 
-  // Only grants that are still open are ever considered.
-  const { data: openGrants, error: grantsError } = await supabase
-    .from('grants')
-    .select(
-      'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria',
-    )
-    .or(`deadline.is.null,deadline.gte.${nowIso}`)
-    .order('created_at', { ascending: false })
-    .limit(60);
+  // Only grants that are still open are ever considered: not past their deadline, and not closed at the source
+  // (source_closed_at, card [H2]). The semantic hits are fetched by id: reading them
+  // only out of the newest 60 open grants dropped every older relevant one once there were more than 60
+  // (review 2026-10-25, Irisz). The newest 60 stay as the fallback order behind them.
+  const columns = 'id, title, description, provider, grant_type, amount_min, amount_max, deadline, eligibility_criteria';
+  const openFilter = `deadline.is.null,deadline.gte.${nowIso}`;
+  const [semantic, recent] = await Promise.all([
+    orderedIds.length
+      ? supabase.from('grants').select(columns).in('id', orderedIds).or(openFilter).is('source_closed_at', null)
+      : Promise.resolve({ data: [] as GrantRow[], error: null }),
+    supabase.from('grants').select(columns).or(openFilter).is('source_closed_at', null).order('created_at', { ascending: false }).limit(60),
+  ]);
 
+  const grantsError = semantic.error ?? recent.error;
   if (grantsError) {
     throw new Error(`Nem sikerült lekérdezni a pályázatokat: ${grantsError.message}`);
   }
 
   const byId = new Map<string, GrantRow>();
-  for (const grant of (openGrants ?? []) as GrantRow[]) {
+  for (const grant of [...(semantic.data ?? []), ...(recent.data ?? [])] as GrantRow[]) {
     byId.set(grant.id, grant);
   }
 
@@ -161,7 +184,9 @@ export async function collectCandidateGrants(
     ranked.push(grant);
   }
 
-  return ranked.slice(0, MAX_CANDIDATES);
+  // P-Search kör 2 (Irisz P1-0): a call only public bodies may apply to, or a technical / HVSZ / intermediaries'
+  // cost frame, never takes one of the scoring places; the filter runs before the cut, so an SME grant moves up.
+  return ranked.filter(isSmeCandidate).slice(0, MAX_CANDIDATES);
 }
 
 /**
@@ -182,10 +207,9 @@ export async function scoreCandidates(
         `Cím: ${g.title}`,
         `Kiíró: ${g.provider ?? 'Nincs megadva'}`,
         `Típus: ${g.grant_type ?? 'Nincs megadva'}`,
-        `Támogatás: ${g.amount_min?.toLocaleString('hu-HU') ?? '?'} - ${
-          g.amount_max?.toLocaleString('hu-HU') ?? '?'
-        } Ft`,
-        `Határidő: ${g.deadline ?? 'Nincs megadva'}`,
+        // Copilot card: the app's amount and deadline rules, not the raw values (grant-text.ts).
+        `Támogatás: ${formatAmountHu(g.amount_min, g.amount_max) ?? 'Nincs megadva'}`,
+        `Határidő: ${formatDeadlineHu(g.deadline) ?? 'Nincs megadva'}`,
         `Jogosultsági feltételek: ${g.eligibility_criteria ?? 'Nincs megadva'}`,
         `Leírás: ${(g.description ?? 'Nincs megadva').slice(0, 1200)}`,
       ].join('\n'),
@@ -303,6 +327,12 @@ export async function runMatchingForProfile(
     inserted = worthShowing.length;
   }
 
+  // Card 2428c38f: a new scan re-scores only the grants it found; the business's older 'new'
+  // matches kept their reasoning from the old profile and sat in the list mixed with the fresh ones.
+  // They are marked 'stale' (not deleted: an action plan may hang on them), and a stale match the
+  // new scan found again goes back to 'new'. A user's own 'ignored'/'applied' rows are not touched.
+  await markStaleMatches(supabase, businessProfileId, worthShowing.map((m) => m.grant_id));
+
   return {
     candidates: candidates.length,
     scored: scored.length,
@@ -323,4 +353,36 @@ export function computeNextScanAt(frequency: string, from: Date = new Date()): s
     return new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
   }
   return null;
+}
+
+export const STALE_MATCH_STATUS = 'stale';
+
+/** After a scan: 'new' matches of the business outside `freshGrantIds` become 'stale'; 'stale' ones inside go back to 'new'. */
+export async function markStaleMatches(
+  supabase: SupabaseClient,
+  businessProfileId: string,
+  freshGrantIds: string[],
+): Promise<{ staled: number; revived: number }> {
+  const idList = `(${freshGrantIds.map((id) => `"${id}"`).join(',')})`;
+  let staleQuery = supabase
+    .from('grant_matches')
+    .update({ status: STALE_MATCH_STATUS })
+    .eq('business_id', businessProfileId)
+    .eq('status', 'new');
+  if (freshGrantIds.length > 0) staleQuery = staleQuery.not('grant_id', 'in', idList);
+  const { data: staled, error: staleError } = await staleQuery.select('id');
+  if (staleError) throw new Error(`Nem sikerült a régi egyezéseket megjelölni: ${staleError.message}`);
+  let revived: { id: string }[] | null = [];
+  if (freshGrantIds.length > 0) {
+    const { data, error: reviveError } = await supabase
+      .from('grant_matches')
+      .update({ status: 'new' })
+      .eq('business_id', businessProfileId)
+      .eq('status', STALE_MATCH_STATUS)
+      .in('grant_id', freshGrantIds)
+      .select('id');
+    if (reviveError) throw new Error(`Nem sikerült a régi egyezéseket frissíteni: ${reviveError.message}`);
+    revived = data;
+  }
+  return { staled: staled?.length ?? 0, revived: revived?.length ?? 0 };
 }

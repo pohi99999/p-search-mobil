@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Button, Surface, Snackbar, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
@@ -9,6 +9,7 @@ import { useInterstitialAd } from '../hooks/useInterstitialAd';
 import type { ActionPlanScreenProps } from "../types/navigation";
 import { logger } from '../utils/logger';
 import { ActionPlanCard } from '../components/action-plan/ActionPlanCard';
+import { useProfileGate } from '../hooks/useProfileGate';
 
 
 const STATUS_TRANSITION: Record<ActionTaskStatus, ActionTaskStatus> = {
@@ -27,6 +28,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
 
   const { showAdIfAvailable } = useInterstitialAd();
+  // An empty company profile: ask for the key fields before the plan is generated (card 431a496e).
+  const { gate: profileGate, dialog: profileDialog } = useProfileGate(profile);
 
 
 
@@ -34,6 +37,12 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const { plans, tasks, loading: plansLoading, error, refetch, updateTaskStatus, generatePlanForMatch } = useActionPlan(profile?.id);
 
   const visiblePlans = matchId ? plans.filter(p => p.match_id === matchId) : plans;
+
+  // Card [J]: the hook's error (load, task update or generation; often a raw server text) is no longer shown
+  // on screen, so it goes to the log here.
+  useEffect(() => {
+    if (error) logger.warn('Akcióterv hiba:', error);
+  }, [error]);
 
   const handleStatusChange = useCallback(async (task: ActionTask, currentStatus: ActionTaskStatus) => {
     const newStatus = STATUS_TRANSITION[currentStatus] ?? 'todo';
@@ -101,10 +110,27 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
           size={24}
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="action-plan-back-button"
+          accessibilityLabel="Vissza"
         />
-        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati Felkészülés</Text>
+        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati felkészülés</Text>
         <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>
+
+      {/* Card 269fdd5f: the Copilot chat had no entry point since 9bd7505 (2026-08-17). From here it opens
+          on the match of this screen, so the answers refer to that grant (chat-with-gemini match_id). */}
+      {matchId ? (
+        <View style={styles.copilotRow}>
+          <Button
+            mode="outlined"
+            icon="robot-outline"
+            onPress={() => navigation.navigate('CopilotChat', { matchId })}
+            testID="ask-copilot-button"
+            style={styles.copilotButton}
+          >
+            Kérdezz a Copilottól
+          </Button>
+        </View>
+      ) : null}
 
       <Banner
         visible={ocrConfidence === 'low'}
@@ -121,7 +147,8 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
 
       {error && (
         <Surface style={styles.errorBanner} elevation={1}>
-          <Text style={{ color: 'red' }}>Hiba: {error}</Text>
+          {/* Card [J]: the raw error (often an English server text) stays in the log, not on screen. */}
+          <Text style={{ color: '#B71C1C' }}>Valami nem sikerült az akciótervekkel. Koppints a Frissítés gombra, vagy próbáld újra később.</Text>
         </Surface>
       )}
 
@@ -136,7 +163,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                   Akcióterv generálása folyamatban...
                 </Text>
                 <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666' }}>
-                  A Gemini AI elemzi a pályázatot és a cégprofilodat. Ez eltarthat egy kis ideig.
+                  Az AI elemzi a pályázatot és a cégprofilodat. Ez eltarthat egy kis ideig.
                 </Text>
               </>
             ) : (
@@ -145,12 +172,12 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                   Ehhez a pályázathoz még nincs akcióterv
                 </Text>
                 <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
-                  Kattints az alábbi gombra, hogy a Gemini AI elkészítse számodra a személyre szabott felkészülési tervet!
+                  Kattints az alábbi gombra, hogy az AI elkészítse számodra a személyre szabott felkészülési tervet!
                 </Text>
                 <Button
                   mode="contained"
                   style={styles.primaryButton}
-                  onPress={async () => {
+                  onPress={() => profileGate(async () => {
                     if (!profile || !matchId) return;
                     setGenerating(true);
                     try {
@@ -160,18 +187,18 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                     } catch (err: unknown) {
                       if ((err as { proRequired?: boolean })?.proRequired) {
                         // Pro feature: send the user to the Paywall (message already set by the hook).
-                        navigation.navigate('Paywall');
+                        navigation.navigate('Paywall', { source: 'action_plan' });
                         return;
                       }
                       logger.error('Hiba az akcióterv generálása során:', err);
-                      setSnackbarMessage('Hiba történt a generálás során. Kérjük, próbálja újra később.');
+                      setSnackbarMessage('Nem sikerült elkészíteni az akciótervet. Kérlek, próbáld újra később.');
                       setSnackbarVisible(true);
                     } finally {
                       setGenerating(false);
                     }
-                  }}
+                  })}
                 >
-                  Akcióterv Generálása
+                  Akcióterv készítése
                 </Button>
               </>
             )
@@ -205,7 +232,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
                 setPdfLoading={setPdfLoading}
                 showAdIfAvailable={showAdIfAvailable}
                 refetch={refetch}
-                onProRequired={() => navigation.navigate('Paywall')}
+                onProRequired={() => navigation.navigate('Paywall', { source: 'action_plan' })}
               />
             );
           })}
@@ -218,6 +245,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
       >
         {snackbarMessage}
       </Snackbar>
+      {profileDialog}
     </View>
   );
 }
@@ -261,6 +289,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
     paddingTop: 8,
+  },
+  copilotRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  copilotButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
   },
   primaryButton: {
     backgroundColor: '#1A237E',

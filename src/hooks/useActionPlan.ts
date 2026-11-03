@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { track } from '../services/events';
 import { ActionPlan, ActionTask, ActionTaskStatus } from '../types/database';
 import { getErrorMessage } from '../utils/error';
 
@@ -57,6 +58,7 @@ export const useActionPlan = (businessProfileId?: string) => {
         .eq('id', taskId);
 
       if (updateError) throw updateError;
+      track('task_status_change', { to: newStatus });
 
       // Helyi állapot frissítése a gyorsabb UX érdekében
       setTasks((prev: Record<string, ActionTask[]>) => {
@@ -122,6 +124,8 @@ export const useActionPlan = (businessProfileId?: string) => {
         throw invokeError;
       }
       if (data?.error) throw new Error(data.error);
+      const firstMatch = Array.isArray(matchId) ? matchId[0] : matchId;
+      track('plan_created', { match_id: firstMatch, n_tasks: Array.isArray(data?.tasks) ? data.tasks.length : 0 });
 
       // Frissítjük a terveket és feladatokat
       await fetchPlansAndTasks();

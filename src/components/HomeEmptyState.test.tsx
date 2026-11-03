@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { HomeEmptyState } from './HomeEmptyState';
+import { HomeEmptyState, type HomeEmptyStateKind } from './HomeEmptyState';
 
 // Handle React Native Paper component interactions that require timers (like Surface, ActivityIndicator)
 beforeAll(() => {
@@ -11,89 +11,59 @@ afterAll(() => {
   jest.useRealTimers();
 });
 
+// Card [D]: three states instead of a spinner that ran forever.
 describe('HomeEmptyState', () => {
-  it('renders correctly with default props (Ismeretlen)', async () => {
-    const onRefreshMock = jest.fn();
-
-    let root: renderer.ReactTestRenderer | undefined;
+  const render = async (kind: HomeEmptyStateKind, profileIncomplete = false) => {
+    const onSearch = jest.fn();
+    const onEditProfile = jest.fn();
+    let root: renderer.ReactTestRenderer;
     await act(async () => {
       root = renderer.create(
-        <HomeEmptyState onRefresh={onRefreshMock} />
+        <HomeEmptyState kind={kind} profileIncomplete={profileIncomplete} onSearch={onSearch} onEditProfile={onEditProfile} />,
       );
     });
+    const text = JSON.stringify(root!.toJSON());
+    const press = async (testID: string) => {
+      const btn = root!.root.findAll((n) => n.props.testID === testID && typeof n.props.onPress === 'function')[0];
+      await act(async () => { btn.props.onPress(); });
+    };
+    const has = (testID: string) => root!.root.findAll((n) => n.props.testID === testID).length > 0;
+    const spinners = root!.root.findAll((n) => (n.type as unknown) === 'ActivityIndicator').length;
+    return { text, press, has, spinners, onSearch, onEditProfile };
+  };
 
-    if (!root) {
-      throw new Error('Component failed to render');
-    }
-
-    // Verify it shows "Ismeretlen" when no industryCode is provided
-    const texts = root.root.findAll(node => {
-      if (node.props.children) {
-        const children = Array.isArray(node.props.children)
-          ? node.props.children.join('')
-          : String(node.props.children);
-        return children.includes('Ismeretlen');
-      }
-      return false;
-    });
-
-    expect(texts.length).toBeGreaterThan(0);
+  it('a running search shows the spinner and no button', async () => {
+    const r = await render('searching');
+    expect(r.text).toContain('Keressük a cégedhez illő pályázatokat');
+    expect(r.spinners).toBeGreaterThan(0);
+    expect(r.has('empty-search')).toBe(false);
   });
 
-  it('renders correctly with a specific industryCode', async () => {
-    const onRefreshMock = jest.fn();
-    const testCode = '6201';
-
-    let root: renderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      root = renderer.create(
-        <HomeEmptyState industryCode={testCode} onRefresh={onRefreshMock} />
-      );
-    });
-
-    if (!root) {
-      throw new Error('Component failed to render');
-    }
-
-    // Verify it shows the specific code
-    const texts = root.root.findAll(node => {
-      if (node.props.children) {
-        const children = Array.isArray(node.props.children)
-          ? node.props.children.join('')
-          : String(node.props.children);
-        return children.includes(testCode);
-      }
-      return false;
-    });
-
-    expect(texts.length).toBeGreaterThan(0);
+  it('never searched: no spinner, a button that starts the search', async () => {
+    const r = await render('never');
+    expect(r.text).toContain('Még nem kerestünk a cégednek');
+    expect(r.text).not.toContain('Keresés folyamatban');
+    expect(r.spinners).toBe(0);
+    await r.press('empty-search');
+    expect(r.onSearch).toHaveBeenCalledTimes(1);
+    expect(r.has('empty-edit-profile')).toBe(false);
   });
 
-  it('calls onRefresh when the button is pressed', async () => {
-    const onRefreshMock = jest.fn();
+  it('never searched with an incomplete profile also offers to complete it', async () => {
+    const r = await render('never', true);
+    expect(r.text).toContain('Minél több adatot adsz meg a cégedről');
+    await r.press('empty-edit-profile');
+    expect(r.onEditProfile).toHaveBeenCalledTimes(1);
+  });
 
-    let root: renderer.ReactTestRenderer | undefined;
-    await act(async () => {
-      root = renderer.create(
-        <HomeEmptyState onRefresh={onRefreshMock} />
-      );
-    });
-
-    if (!root) {
-      throw new Error('Component failed to render');
-    }
-
-    // Find the Button by looking for something that has an onPress and mode="contained" (which is the Paper button prop)
-    const button = root.root.find(
-      (node) => node.props.onPress !== undefined && node.props.mode === 'contained'
-    );
-
-    expect(button).toBeDefined();
-
-    await act(async () => {
-      button.props.onPress();
-    });
-
-    expect(onRefreshMock).toHaveBeenCalledTimes(1);
+  it('0 matches: no spinner, no notification promise, profile and retry buttons', async () => {
+    const r = await render('none');
+    expect(r.text).toContain('Most nincs a cégedhez illő nyitott pályázat');
+    expect(r.text).not.toContain('értesítünk');
+    expect(r.spinners).toBe(0);
+    await r.press('empty-edit-profile');
+    expect(r.onEditProfile).toHaveBeenCalledTimes(1);
+    await r.press('empty-search');
+    expect(r.onSearch).toHaveBeenCalledTimes(1);
   });
 });

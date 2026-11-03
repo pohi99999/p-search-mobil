@@ -159,7 +159,7 @@ describe('MatchCard', () => {
         if (node.type !== 'Text' || !node.props.children) return false;
         let childrenStr = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
         childrenStr = childrenStr.replace(/\s+/g, ' ').replace(/\u00A0/g, ' ');
-        return childrenStr === 'Összeg: 500 000 Ft - ? Ft';
+        return childrenStr === 'Összeg: legalább 500 000 Ft';
       }
     );
     expect(amountInstances.length).toBeGreaterThan(0);
@@ -187,7 +187,7 @@ describe('MatchCard', () => {
         if (node.type !== 'Text' || !node.props.children) return false;
         let childrenStr = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
         childrenStr = childrenStr.replace(/\s+/g, ' ').replace(/\u00A0/g, ' ');
-        return childrenStr === 'Összeg: 0 Ft - 2 000 000 Ft';
+        return childrenStr === 'Összeg: legfeljebb 2 000 000 Ft';
       }
     );
     expect(amountInstances.length).toBeGreaterThan(0);
@@ -214,5 +214,90 @@ describe('MatchCard', () => {
     });
 
     expect(onPressMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Card 378073ce: the owner's cards said "1 Ft - 138 937 500 000 Ft" (a placeholder minimum and the
+// programme budget as a maximum). The card now says what the data supports.
+it('does not invent a range from a 1 Ft placeholder and a programme budget', async () => {
+  const item = { id: 'm', business_id: 'b', grant_id: 'g', match_score: 70, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'Kombinált keret', provider: 'GINOP Plusz', description: '', amount_min: 1, amount_max: 138937500000 } } as any;
+  let tree: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+  const json = JSON.stringify(tree!.toJSON());
+  // The Text renders ["Összeg: ", "<amount line>"] as two children, so match the amount line itself.
+  expect(json).toContain('keretösszeg 138 937 500 000 Ft');
+  expect(json).not.toContain('1 Ft');
+});
+
+// Card 2428c38f: a match the latest scan did not re-score is labelled, not shown as fresh.
+it('labels a stale match as a result of an earlier search', async () => {
+  const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: 'régi indoklás', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi pályázat', provider: 'X', description: '', amount_min: null, amount_max: null } } as any;
+  let tree: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+  const json = JSON.stringify(tree!.toJSON());
+  expect(json).toContain('Korábbi keresés találata');
+  expect(json).not.toContain('Egyezés: 50%');
+});
+
+// Card [A]: the deadline is on the card, expired ones in red.
+describe('deadline line (card [A])', () => {
+  const withDeadline = (deadline: string | null) => ({ id: 'm2', business_id: 'b', grant_id: 'g', match_score: 60, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'Határidős pályázat', provider: 'X', description: '', amount_min: null, amount_max: null, deadline } } as any);
+  const deadlineText = async (deadline: string | null) => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={withDeadline(deadline)} onPress={() => {}} />); });
+    const node = tree!.root.findAll((n) => n.props.testID === 'match-deadline' && typeof n.props.children === 'string')[0];
+    return { text: node.props.children as string, style: JSON.stringify(node.props.style) };
+  };
+
+  beforeEach(() => { jest.useFakeTimers(); jest.setSystemTime(new Date(2026, 9, 25, 10, 0, 0)); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  it('shows the days left for an open grant', async () => {
+    const { text } = await deadlineText(new Date(2026, 11, 30, 12).toISOString());
+    expect(text).toBe('Beadás: 2026. 12. 30. (még 66 nap)');
+  });
+
+  it('marks an expired grant in red', async () => {
+    const { text, style } = await deadlineText(new Date(2026, 9, 1, 12).toISOString());
+    expect(text).toBe('Lejárt: 2026. 10. 01.');
+    expect(style).toContain('#B71C1C');
+  });
+
+  it('says when there is no deadline', async () => {
+    const { text } = await deadlineText(null);
+    expect(text).toBe('Beadási határidő: nincs megadva');
+  });
+});
+
+// Round 2 (Lumen P2-6, P2-7).
+describe('round 2: the details button name and the stale subtitle contrast', () => {
+  const { contrastRatio, textColor } = require('../../test-utils/contrast');
+  const { StyleSheet } = require('react-native');
+
+  it('the details button name starts with the word it shows, then names the grant', async () => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={{ id: 'm', business_id: 'b', grant_id: 'g', match_score: 70, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'GINOP Plusz', provider: 'X', description: '', amount_min: null, amount_max: null } } as any} onPress={() => {}} />); });
+    const labels = tree!.root.findAll((n) => typeof n.props.accessibilityLabel === 'string' && /GINOP Plusz/.test(n.props.accessibilityLabel)).map((n) => n.props.accessibilityLabel);
+    expect(labels).toContain('Részletek: GINOP Plusz');
+  });
+
+  it('the stale subtitle stays at least 4.5:1 on white, with the card opacity counted in', async () => {
+    const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: '', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi pályázat', provider: 'X', description: '', amount_min: null, amount_max: null } } as any;
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+    const node = tree!.root.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string' && n.props.children.startsWith('Korábbi keresés találata'))[0];
+    let opacity = 1;
+    // host elements only: a composite passes the same style down, and would count it more than once
+    for (let p: any = node; p; p = p.parent) {
+      if (typeof p.type !== 'string') continue;
+      const o = StyleSheet.flatten(p.props?.style)?.opacity;
+      if (typeof o === 'number') opacity *= o;
+    }
+    const fg = textColor(node.props.style);
+    // the colour as it lands on the white card under the opacity
+    const ch = (i: number) => Math.round(parseInt(fg.slice(1 + i * 2, 3 + i * 2), 16) * opacity + 255 * (1 - opacity));
+    const blended = '#' + [0, 1, 2].map((i) => ch(i).toString(16).padStart(2, '0')).join('');
+    expect(opacity).toBeLessThan(1);
+    expect(contrastRatio(blended, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
   });
 });

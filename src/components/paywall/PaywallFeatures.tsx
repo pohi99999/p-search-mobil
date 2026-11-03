@@ -6,35 +6,31 @@ export const PaywallFeatures = () => {
   return (
     <Card style={styles.featureCard} mode="outlined">
       <Card.Content>
+        {/* Only what the app really does (owner-approved text, Telegram 6057, card bc8e4135). The descriptions
+            may run to 8 lines: at 3 the Copilot one was cut on the phone (card a96dd8e2 #4). */}
         <List.Item
-          title="✍️ Korlátlan AI Pályázatíró & Hitelügyintéző"
+          title="✍️ Copilot akcióterv és pályázati dokumentum"
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
-          description="Gemini AI megírja az igénylési dokumentumokat, elemzi a pályázatokat és felkészít a hitelügyintézésre."
+          description="Az AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
           descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
+          descriptionNumberOfLines={8}
         />
         <List.Item
-          title="📂 Automatikus Master Dokumentum Bázis (OCR)"
+          title="🔎 Korlátlan AI keresés"
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
-          description="Töltsd fel pénzügyi kimutatásaidat — az AI OCR-rel automatikusan feldolgozza és strukturálja az adatokat."
+          description="Nincs napi keresési korlát."
           descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
-        />
-        <List.Item
-          title="📄 Teljes PDF & DOCX Export"
-          titleStyle={styles.featureTitle}
-          titleNumberOfLines={2}
-          description="Professzionálisan előkitöltött pályázati dokumentumok egy kattintással, letölthetőn és megoszthatóan."
-          descriptionStyle={styles.featureDesc}
-          descriptionNumberOfLines={3}
+          descriptionNumberOfLines={8}
         />
         <List.Item
           title="🚫 Hirdetésmentesség"
           titleStyle={styles.featureTitle}
-          description="Tiszta, zavaró tényezőktől mentes kezelőfelület a gyorsabb munkához."
+          titleNumberOfLines={2}
+          description="Tiszta, reklám nélküli felület."
           descriptionStyle={styles.featureDesc}
+          descriptionNumberOfLines={8}
         />
       </Card.Content>
     </Card>

@@ -8,9 +8,9 @@ describe('packageLabel', () => {
     expect(packageLabel({ packageType: 'ANNUAL', identifier: '$rc_annual' } as any)).toBe('P-Search Pro éves');
   });
 
-  it('falls back to the bare brand for unknown package types', () => {
-    expect(packageLabel({ packageType: 'CUSTOM', identifier: 'x' } as any)).toBe('P-Search Pro');
-    expect(packageLabel({ packageType: 'UNKNOWN', identifier: 'x' } as any)).toBe('P-Search Pro');
+  it('names any other package type "P-Search Pro előfizetés"', () => {
+    expect(packageLabel({ packageType: 'CUSTOM', identifier: 'x' } as any)).toBe('P-Search Pro előfizetés');
+    expect(packageLabel({ packageType: 'UNKNOWN', identifier: 'x' } as any)).toBe('P-Search Pro előfizetés');
   });
 
   it('never echoes the raw store title', () => {

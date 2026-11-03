@@ -135,3 +135,14 @@ describe('TesterProgress', () => {
     expect(completionInstances.length).toBeGreaterThan(0);
   });
 });
+
+// Round 2 (Lumen P2-5): the progress bar had no accessible name.
+it('the tester progress bar is named with the day count', async () => {
+  const { ProgressBar } = require('react-native-paper');
+  (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(['2026-10-29', '2026-10-30']));
+  let root!: renderer.ReactTestRenderer;
+  await act(async () => { root = renderer.create(<TesterProgress />); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const bar = root.root.findByType(ProgressBar);
+  expect(bar.props.accessibilityLabel).toMatch(/^Tesztelési napok: \d+ a 14-ből$/);
+});

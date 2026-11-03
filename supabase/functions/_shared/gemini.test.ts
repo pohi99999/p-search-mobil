@@ -5,6 +5,7 @@ import {
   GeminiUnavailableError,
   geminiUnavailableResponse,
   retryWaitMs,
+  quotaIdOf,
   GEMINI_USER_MESSAGES,
   EMBEDDING_DIMENSIONS,
   type GeminiDeps,
@@ -110,4 +111,23 @@ Deno.test("the HTTP answer carries the code, the Hungarian text and the 429/503 
   const busy = geminiUnavailableResponse(new GeminiUnavailableError(503), {});
   assertEquals(busy.status, 503);
   assertEquals((await busy.json()).code, "gemini_busy");
+});
+
+// Brunella 4908: the 2026-10-25 embedding 429 named a per-minute quota; the error carries it.
+const RAW_429_PER_MINUTE = JSON.stringify({
+  error: {
+    code: 429, status: "RESOURCE_EXHAUSTED", message: "You exceeded your current quota.",
+    details: [
+      { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ quotaMetric: "generativelanguage.googleapis.com/embed_content_free_tier_requests", quotaId: "EmbedContentRequestsPerMinutePerProjectPerModel-FreeTier", quotaValue: "100" }] },
+      { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "0.2s" },
+    ],
+  },
+});
+
+Deno.test("a 429 that names its quota: the error carries the quotaId; without one it is null", async () => {
+  const s = scripted([[429, RAW_429_PER_MINUTE], [429, RAW_429_PER_MINUTE]]);
+  const err = await assertRejects(() => generateEmbedding("t", "key", s.deps), GeminiUnavailableError);
+  assertEquals(err.quotaId, "EmbedContentRequestsPerMinutePerProjectPerModel-FreeTier");
+  assertEquals(quotaIdOf(RAW_429), null);
+  assertEquals(new GeminiUnavailableError(503).quotaId, null);
 });

@@ -14,8 +14,14 @@ import {
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../context/ProfileContext';
 import { logger } from '../utils/logger';
+import { track } from '../services/events';
 import { getErrorMessage } from '../utils/error';
 import type { DocumentUploadScreenProps } from '../types/navigation';
+
+// The process-master-document cap (supabase/functions/_shared/input-limits.ts MAX_DOCUMENT_BYTES):
+// a bigger file is refused with 413 anyway, so say why before uploading it (SECURITY_AUDIT.md H1).
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+export const DOCUMENT_TOO_LARGE_MESSAGE = 'A dokumentum legfeljebb 10 MB lehet. Tölts fel kisebb fájlt (például tömörített PDF-et vagy kisebb felbontású fotót).';
 
 type ExtractionConfidence = 'high' | 'medium' | 'low';
 
@@ -117,13 +123,19 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
         return;
       }
 
+      if (typeof asset.size === 'number' && asset.size > MAX_DOCUMENT_BYTES) {
+        showSnackbar(DOCUMENT_TOO_LARGE_MESSAGE);
+        setStatusText('');
+        return;
+      }
+
       setUploading(true);
       setSelectedFileName(asset.name);
       setStatusText('Dokumentum előkészítése...');
 
       const fileBase64 = asset.base64 ?? (await new File(asset.uri).base64());
 
-      setStatusText('Gemini OCR feldolgozás folyamatban...');
+      setStatusText('AI OCR feldolgozás folyamatban...');
       const { data, error } = await supabase.functions.invoke<ProcessMasterDocumentResponse>(
         'process-master-document',
         {
@@ -136,17 +148,34 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        // P-Search kör 2, P1-5 (Péter 12036): the 4th upload of the day gets 429 with the server's Hungarian text
+        // ("Mára elérted a dokumentumfeltöltések keretét..."); show that, not the generic failure.
+        const status = (error as { context?: { status?: number } })?.context?.status;
+        if (status === 429) {
+          let message = '';
+          try {
+            const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+            message = (ctx?.json ? (await ctx.json())?.error : '') ?? '';
+          } catch { /* fall through to the default text */ }
+          track('document_uploaded', { ok: false });
+          showSnackbar(message || 'Mára elérted a dokumentumfeltöltések keretét. Holnap újra feltölthetsz.');
+          return;
+        }
+        throw error;
+      }
       if (!data || !data.success || data.error) {
         throw new Error(data?.error ?? 'A dokumentum feldolgozása sikertelen.');
       }
 
       setExtractedData(data.extracted_data);
       setLowConfidenceVisible(data.extracted_data.extraction_confidence === 'low');
+      track('document_uploaded', { ok: true });
       await refreshProfile();
       showSnackbar('Dokumentum sikeresen feldolgozva.');
     } catch (err: unknown) {
       logger.error('DocumentUploadScreen feltöltési hiba:', getErrorMessage(err));
+      track('document_uploaded', { ok: false });
       showSnackbar('Nem sikerült feldolgozni a dokumentumot. Kérjük, próbáld újra később.');
     } finally {
       setUploading(false);
@@ -194,12 +223,15 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card} mode="elevated">
           <Card.Title
-            title="Master Document Base"
+            title="Pénzügyi beszámoló feltöltése"
             subtitle="Tölts fel mérleget, főkönyvet vagy éves beszámolót."
+            subtitleNumberOfLines={2}
+            // Card [J]: a 2-line subtitle no longer fits Card.Title's fixed 72 px row without padding.
+            style={styles.cardTitle}
           />
           <Card.Content>
             <Text variant="bodyMedium" style={styles.description}>
-              A Gemini OCR kiolvassa a fő pénzügyi mutatókat, majd frissíti a cégprofilodat.
+              Az AI kiolvassa a fő pénzügyi mutatókat, és frissíti velük a cégprofilodat.
             </Text>
             {selectedFileName && (
               <Text variant="bodySmall" style={styles.fileName}>
@@ -281,6 +313,9 @@ function ResultRow({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  cardTitle: {
+    paddingVertical: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

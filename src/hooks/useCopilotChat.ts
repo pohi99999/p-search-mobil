@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { track, type ErrorCode } from '../services/events';
 import { formatChatErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
+import { newMessageId } from '../utils/messageId';
 
 export interface Message {
   id: string;
@@ -102,18 +104,22 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
     if (!inputText.trim()) return;
 
     const userText = inputText.trim();
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      text: userText,
-      sender: 'user',
-      created_at: new Date().toISOString()
-    };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsTyping(true);
-
+    // The whole send runs inside try: anything that throws (2026-10-19 it was a missing global
+    // `crypto` on the device, before the request even left) must surface as an error message in
+    // the chat, never as a silently swallowed rejection that leaves the text in the input.
     try {
+      const userMessage: Message = {
+        id: newMessageId(),
+        text: userText,
+        sender: 'user',
+        created_at: new Date().toISOString()
+      };
+
+      setMessages(prev => [...prev, userMessage]);
+      setInputText('');
+      setIsTyping(true);
+
       // Supabase Edge Function meghívása a valós AI válaszért
       const { data, error: invokeError } = await supabase.functions.invoke('chat-with-gemini', {
         body: {
@@ -124,7 +130,16 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
         }
       });
 
-      if (invokeError) throw invokeError;
+      if (invokeError) {
+        // Card [L]: the free daily chat cap answers 403 {code:'chat_daily_limit', error}; the server's Hungarian
+        // text is shown as it is instead of the generic failure.
+        const ctx = (invokeError as { context?: { status?: number; json?: () => Promise<{ code?: string; error?: string }> } }).context;
+        if (ctx?.status === 403 && ctx.json) {
+          const body = await ctx.json().catch(() => null);
+          if (body?.code === 'chat_daily_limit' && body.error) throw Object.assign(new Error(body.error), { code: 'chat_daily_limit' });
+        }
+        throw invokeError;
+      }
       if (data?.error) throw new Error(data.error);
 
       const replyText = data?.reply || data?.text || data?.response || '';
@@ -136,7 +151,7 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
       const sources = Array.isArray(data?.sources) ? data.sources : undefined;
 
       const aiResponse: Message = {
-        id: crypto.randomUUID(),
+        id: newMessageId(),
         text: replyText,
         sender: 'ai',
         created_at: new Date().toISOString(),
@@ -144,12 +159,18 @@ export function useCopilotChat(matchId: string | null, profileId: string | undef
       };
 
       setMessages(prev => [...prev, aiResponse]);
+      track('chat_message_sent', { ok: true });
     } catch (err: unknown) {
       logger.error('Chat error details:', err);
+      // Only a code, never the text: the message body stays out of the event log (card [G]).
+      const status = (err as { context?: { status?: number } })?.context?.status;
+      const capHit = (err as { code?: string })?.code === 'chat_daily_limit';
+      const code: ErrorCode = capHit ? 'chat_daily_limit' : status === 429 ? 'gemini_quota' : status === 503 ? 'gemini_busy' : status ? 'server' : 'network';
+      track('chat_message_sent', { ok: false, error_code: code });
       const errorMessageText = formatChatErrorMessage(err);
 
       const errorMessage: Message = {
-        id: `err-${crypto.randomUUID()}`,
+        id: newMessageId('err-'),
         text: errorMessageText,
         sender: 'ai',
         created_at: new Date().toISOString()

@@ -6,6 +6,8 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const PRO_TIER = 'pro';
 export const FREE_DAILY_SEARCH_CAP = 20;
+/** Card [L]: free Copilot chat messages per day. A technical ceiling against abuse; the final free/Pro line is the owner's decision. */
+export const FREE_DAILY_CHAT_CAP = 20;
 
 /** Pure: is this subscription tier Pro? Anything not exactly 'pro' is free. */
 export function isPro(tier: string | null | undefined): boolean {

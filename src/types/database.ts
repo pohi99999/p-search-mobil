@@ -23,6 +23,8 @@ export interface Grant {
   eligibility_criteria: string | null;
   source_url: string | null;
   created_at: string;
+  // Card [H2]: when the loader found the call no longer Aktív at the source; null = open there.
+  source_closed_at?: string | null;
 }
 
 export interface GrantMatch {
@@ -33,6 +35,8 @@ export interface GrantMatch {
   match_reasoning: string | null;
   status: string;
   created_at: string;
+  // [G]: the user's "Hasznos / Nem releváns" answer (set_match_feedback).
+  feedback?: 'useful' | 'not_relevant' | null;
 }
 
 export interface UserProfile {
@@ -40,6 +44,7 @@ export interface UserProfile {
   subscription_tier: string;
   search_frequency: string;
   search_count: number;
+  last_scan_at?: string | null;
 }
 
 export interface ActionPlan {

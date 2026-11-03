@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSubscriptionTier, isPro } from "../_shared/entitlement.ts";
+import { companyContext as buildCompanyContext, grantContext as buildGrantContext } from "../_shared/company-context.ts";
+import { grantKind } from "../_shared/grant-kind.ts";
+import { documentBrief, documentErrorResponse, documentSystemPrompt, generateSections } from "./generation.ts";
+import { huThousands } from "../_shared/hu-numbers.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -107,38 +111,19 @@ serve(async (req) => {
       );
     }
 
+    // Only the filled fields reach the prompt (card 431a496e): no "Nincs megadva" for the model to repeat.
     const companyName = profile.company_name;
     const grantTitle = match.grants?.title || "Kiválasztott Pályázat";
+    const companyContext = buildCompanyContext(profile);
+    const grantContext = buildGrantContext(match.grants);
 
-    const companyContext = `Cégnév: ${companyName}
-TEÁOR kód (iparág): ${profile.industry_code || "Nincs megadva"}
-Alkalmazottak száma: ${profile.employee_count || "Nincs megadva"}
-Éves árbevétel: ${profile.yearly_revenue ? profile.yearly_revenue.toLocaleString("hu-HU") + " Ft" : "Nincs megadva"}
-Cég céljai: ${profile.goals || "Nincs megadva"}`;
+    // 3. Gemini Prompt összeállítása a tartalmi blokkokhoz: a program típusa szerint (card e388efe1),
+    // hitelnél hitelkérelem-anyag, hibridnél mindkettő, támogatásnál a korábbi pályázati anyag.
+    const brief = documentBrief(grantKind(match.grants?.grant_type));
+    const systemPrompt = documentSystemPrompt(brief, companyContext, grantContext);
 
-    const grantContext = `Pályázat címe: ${grantTitle}
-Kiíró: ${match.grants?.provider || "Nincs megadva"}
-Támogatás összege: ${match.grants?.amount_min ? match.grants.amount_min.toLocaleString("hu-HU") + " Ft" : "0"} - ${match.grants?.amount_max ? match.grants.amount_max.toLocaleString("hu-HU") + " Ft" : "?"}
-Kritériumok: ${match.grants?.eligibility_criteria || "Nincs megadva"}
-Pályázat leírása: ${match.grants?.description || "Nincs megadva"}`;
-
-    // 3. Gemini Prompt összeállítása a tartalmi blokkokhoz
-    const systemPrompt = `Te egy professzionális pályázatíró AI asszisztens vagy.
-A megadott cégprofil és pályázati adatok alapján készíts el egy Üzleti Terv Vázlatot a pályázati felkészüléshez.
-
-Kimeneti formátum: KIZÁRÓLAG egy érvényes JSON formátumot adhatsz vissza, az alábbi kulcsokkal:
-- "executive_summary": Vezetői összefoglaló, a projekt célja és a pályázati támogatás felhasználása (magyarul, kb. 150 szó).
-- "market_analysis": Piacelemzés, célcsoport és versenyelőny bemutatása a TEÁOR kód és cégprofil alapján (magyarul, kb. 150-200 szó).
-- "financial_plan": Pénzügyi terv vázlat, a támogatási összeg elosztása és a várható megtérülés a cégbevétele alapján (magyarul, kb. 150 szó).
-
-Adatok a generáláshoz:
-Cégadatok:
-${companyContext}
-
-Pályázati adatok:
-${grantContext}`;
-
-    // 4. Gemini API hívása (REST)
+    // 4. Gemini (REST, _shared/gemini.ts): one retry on 429/503 and on a cut-off or broken JSON answer,
+    // thinking off and a 4096-token cap (DOCUMENT_GENERATION); the finishReason is logged on failure.
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
       throw new Error(
@@ -146,53 +131,16 @@ ${grantContext}`;
       );
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const parsedData = await generateSections(
+      brief.userPrompt,
+      apiKey,
+      systemPrompt,
+    );
 
-    const apiResponse = await fetch(geminiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: "Kérlek, generáld le a pályázathoz illeszkedő üzleti terv vázlatot a megadott adatok alapján.",
-              },
-            ],
-          },
-        ],
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 1500,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!apiResponse.ok) {
-      // The upstream body frequently echoes the request and key metadata, so
-      // it is logged server-side only and never surfaced to the client.
-      const errorText = await apiResponse.text();
-      console.error(`Gemini API hiba (${apiResponse.status}):`, errorText);
-      throw new Error(`Gemini API hiba (${apiResponse.status})`);
-    }
-
-    const responseData = await apiResponse.json();
-    const replyJSONText =
-      responseData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-
-    // Parse-oljuk a Gemini JSON kimenetét
-    const parsedData = JSON.parse(replyJSONText.trim());
-
-    const executiveSummary = parsedData.executive_summary || "Nincs kitöltve.";
-    const marketAnalysis = parsedData.market_analysis || "Nincs kitöltve.";
-    const financialPlan = parsedData.financial_plan || "Nincs kitöltve.";
+    const executiveSummary = huThousands(parsedData.executive_summary || "Nincs kitöltve.");
+    const marketAnalysis = huThousands(parsedData.market_analysis || "Nincs kitöltve.");
+    // "50.000.000 Ft" -> "50 000 000 Ft" in the model text (card a96dd8e2 #14)
+    const financialPlan = huThousands(parsedData.financial_plan || "Nincs kitöltve.");
 
     // 5. HTML Sablon összeállítása CSS stílusokkal és az adatok behelyettesítésével
     const htmlContent = `
@@ -258,7 +206,7 @@ ${grantContext}`;
 </head>
 <body>
   <div class="header">
-    <h1>Pályázati Felkészülési Üzleti Terv</h1>
+    <h1>${escapeHtml(brief.title)}</h1>
     <p style="margin: 0; color: #757575; font-size: 14px;">AI által generált előkészítő dokumentum</p>
   </div>
 
@@ -268,7 +216,7 @@ ${grantContext}`;
       <td><strong>${escapeHtml(companyName)}</strong></td>
     </tr>
     <tr>
-      <td class="meta-label">Célzott Pályázat:</td>
+      <td class="meta-label">${escapeHtml(brief.programLabel)}</td>
       <td>${escapeHtml(grantTitle)}</td>
     </tr>
     <tr>
@@ -277,17 +225,17 @@ ${grantContext}`;
     </tr>
   </table>
 
-  <h2>1. Vezetői Összefoglaló (Executive Summary)</h2>
+  <h2>${escapeHtml(brief.headings[0])}</h2>
   <p>${escapeHtml(executiveSummary)}</p>
 
-  <h2>2. Piacelemzés és Versenyelőny (Market Analysis)</h2>
+  <h2>${escapeHtml(brief.headings[1])}</h2>
   <p>${escapeHtml(marketAnalysis)}</p>
 
-  <h2>3. Pénzügyi Terv és Megtérülés (Financial Plan)</h2>
+  <h2>${escapeHtml(brief.headings[2])}</h2>
   <p>${escapeHtml(financialPlan)}</p>
 
   <div class="footer">
-    Ez a dokumentum a P-Search Mobil Alkalmazás és a Gemini AI segítségével készült.<br/>
+    Ez a dokumentum a P-Search Mobil Alkalmazás AI-asszisztensének segítségével készült.<br/>
     &copy; ${new Date().getFullYear()} P-Search Mobil. Minden jog fenntartva.
   </div>
 </body>
@@ -333,12 +281,7 @@ ${grantContext}`;
     // Full detail stays in the server log; the client receives a generic
     // message so internal identifiers and provider errors are not disclosed.
     console.error("Hiba a dokumentum generálása során:", err);
-    return new Response(
-      JSON.stringify({ error: "Nem sikerült legenerálni a dokumentumot." }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      },
-    );
+    // Gemini quota/busy/cut-off answers get their code and Hungarian text, anything else stays generic.
+    return documentErrorResponse(err, corsHeaders);
   }
 });

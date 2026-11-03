@@ -17,6 +17,7 @@ import { ActionPlanScreen } from './src/screens/ActionPlanScreen';
 import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { DocumentUploadScreen } from './src/screens/DocumentUploadScreen';
+import { GrantDetailScreen } from './src/screens/GrantDetailScreen';
 import { BillingProvider } from './src/context/BillingContext';
 import { ProfileProvider } from './src/context/ProfileContext';
 
@@ -80,6 +81,7 @@ export default function App() {
                 <Stack.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal' }} />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
                 <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
+                <Stack.Screen name="GrantDetail" component={GrantDetailScreen} />
                 <Stack.Screen name="ActionPlan" component={ActionPlanScreen} />
                 <Stack.Screen name="CopilotChat" component={CopilotChatScreen} />
               </>

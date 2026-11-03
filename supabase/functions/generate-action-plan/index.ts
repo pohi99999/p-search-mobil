@@ -1,8 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { generateText, GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
+import { actionPlanErrorResponse } from './errors.ts';
+import { generateText } from '../_shared/llm.ts';
 import { getSubscriptionTier, isPro } from '../_shared/entitlement.ts';
 import { foreignMatchIds } from '../_shared/match-ownership.ts';
+import { extractNextSteps, stripMarkdownFence } from './tasks.ts';
+import { companyContext, mentionsMissingData, NO_MISSING_DATA_RULE, planGrantSection } from '../_shared/company-context.ts';
+import { actionPlanHint, grantKind } from '../_shared/grant-kind.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '';
 
@@ -152,6 +156,11 @@ serve(async (req) => {
           grantData = matchItem.grants;
         }
 
+        // Card e388efe1: the plan knows the programme type; a loan or a hybrid gets its own next steps.
+        // P-Search kör 2 (Irisz P1-1): the plan gets the grant as the document does (grantContext: type, amount,
+        // deadline, eligibility, each only when filled), and its next steps are timed to the deadline.
+        const kindHint = grantData ? actionPlanHint(grantKind(grantData.grant_type)) : '';
+
         const systemPrompt = `Te egy Professzionális Pályázati és Digitalizációs Szakértő Copilot vagy.
 A feladatod egy strukturált, Markdown formátumú "Pályázati Akcióterv" generálása az alábbi adatok alapján.
 Az akciótervnek tartalmaznia kell:
@@ -160,25 +169,31 @@ Az akciótervnek tartalmaznia kell:
 3. Következő Lépések (Next Steps) - konkrét, cselekvésre ösztönző feladatok
 
 Cég adatai:
-- Név: ${businessData?.company_name || 'Ismeretlen'}
-- Árbevétel: ${businessData?.yearly_revenue || 'Ismeretlen'} Ft
-- Létszám: ${businessData?.employee_count || 'Ismeretlen'} fő
+${companyContext(businessData ?? {})}
 
-${grantData ? `Kiválasztott pályázat:\n- Cím: ${grantData.title}\n- Leírás: ${grantData.description}\n` : ''}
+${grantData ? `${planGrantSection(grantData)}\n` : ''}${kindHint ? `\n${kindHint}\n` : ''}
 
 Eddigi beszélgetés előzményei (ha van):
 ${chat_history ? JSON.stringify(chat_history) : 'Nincs előzmény'}
+
+${NO_MISSING_DATA_RULE}
 
 Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne tegyél semmilyen egyéb szöveget a válaszba, csak a Markdownt.`;
 
         // Shared helper: one retry on 429/503, then a typed error (temperature 1.0 = the model
         // default the SDK call used, so the plans read the same as before).
-        const generatedMarkdown = await generateText(systemPrompt, geminiApiKey, { temperature: 1.0 });
+        let generatedMarkdown = await generateText(systemPrompt, geminiApiKey, { temperature: 1.0 });
+        // Still talks about missing data ("nincs megadva", "feltételezzük"; card 431a496e): ONE regeneration with a reminder.
+        if (mentionsMissingData(generatedMarkdown)) {
+          console.warn('Az akcióterv hiányzó adatot említett, újragenerálás emlékeztetővel.');
+          generatedMarkdown = await generateText(`${systemPrompt}\n\nAz előző változat hiányzó adatot említett. Ilyen kifejezés (nincs megadva, ismeretlen, feltételezzük) ne szerepeljen.`, geminiApiKey, { temperature: 1.0 });
+        }
 
         return {
           match_id: matchItem?.id || null,
           title: grantTitle,
-          markdown: generatedMarkdown,
+          // the ```markdown fence Gemini wraps the answer in is not part of the plan (card a815756f)
+          markdown: stripMarkdownFence(generatedMarkdown),
         };
       })
     );
@@ -209,22 +224,14 @@ Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne 
       const res = aiResults[i];
       const plan = insertedPlans[i];
 
-      const taskRegex = /^[*-]\s+(.+)$/gm;
-      let regexMatch;
-      const extractedTasks = [];
-      let orderIndex = 1;
-
-      while ((regexMatch = taskRegex.exec(res.markdown)) !== null) {
-        if (extractedTasks.length < 5) {
-          extractedTasks.push({
-            plan_id: plan.id,
-            title: regexMatch[1].substring(0, 100),
-            description: `Automatikusan generált feladat az akciótervből: ${res.match_id}`,
-            status: 'todo',
-            order_index: orderIndex++,
-          });
-        }
-      }
+      // Only the "Következő lépések" section: title = the step, description = its sub-points (card a815756f)
+      const extractedTasks = extractNextSteps(res.markdown).map((t, k) => ({
+        plan_id: plan.id,
+        title: t.title,
+        description: t.description || 'Az akcióterv „Következő lépések” részéből.',
+        status: 'todo',
+        order_index: k + 1,
+      }));
 
       if (extractedTasks.length > 0) {
         allTasksToInsert.push(...extractedTasks);
@@ -259,15 +266,8 @@ Kérlek, generáld le az akciótervet magyar nyelven, Markdown formátumban. Ne 
         status: 200,
       },
     );
-  } catch (err: any) {
-    if (err instanceof GeminiUnavailableError) {
-      return geminiUnavailableResponse(err, corsHeaders);
-    }
-    // The raw error text (it used to be Google's "[GoogleGenerativeAI Error] ...") stays in the log.
-    console.error('Akcióterv-generálás hiba:', err);
-    return new Response(JSON.stringify({ error: 'Nem sikerült elkészíteni az akciótervet, próbáld újra később.' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
+  } catch (err: unknown) {
+    // Gemini 429/503 -> {code, error} with that status; anything else a generic 500 (errors.ts).
+    return actionPlanErrorResponse(err, corsHeaders);
   }
 });

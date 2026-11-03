@@ -2,14 +2,17 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { PaywallScreen } from '../PaywallScreen';
 import { useBilling } from '../../context/BillingContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { metasOutsideWhitelist, trackCalls } from '../../test-utils/events';
 import { Alert } from 'react-native';
 import { Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
+import { contrastRatio, textColor } from '../../test-utils/contrast';
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(),
+  useRoute: jest.fn(() => ({ params: undefined })),
 }));
 
 jest.mock('../../context/BillingContext', () => ({
@@ -67,6 +70,8 @@ describe('PaywallScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     jest.spyOn(logger, 'error').mockImplementation(() => {});
     jest.clearAllMocks();
+    mockBilling.purchasePackage.mockResolvedValue('purchased');
+    mockBilling.restorePurchases.mockResolvedValue({ isPro: true });
     (useNavigation as jest.Mock).mockReturnValue(mockNavigation);
     (useBilling as jest.Mock).mockReturnValue(mockBilling);
     // hide unhelpful react-native-paper warnings about Surface overflow
@@ -79,28 +84,98 @@ describe('PaywallScreen', () => {
     jest.restoreAllMocks();
   });
 
-  it('renders success view when isPro is true and navigates back on button press', async () => {
-    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+  // Round 2 (Lumen P1-1): an existing Pro subscriber got "Sikeres Pro előfizetés! 🎉" on every opening, with
+  // no way to manage or restore. Now: the manage view; the success screen only right after a purchase.
+  describe('a Pro subscriber', () => {
+    const { Linking } = require('react-native');
+    const { PLAY_SUBSCRIPTIONS_URL } = require('../../components/paywall');
+    const byTestID = (c: renderer.ReactTestRenderer, id: string) => c.root.findAll((n) => n.props.testID === id && typeof n.type !== 'string')[0];
 
-    let component: renderer.ReactTestRenderer;
-    await act(async () => {
-      component = renderWithSafeArea(<PaywallScreen />);
+    it('an existing subscriber sees the manage view, not the purchase celebration', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const tree = JSON.stringify(c.toJSON());
+      expect(tree).toContain('Aktív Pro előfizetés');
+      expect(tree).not.toContain('Sikeres Pro előfizetés');
+      await act(async () => { byTestID(c, 'active-pro-close').props.onPress(); });
+      expect(mockNavigation.goBack).toHaveBeenCalled();
     });
 
-    const root = component!.root;
-    const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sikeres Pro Előfizetés! 🎉');
-
-    const backButton = root.findAllByType(Button).find(
-      (b) => b.props.children === 'Vissza a Kezdőlapra'
-    );
-    expect(backButton).toBeDefined();
-
-    await act(async () => {
-      backButton!.props.onPress();
+    it('"Előfizetés kezelése" opens the Play subscription page of this app', async () => {
+      const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      await act(async () => { byTestID(c, 'active-pro-manage').props.onPress(); });
+      expect(open).toHaveBeenCalledWith(PLAY_SUBSCRIPTIONS_URL);
+      expect(PLAY_SUBSCRIPTIONS_URL).toBe('https://play.google.com/store/account/subscriptions?package=com.pohankaestarsa.psearch');
     });
 
-    expect(mockNavigation.goBack).toHaveBeenCalled();
+    it('"Vásárlás visszaállítása" runs the restore with its honest message', async () => {
+      const restore = jest.fn().mockResolvedValue({ isPro: true });
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true, restorePurchases: restore });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      await act(async () => { await byTestID(c, 'active-pro-restore').props.onPress(); });
+      expect(restore).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Előfizetés visszaállítva.');
+    });
+
+    it('the text button and the note stay at least 4.5:1 on the page background', async () => {
+      (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      expect(contrastRatio(byTestID(c, 'active-pro-restore').props.textColor, '#FAFBFD')).toBeGreaterThanOrEqual(4.5);
+      const note = c.root.findAll((n) => typeof n.props.children === 'string' && n.props.children.startsWith('A lemondás és a fizetési mód'))[0];
+      expect(contrastRatio(textColor(note.props.style), '#FAFBFD')).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('a purchase made on this screen still gets the success screen', async () => {
+      const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+      const billing = { ...mockBilling, packages: [pkg], purchasePackage: jest.fn().mockResolvedValue('purchased') };
+      (useBilling as jest.Mock).mockReturnValue(billing);
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const buy = c.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+      await act(async () => { await buy.props.onPress(); });
+      // RevenueCat now reports the entitlement
+      (useBilling as jest.Mock).mockReturnValue({ ...billing, isPro: true });
+      await act(async () => { c.update(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><PaywallScreen /></SafeAreaProvider>); });
+      const tree = JSON.stringify(c.toJSON());
+      expect(tree).toContain('Sikeres Pro előfizetés! 🎉');
+      expect(tree).not.toContain('Aktív Pro előfizetés');
+    });
+
+    it('a cancelled purchase does not turn into a celebration later', async () => {
+      const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+      const billing = { ...mockBilling, packages: [pkg], purchasePackage: jest.fn().mockResolvedValue('cancelled') };
+      (useBilling as jest.Mock).mockReturnValue(billing);
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const buy = c.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+      await act(async () => { await buy.props.onPress(); });
+      (useBilling as jest.Mock).mockReturnValue({ ...billing, isPro: true });
+      await act(async () => { c.update(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}><PaywallScreen /></SafeAreaProvider>); });
+      expect(JSON.stringify(c.toJSON())).not.toContain('Sikeres Pro előfizetés');
+    });
+  });
+
+  // Card bc8e4135, owner test 2026-10-04: the footer sat under the Android navigation bar
+  // (edge-to-edge). The scroll content now clears the bottom inset.
+  it('keeps the footer above the navigation-bar inset', () => {
+    (useBilling as jest.Mock).mockReturnValue(mockBilling);
+    let tree: renderer.ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 48 } }}>
+          <PaywallScreen />
+        </SafeAreaProvider>
+      );
+    });
+    const scroll = tree!.root.find((n) => n.props.testID === 'paywall-scroll' && n.props.contentContainerStyle !== undefined);
+    const style = [scroll.props.contentContainerStyle].flat(3).reduce((acc: Record<string, unknown>, x: Record<string, unknown>) => ({ ...acc, ...(x || {}) }), {});
+    expect(style.paddingBottom).toBe(24 + 48);
   });
 
   it('renders loader when isLoading is true', () => {
@@ -153,6 +228,40 @@ describe('PaywallScreen', () => {
     expect(mockBilling.purchasePackage).toHaveBeenCalledWith(mockPackages[0]);
   });
 
+  // Card [G2]: paywall_view with where it was opened from, and purchase_done with the package id only (no price).
+  it('opening the offer records paywall_view with the source of the route', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: { source: 'grant_detail' } });
+    await act(async () => { renderWithSafeArea(<PaywallScreen />); });
+    expect(trackCalls('paywall_view')).toEqual([['paywall_view', { source: 'grant_detail' }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
+  });
+
+  it('a route without a source is recorded as other, not guessed', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: undefined });
+    await act(async () => { renderWithSafeArea(<PaywallScreen />); });
+    expect(trackCalls('paywall_view')).toEqual([['paywall_view', { source: 'other' }]]);
+  });
+
+  it('a Pro user sees the success view and records no paywall_view', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: { source: 'settings' } });
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, isPro: true });
+    await act(async () => { renderWithSafeArea(<PaywallScreen />); });
+    expect(trackCalls('paywall_view')).toEqual([]);
+  });
+
+  it('a purchase records purchase_done with the package id, never the price', async () => {
+    (useRoute as jest.Mock).mockReturnValue({ params: undefined });
+    const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [pkg] });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderWithSafeArea(<PaywallScreen />); });
+    const buy = component!.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+    await act(async () => { buy.props.onPress(); });
+    expect(trackCalls('purchase_done')).toEqual([['purchase_done', { package: '$rc_monthly' }]]);
+    expect(JSON.stringify(trackCalls('purchase_done'))).not.toContain('2 990');
+    expect(metasOutsideWhitelist()).toEqual([]);
+  });
+
   it('handles purchase error and displays alert', async () => {
     const mockPackages = [
       {
@@ -193,6 +302,20 @@ describe('PaywallScreen', () => {
   // Advertising a concrete price and a free trial for a product nobody can buy
   // is deceptive and a Play policy risk, so the empty state must stay silent
   // about price and offer no way to start a purchase.
+  // Card [I]: the auto-renewal terms were #9E9E9E at 11 px on #FAFBFD, 2.59:1.
+  it('the auto-renewal terms meet WCAG AA on the paywall background', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [] });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = renderWithSafeArea(<PaywallScreen />);
+    });
+    const terms = component!.root.findAll(
+      (n) => n.type === 'Text' && typeof n.props.children === 'string' && n.props.children.startsWith('Az előfizetés automatikusan megújul'),
+    )[0];
+    expect(terms).toBeDefined();
+    expect(contrastRatio(textColor(terms.props.style), '#FAFBFD')).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('shows an honest empty state, with no price and no purchase button, when packages is empty', async () => {
     (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [] });
 
@@ -232,7 +355,35 @@ describe('PaywallScreen', () => {
     });
 
     expect(mockBilling.restorePurchases).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Vásárlások sikeresen ellenőrizve!');
+    expect(Alert.alert).toHaveBeenCalledWith('Siker', 'Előfizetés visszaállítva.');
+  });
+
+  // P-Search kör 2 (Kenshin P1-3): "Siker" only when a Pro subscription came back.
+  it('a restore that finds no subscription says so, not "Siker"', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, restorePurchases: jest.fn().mockResolvedValue({ isPro: false }) });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderWithSafeArea(<PaywallScreen />); });
+    const restore = component!.root.findAllByType(Button).find((b) => b.props.children === 'Korábbi vásárlások visszaállítása');
+    await act(async () => { await restore!.props.onPress(); });
+    expect(Alert.alert).toHaveBeenCalledWith('Nincs előfizetés', 'Nem találtunk aktív előfizetést ehhez a fiókhoz.');
+    expect(Alert.alert).not.toHaveBeenCalledWith('Siker', expect.anything());
+  });
+
+  // Kenshin P1-2: purchase_done only for a purchase that went through.
+  it.each([
+    ['cancelled', null],
+    ['failed', ['Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.']],
+    ['unavailable', ['Hiba', 'A vásárlás most nem érhető el. Kérjük, próbáld újra később.']],
+  ])('a %s purchase records no purchase_done', async (result, alert) => {
+    const pkg = { identifier: '$rc_monthly', product: { title: 'x', description: 'y', priceString: '2 990 Ft' } };
+    (useBilling as jest.Mock).mockReturnValue({ ...mockBilling, packages: [pkg], purchasePackage: jest.fn().mockResolvedValue(result) });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderWithSafeArea(<PaywallScreen />); });
+    const buy = component!.root.findAllByType(Button).filter((b) => b.props.children === 'Előfizetés indítása')[0];
+    await act(async () => { await buy.props.onPress(); });
+    expect(trackCalls('purchase_done')).toEqual([]);
+    if (alert) expect(Alert.alert).toHaveBeenCalledWith(...(alert as [string, string]));
+    else expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   it('handles restore purchases error', async () => {

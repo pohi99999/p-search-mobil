@@ -83,7 +83,7 @@ describe('CopilotChatScreen Error Handling', () => {
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Network error');
+    expect(treeStr).toContain('Sajnálom, most nem érem el a P-Search asszisztenst. Ellenőrizd az internetkapcsolatot, és küldd el újra a kérdést.');
   });
 
 
@@ -121,7 +121,7 @@ describe('CopilotChatScreen Error Handling', () => {
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Invoke Error');
+    expect(treeStr).toContain('Sajnálom, most nem érem el a P-Search asszisztenst. Ellenőrizd az internetkapcsolatot, és küldd el újra a kérdést.');
   });
 
   it('should display an error message if data.error is returned', async () => {
@@ -158,7 +158,7 @@ describe('CopilotChatScreen Error Handling', () => {
     });
 
     const treeStr = JSON.stringify(component!.toJSON());
-    expect(treeStr).toContain('Sajnálom, nem sikerült elérnem a P-Search AI asszisztenst: Data Error');
+    expect(treeStr).toContain('Sajnálom, most nem érem el a P-Search asszisztenst. Ellenőrizd az internetkapcsolatot, és küldd el újra a kérdést.');
   });
 
   it('should display a fallback error message if reply is empty', async () => {
@@ -231,7 +231,7 @@ describe('CopilotChatScreen Error Handling', () => {
 
     const treeStr = JSON.stringify(component!.toJSON());
     expect(treeStr).toContain('Sajnálom, egyedi hiba történt');
-    expect(treeStr).not.toContain('nem sikerült elérnem a P-Search AI asszisztenst');
+    expect(treeStr).not.toContain('most nem érem el a P-Search asszisztenst');
   });
 });
 

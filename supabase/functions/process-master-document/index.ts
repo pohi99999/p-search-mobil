@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import { extractJson } from "../_shared/llm.ts";
+import { documentSizeError } from "../_shared/input-limits.ts";
+import { extractedLog, ocrAnswerLog, parseOcrJson } from "./ocr.ts";
+import { consumeDailyOcr } from "../_shared/daily-ocr.ts";
+import { refundDailyOcr } from "../_shared/daily-search-refund.ts";
 
 const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "";
 
@@ -82,6 +87,12 @@ serve(async (req) => {
 
   let docId: string | null = null;
 
+  // Kenshin P1-5 (kör 2): whose daily OCR was consumed, and whether the vision call ran through (else refund).
+
+  let ocrCapUser: string | null = null;
+
+  let ocrRan = false;
+
   try {
     // ------------------------------------------------------------------
     // 1. Authorization header ellenőrzése
@@ -160,6 +171,15 @@ serve(async (req) => {
       );
     }
 
+    // Size cap before the paid vision call (SECURITY_AUDIT.md H1).
+    const sizeError = documentSizeError(file_base64);
+    if (sizeError) {
+      return new Response(JSON.stringify({ error: sizeError }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ------------------------------------------------------------------
     // 4. Ownership ellenőrzése — a profil valóban ehhez a userhez tartozik?
     // ------------------------------------------------------------------
@@ -194,7 +214,18 @@ serve(async (req) => {
         },
       );
     }
-    console.log(`Profil tulajdonos ellenőrizve: ${profile.company_name}`);
+    console.log("Profil tulajdonos ellenőrizve.");
+
+    // Kenshin P1-5 (Péter 12036): at most DAILY_OCR_CAP OCRs a day per user, consumed before the paid vision
+    // call (service role: only it may execute consume_daily_ocr), given back below when the OCR does not run.
+    const ocrGate = await consumeDailyOcr(supabaseAdmin, user.id);
+    if (!ocrGate.allowed) {
+      return new Response(JSON.stringify(ocrGate.body), {
+        status: ocrGate.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    ocrCapUser = user.id;
 
     // ------------------------------------------------------------------
     // 5. financial_documents rekord létrehozása 'processing' státusszal
@@ -245,37 +276,30 @@ serve(async (req) => {
       file_base64.length,
     );
 
-    const geminiResult = await model.generateContent([
-      EXTRACTION_PROMPT,
-      {
-        inlineData: {
-          mimeType: mime_type,
-          data: file_base64,
+    // d8ff4f1b: Claude first (PDF as a document, JPEG/PNG/GIF/WebP as an image), this SDK call is
+    // the fallback and the only path for any other file type.
+    const rawOcrText = await extractJson(EXTRACTION_PROMPT, { mimeType: mime_type, base64: file_base64 }, async () => {
+      const geminiResult = await model.generateContent([
+        EXTRACTION_PROMPT,
+        {
+          inlineData: {
+            mimeType: mime_type,
+            data: file_base64,
+          },
         },
-      },
-    ]);
-
-    const rawOcrText = geminiResult.response.text();
-    console.log("Gemini OCR nyers válasz:", rawOcrText);
+      ]);
+      return geminiResult.response.text();
+    }, 1024);
+    ocrRan = true;
+    // P-Search kör 2 (Kenshin P1-4): the statement's text never reaches the log, only its size.
+    console.log(ocrAnswerLog(rawOcrText));
 
     // ------------------------------------------------------------------
     // 7. JSON parse és validálás
     // ------------------------------------------------------------------
-    let extracted: Record<string, unknown> = {};
-    try {
-      extracted = JSON.parse(rawOcrText.trim());
-    } catch (parseErr) {
-      console.error(
-        "JSON parse hiba a Gemini válaszban:",
-        parseErr,
-        "Nyers szöveg:",
-        rawOcrText,
-      );
-      throw new Error(
-        `A Gemini nem adott vissza érvényes JSON-t. Nyers válasz: ${rawOcrText.slice(0, 200)}`,
-      );
-    }
-    console.log("Kinyert pénzügyi adatok:", JSON.stringify(extracted));
+    // A parse error names the text's size, not its content (the message is logged and stored below).
+    const extracted = parseOcrJson(rawOcrText);
+    console.log(extractedLog(extracted));
 
     // ------------------------------------------------------------------
     // 8. business_profiles upsert — csak érvényes (nem null) értékeket írunk
@@ -357,6 +381,8 @@ serve(async (req) => {
     );
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    // The vision call did not run through: the user gets the consumed OCR back (P1-5).
+    if (ocrCapUser && !ocrRan) await refundDailyOcr(supabaseAdmin, ocrCapUser);
     console.error(
       "Végzetes hiba a process-master-document futása során:",
       errMsg,

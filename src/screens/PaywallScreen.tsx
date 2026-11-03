@@ -1,31 +1,58 @@
 import { RootStackNavigationProp } from "../types/navigation";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
 import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../types/navigation';
+import { track } from '../services/events';
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   PaywallFeatures,
   PaywallPackages,
   PaywallOverlay,
-  PaywallSuccess
+  PaywallSuccess,
+  PaywallActivePro
 } from '../components/paywall';
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
+  // Edge-to-edge: keep the footer above the Android navigation bar (owner test 2026-10-04).
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Paywall'>>();
   const [purchasing, setPurchasing] = useState(false);
+  // Round 2 (Lumen P1-1): the success screen is for a purchase made right now, not for every later opening.
+  const [justPurchased, setJustPurchased] = useState(false);
+  // [G2]: one paywall_view per opening, with where it came from (a Pro user sees the success view, not the offer).
+  const source = route.params?.source;
+  useEffect(() => {
+    // A route without a source is 'other', never guessed as one of the known places.
+    if (!isPro) track('paywall_view', { source: source ?? 'other' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recorded once per opening, not on every isPro change
+  }, []);
   const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // P-Search kör 2 (Kenshin P1-2): purchase_done only for a purchase that went through; a cancel shows nothing,
+  // a failure or an unavailable store says so.
   const handlePurchase = async (pkg: PurchasesPackage) => {
     setPurchasing(true);
     try {
-      await purchasePackage(pkg);
+      const result = await purchasePackage(pkg);
+      if (result === 'purchased') {
+        setJustPurchased(true);
+        // The RevenueCat package id ($rc_monthly...), never the price.
+        track('purchase_done', { package: pkg.identifier });
+      } else if (result === 'failed') {
+        Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
+      } else if (result === 'unavailable') {
+        Alert.alert('Hiba', 'A vásárlás most nem érhető el. Kérjük, próbáld újra később.');
+      }
     } catch (err: unknown) {
       logger.error('Vásárlási hiba:', getErrorMessage(err));
       Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
@@ -34,11 +61,13 @@ export const PaywallScreen = () => {
     }
   };
 
+  // Kenshin P1-3: "Siker" only when a Pro subscription was found; none found and an error each say so.
   const handleRestore = async () => {
     setPurchasing(true);
     try {
-      await restorePurchases();
-      Alert.alert('Siker', 'Vásárlások sikeresen ellenőrizve!');
+      const { isPro: restored } = await restorePurchases();
+      if (restored) Alert.alert('Siker', 'Előfizetés visszaállítva.');
+      else Alert.alert('Nincs előfizetés', 'Nem találtunk aktív előfizetést ehhez a fiókhoz.');
     } catch (err: unknown) {
       logger.error('Visszaállítási hiba:', getErrorMessage(err));
       Alert.alert('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
@@ -47,14 +76,15 @@ export const PaywallScreen = () => {
     }
   };
 
-  // Ha a felhasználó már Pro előfizető, sikeres állapotot mutatunk neki
+  // A purchase made on this screen gets the success screen; an existing Pro subscriber gets the manage view.
   if (isPro) {
-    return <PaywallSuccess onBack={() => navigation.goBack()} />;
+    if (justPurchased) return <PaywallSuccess onBack={() => navigation.goBack()} />;
+    return <PaywallActivePro onClose={() => navigation.goBack()} onRestore={handleRestore} busy={purchasing} />;
   }
 
   return (
     <View style={styles.wrapper}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]} testID="paywall-scroll">
         {/* Bezárás gomb */}
         <View style={styles.headerRow}>
           <IconButton
@@ -62,6 +92,7 @@ export const PaywallScreen = () => {
             size={24}
             onPress={() => navigation.goBack()}
             style={styles.closeButton}
+            accessibilityLabel="Bezárás"
           />
         </View>
 
@@ -73,7 +104,7 @@ export const PaywallScreen = () => {
         </Text>
 
         <Text variant="bodyLarge" style={styles.subtitle}>
-          Maximalizáld a pályázati sikereidet a legfejlettebb AI asszisztenssel és korlátlan lehetőségekkel.
+          Készülj fel a kiválasztott pályázatra: akcióterv, dokumentum-vázlat PDF-ben, hirdetések nélkül.
         </Text>
 
         <PaywallFeatures />
@@ -182,10 +213,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  // Card [I]: the renewal terms were #9E9E9E at 11 px, 2.59:1 on #FAFBFD; #616161 at 12 px is 5.98:1.
   disclaimer: {
     textAlign: 'center',
-    color: '#9E9E9E',
-    fontSize: 11,
+    color: '#616161',
+    fontSize: 12,
     marginTop: 20,
     lineHeight: 16,
     paddingHorizontal: 20,

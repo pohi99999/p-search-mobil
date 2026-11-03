@@ -111,7 +111,7 @@ export function AuthScreen() {
             P-Search
           </Text>
           <Text variant="titleMedium" style={{ color: theme.colors.secondary, marginTop: 8 }}>
-            Zéró-Költségvetésű Növekedés
+            Pályázatkereső magyar KKV-knak
           </Text>
         </View>
 

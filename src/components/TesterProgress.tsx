@@ -49,7 +49,7 @@ export const TesterProgress: React.FC = () => {
     <Surface style={styles.container} elevation={1}>
       <View style={styles.headerRow}>
         <Text variant="labelMedium" style={styles.badge}>
-          🧪 Béta Tesztelői Zóna
+          🧪 Béta tesztelőknek
         </Text>
         <Text variant="bodySmall" style={styles.daysText}>
           {daysCount}/{REQUIRED_DAYS} nap aktív
@@ -60,6 +60,7 @@ export const TesterProgress: React.FC = () => {
         progress={progress}
         color={isCompleted ? "#4CAF50" : "#1976D2"}
         style={styles.progressBar}
+        accessibilityLabel={`Tesztelési napok: ${daysCount} a ${REQUIRED_DAYS}-ből`}
       />
 
       <Text variant="bodySmall" style={styles.description}>

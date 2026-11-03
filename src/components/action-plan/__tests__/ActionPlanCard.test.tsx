@@ -6,8 +6,12 @@ import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../utils/logger';
 import { generateAndSharePDF } from '../../../utils/documentGenerator';
 import { ActionPlan, BusinessProfile } from '../../../types/database';
+import { metasOutsideWhitelist, trackCalls } from '../../../test-utils/events';
 
 // Mock dependencies
+// The profile gate (card 431a496e) has its own test; here generation itself is under test.
+jest.mock('../../../hooks/useProfileGate', () => ({ useProfileGate: () => ({ gate: (action: () => void) => action(), dialog: null }) }));
+
 jest.mock('../../../lib/supabase', () => ({
   supabase: {
     functions: {
@@ -155,6 +159,9 @@ describe('ActionPlanCard PDF Generation', () => {
     expect(generateAndSharePDF).toHaveBeenCalledWith('<div>Mock PDF</div>', 'Test_Plan_uzleti_terv.pdf');
     expect(defaultProps.refetch).toHaveBeenCalled();
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
+    // Card [G2]
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: true }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
   });
 
   it('handles error returned directly from supabase.functions.invoke', async () => {
@@ -177,9 +184,47 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', mockError);
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
     expect(generateAndSharePDF).not.toHaveBeenCalled();
+  });
+
+  it('shows the server Hungarian text for a Gemini error (cut-off answer, 502), not the generic one', async () => {
+    const serverText = 'Az AI válasza félbeszakadt, ezért a dokumentum nem készült el. Próbáld újra.';
+    const mockError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 502, json: async () => ({ code: 'gemini_truncated', error: serverText }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: mockError });
+
+    let root: renderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      root = renderer.create(<ActionPlanCard {...defaultProps} />);
+    });
+    await act(async () => {
+      await getPdfButton(root!)?.props.onPress();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', serverText);
+    // Card [G2]: only a code, never the server's text.
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: false, error_code: 'server' }]]);
+    expect(generateAndSharePDF).not.toHaveBeenCalled();
+  });
+
+  it('a 500 without a Gemini code keeps the generic message', async () => {
+    const mockError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 500, json: async () => ({ error: 'Nem sikerült legenerálni a dokumentumot.' }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: mockError });
+
+    let root: renderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      root = renderer.create(<ActionPlanCard {...defaultProps} />);
+    });
+    await act(async () => {
+      await getPdfButton(root!)?.props.onPress();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
   });
 
   it('handles error inside data returned from supabase.functions.invoke', async () => {
@@ -201,7 +246,7 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', expect.any(Error));
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
     expect(generateAndSharePDF).not.toHaveBeenCalled();
   });
@@ -223,8 +268,25 @@ describe('ActionPlanCard PDF Generation', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith('PDF generation error:', mockException);
-    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Váratlan hiba történt a PDF generálásakor. Kérjük, próbálja újra később.');
+    expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
     expect(defaultProps.setPdfLoading).toHaveBeenCalledWith(false);
+    // Card [G2]: a failure without an HTTP status is a network error.
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: false, error_code: 'network' }]]);
+  });
+
+  // Card [G2]: the Pro gate is doc_generated ok:false pro_required.
+  it('the Pro gate (403) records doc_generated with pro_required', async () => {
+    const proError = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: { status: 403, json: async () => ({ code: 'pro_required', error: 'A dokumentum-generálás a Pro csomag része.' }) },
+    });
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: null, error: proError });
+    const onProRequired = jest.fn();
+    let root: renderer.ReactTestRenderer | undefined;
+    await act(async () => { root = renderer.create(<ActionPlanCard {...defaultProps} onProRequired={onProRequired} />); });
+    await act(async () => { await getPdfButton(root!)?.props.onPress(); });
+    expect(onProRequired).toHaveBeenCalled();
+    expect(trackCalls('doc_generated')).toEqual([['doc_generated', { ok: false, error_code: 'pro_required' }]]);
+    expect(metasOutsideWhitelist()).toEqual([]);
   });
 
   it('shows alert if profile or match_id is missing', async () => {
@@ -247,5 +309,36 @@ describe('ActionPlanCard PDF Generation', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
     expect(supabase.functions.invoke).not.toHaveBeenCalled();
+  });
+});
+
+// Round 2 (Lumen P2-5, P2-7): the progress bar had no name; the empty-plan line was #9E9E9E, 2.67:1.
+describe('ActionPlanCard round 2 accessibility', () => {
+  const { contrastRatio } = require('../../../test-utils/contrast');
+  const props = {
+    plan: { id: 'plan-9', title: 'Terv', created_at: '2024-01-01T00:00:00Z', match_id: 'm', ai_context: {}, business_profile_id: 'p' },
+    planTasks: [],
+    planStats: { 'plan-9': { totalTasks: 4, completedTasks: 1, progress: 0.25, percentage: 25 } },
+    handleStatusChange: jest.fn(),
+    profile: { id: 'p' },
+    pdfLoading: false,
+    setPdfLoading: jest.fn(),
+    showAdIfAvailable: jest.fn(),
+    refetch: jest.fn(),
+  } as any;
+
+  it('the progress bar is named with what it shows', async () => {
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<ActionPlanCard {...props} />); });
+    const bar = root.root.find((n) => (n.type as unknown) === 'ProgressBar');
+    expect(bar.props.accessibilityLabel).toBe('Felkészültség: 1 kész a 4 feladatból');
+  });
+
+  it('the empty-plan line is at least 4.5:1 on white', async () => {
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<ActionPlanCard {...props} />); });
+    const node = root.root.find((n) => (n.type as unknown) === 'Text' && n.props.children === 'Nincsenek feladatok ehhez az akciótervhez.');
+    const style = [node.props.style].flat(3).reduce((a: any, s: any) => ({ ...a, ...(s || {}) }), {});
+    expect(contrastRatio(style.color, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
   });
 });

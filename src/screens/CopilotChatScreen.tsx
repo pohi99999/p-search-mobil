@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'reac
 import { Text, TextInput, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
 import { useCopilotChat, Message } from '../hooks/useCopilotChat';
+import { splitBold } from '../lib/inlineBold';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -29,7 +30,12 @@ const MessageItem = React.memo(({ item }: { item: Message }) => {
           isUser ? styles.userText : styles.aiText,
           isError && styles.errorText
         ]}>
-          {item.text}
+          {/* The AI's "**bold**" shows as bold, without the asterisks; the user's own text stays as typed. */}
+          {isUser
+            ? item.text
+            : splitBold(item.text).map((seg, i) =>
+                seg.bold ? <Text key={i} style={styles.boldText}>{seg.text}</Text> : seg.text,
+              )}
         </Text>
 
         {/* RAG források megjelenítése a válasz alatt */}
@@ -93,10 +99,11 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           size={24}
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
           testID="copilot-chat-back-button"
+          accessibilityLabel="Vissza"
         />
         <View style={styles.headerTextContainer}>
-          <Text variant="titleMedium" style={styles.headerTitle}>AI Pályázati Copilot</Text>
-          <Text variant="bodySmall" style={styles.headerSubtitle}>Aktív és intelligens segítség</Text>
+          <Text variant="titleMedium" style={styles.headerTitle}>AI pályázati Copilot</Text>
+          <Text variant="bodySmall" style={styles.headerSubtitle}>Kérdezz a kiválasztott pályázatról</Text>
         </View>
       </View>
 
@@ -134,6 +141,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
               color={inputText.trim() ? '#1A237E' : '#9E9E9E'}
               onPress={handleSend}
               disabled={!inputText.trim() || isTyping}
+              accessibilityLabel="Üzenet küldése"
             />
           }
           disabled={isTyping}
@@ -165,8 +173,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1A237E',
   },
+  // #4CAF50 was 2.78:1 on white; #2E7D32 keeps the green and is 5.13:1.
   headerSubtitle: {
-    color: '#4CAF50',
+    color: '#2E7D32',
     fontWeight: '600',
   },
   listContent: {
@@ -213,6 +222,9 @@ const styles = StyleSheet.create({
   aiText: {
     color: '#212121',
   },
+  boldText: {
+    fontWeight: 'bold',
+  },
   errorText: {
     color: '#D32F2F',
   },
@@ -225,7 +237,7 @@ const styles = StyleSheet.create({
     color: '#C5CAE9',
   },
   aiTimestamp: {
-    color: '#9E9E9E',
+    color: '#616161',
   },
   typingContainer: {
     flexDirection: 'row',
@@ -280,7 +292,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  // E2E vc 18 (Marveen 4801): a long grant title ran out of the bubble (559 px at a 390 px screen);
+  // the tag may be at most as wide as the bubble and its text wraps.
   sourceTag: {
+    maxWidth: '100%',
     backgroundColor: '#ECEFF1',
     borderRadius: 8,
     paddingHorizontal: 6,
@@ -289,7 +304,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sourceTagText: {
-    fontSize: 9,
+    flexShrink: 1,
+    fontSize: 11,
     color: '#455A64',
     fontWeight: '600',
   }

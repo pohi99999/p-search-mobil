@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
 import { PaywallPackages } from '../PaywallPackages';
 import { PurchasesPackage, PACKAGE_TYPE } from 'react-native-purchases';
+import { contrastRatio, textColor } from '../../../test-utils/contrast';
 
 // Mock Alert
 Alert.alert = jest.fn();
@@ -125,6 +126,24 @@ describe('PaywallPackages', () => {
     });
   });
 
+  // Common test 2026-10-07 (card a96dd8e2 #3): "LEGNÉPSZERŰBB" on the only package means nothing.
+  // Péter 10518: with no data behind it, it is not shown at all, also when there are several packages.
+  describe('the LEGNÉPSZERŰBB badge', () => {
+    const badges = (pkgs: PurchasesPackage[]) => {
+      let root: renderer.ReactTestRenderer | undefined;
+      act(() => {
+        root = renderer.create(<PaywallPackages packages={pkgs} purchasing={false} handlePurchase={mockHandlePurchase} />);
+      });
+      return (renderedText(root!).match(/LEGNÉPSZERŰBB/g) || []).length;
+    };
+    it('is not shown when there is a single package', () => {
+      expect(badges([mockPackages[0]])).toBe(0);
+    });
+    it('is not shown when there are two or more packages either', () => {
+      expect(badges(mockPackages)).toBe(0);
+    });
+  });
+
   describe('when real packages are available', () => {
     it('renders provided packages correctly', () => {
       let root: renderer.ReactTestRenderer | undefined;
@@ -213,5 +232,26 @@ describe('PaywallPackages', () => {
       expect(listButtons[0].props.disabled).toBe(true);
       expect(listButtons[1].props.disabled).toBe(true);
     });
+  });
+
+  // Card [I]: the intro price was #FF6F00 on white, 2.79:1.
+  it('the intro price meets WCAG AA on the white card', () => {
+    const pkg = {
+      ...mockPackages[0],
+      product: {
+        ...mockPackages[0].product,
+        subscriptionPeriod: 'P1M',
+        introPrice: { price: 2990, priceString: '2 990 Ft', cycles: 3, period: 'P1M', periodUnit: 'MONTH', periodNumberOfUnits: 1 },
+      },
+    } as any;
+    let root: renderer.ReactTestRenderer | undefined;
+    act(() => {
+      root = renderer.create(<PaywallPackages packages={[pkg]} purchasing={false} handlePurchase={mockHandlePurchase} />);
+    });
+    const intro = root!.root.findAll(
+      (n) => n.type === 'Text' && typeof n.props.children === 'string' && n.props.children.startsWith('Első 3 hónap'),
+    )[0];
+    expect(intro).toBeDefined();
+    expect(contrastRatio(textColor(intro.props.style), '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
   });
 });
