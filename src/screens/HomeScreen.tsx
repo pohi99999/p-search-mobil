@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, AnimatedFAB, MD3Colors, IconButton } from 'react-native-paper';
+import { Text, AnimatedFAB, MD3Colors, IconButton, Button } from 'react-native-paper';
 
 import { AdBanner } from '../components/AdBanner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,10 +11,13 @@ import { useHomeData, MatchWithGrant } from '../hooks/useHomeData';
 import { HomeEmptyState, type HomeEmptyStateKind } from '../components/HomeEmptyState';
 import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
+import { splitFreshAndStale } from '../lib/matchStatus';
 
 /** FAB labels; the searching one must not be wider than the idle one (see the FAB below). */
 export const FAB_IDLE_LABEL = 'Új AI-keresés';
 export const FAB_SEARCHING_LABEL = 'Keresés…';
+/** Card 4762e3d7: the collapsed section of the matches an earlier search found. */
+export const staleSectionLabel = (n: number) => `Korábbi találatok (${n})`;
 
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const {
@@ -36,6 +39,9 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // The FAB sits above the bottom banner when it is shown, else above the navigation-bar inset.
   const fabBottom = (bannerHeight > 0 ? bannerHeight : insets.bottom) + 4;
 
+  // Card 4762e3d7: collapsed by default; open when there is nothing fresh, so the list is never just a header.
+  const [staleOpen, setStaleOpen] = useState<boolean | null>(null);
+
   // Card [D]: which empty state; a search running wins over the other two.
   const emptyKind: HomeEmptyStateKind = searching ? 'searching' : hasSearched ? 'none' : 'never';
 
@@ -54,6 +60,30 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       rank={index + 1}
       onPress={() => navigation.navigate('GrantDetail', { match: item, rank: index + 1 })}
     />
+  );
+
+  // Card 4762e3d7: the stale matches go under one collapsed header below the fresh ones; their rank continues the list.
+  const { fresh, stale } = splitFreshAndStale(matches);
+  const staleExpanded = staleOpen ?? fresh.length === 0;
+  const staleSection = stale.length === 0 ? null : (
+    <View style={styles.staleSection} testID="home-stale-section">
+      <Button
+        mode="text"
+        icon={staleExpanded ? 'chevron-up' : 'chevron-down'}
+        contentStyle={styles.staleToggleContent}
+        onPress={() => setStaleOpen(!staleExpanded)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: staleExpanded }}
+        accessibilityLabel={`${staleSectionLabel(stale.length)}, ${staleExpanded ? 'összecsukás' : 'kibontás'}`}
+        testID="home-stale-toggle"
+      >
+        {staleSectionLabel(stale.length)}
+      </Button>
+      {staleExpanded &&
+        stale.map((item, i) => (
+          <React.Fragment key={item.id}>{renderItem({ item, index: fresh.length + i })}</React.Fragment>
+        ))}
+    </View>
   );
 
   return (
@@ -93,9 +123,10 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         </View>
       ) : (
         <FlatList<MatchWithGrant>
-          data={matches}
+          data={fresh}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListFooterComponent={staleSection}
           contentContainerStyle={[styles.listContent, { paddingBottom: 80 + fabBottom }]}
           onScroll={({ nativeEvent }) => setFabExtended(nativeEvent.contentOffset.y <= 8)}
           scrollEventThrottle={64}
@@ -168,6 +199,14 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 80,
+  },
+  staleSection: {
+    marginTop: 8,
+  },
+  staleToggleContent: {
+    // the chevron after the label, the whole row a 48 dp touch target
+    flexDirection: 'row-reverse',
+    minHeight: 48,
   },
   fab: {
     position: 'absolute',

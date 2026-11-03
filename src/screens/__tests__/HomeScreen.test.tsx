@@ -390,6 +390,66 @@ describe('HomeScreen', () => {
   });
 
   // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.
+  // Card 4762e3d7: fresh matches first, the stale ones in a collapsed "Korábbi találatok (N)" section below.
+  describe('stale matches section', () => {
+    const fresh1 = { id: 'f1', status: 'new', match_score: 90, grants: { title: 'Friss 1' } };
+    const fresh2 = { id: 'f2', status: 'viewed', match_score: 70, grants: { title: 'Friss 2' } };
+    const stale1 = { id: 's1', status: 'stale', match_score: 85, grants: { title: 'Régi 1' } };
+    const stale2 = { id: 's2', status: 'stale', match_score: 60, grants: { title: 'Régi 2' } };
+    const withMatches = (matches: any[]) =>
+      (useHomeData as jest.Mock).mockReturnValue({
+        loading: false, profile: { company_name: 'Test Company' }, matches, isPro: false,
+        fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+      });
+    const footerOf = (root: any) => {
+      let footer: any;
+      act(() => { footer = renderer.create(root.root.findByType('FlatList').props.ListFooterComponent); });
+      return footer;
+    };
+
+    it('lists only the fresh matches; the stale ones sit behind a collapsed toggle with their count', () => {
+      withMatches([fresh1, fresh2, stale1, stale2]);
+      const root = renderScreen();
+      expect(root.root.findByType('FlatList').props.data.map((m: any) => m.id)).toEqual(['f1', 'f2']);
+      const footer = footerOf(root);
+      const toggle = footer.root.findByProps({ testID: 'home-stale-toggle' });
+      expect(toggle.props.children).toBe('Korábbi találatok (2)');
+      expect(toggle.props.accessibilityState).toEqual({ expanded: false });
+      expect(footer.root.findAllByType('MatchCard')).toHaveLength(0);
+    });
+
+    it('opens on press, shows the stale cards with their rank continuing the list, and closes again', () => {
+      withMatches([fresh1, fresh2, stale1, stale2]);
+      const root = renderScreen();
+      const closedToggle = footerOf(root).root.findByProps({ testID: 'home-stale-toggle' });
+      act(() => { closedToggle.props.onPress(); });
+      const open = footerOf(root);
+      const cards = open.root.findAllByType('MatchCard');
+      expect(cards.map((c: any) => [c.props.item.id, c.props.rank])).toEqual([['s1', 3], ['s2', 4]]);
+      act(() => { cards[0].props.onPress(); });
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match: stale1, rank: 3 });
+      const openToggle = open.root.findByProps({ testID: 'home-stale-toggle' });
+      expect(openToggle.props.accessibilityState).toEqual({ expanded: true });
+      act(() => { openToggle.props.onPress(); });
+      expect(footerOf(root).root.findAllByType('MatchCard')).toHaveLength(0);
+    });
+
+    it('no stale match: no section at all', () => {
+      withMatches([fresh1, fresh2]);
+      const root = renderScreen();
+      expect(root.root.findByType('FlatList').props.ListFooterComponent).toBeNull();
+    });
+
+    it('only stale matches: the section starts open, so the list is never just a header', () => {
+      withMatches([stale1, stale2]);
+      const root = renderScreen();
+      expect(root.root.findByType('FlatList').props.data).toEqual([]);
+      const footer = footerOf(root);
+      expect(footer.root.findByProps({ testID: 'home-stale-toggle' }).props.accessibilityState).toEqual({ expanded: true });
+      expect(footer.root.findAllByType('MatchCard').map((c: any) => c.props.rank)).toEqual([1, 2]);
+    });
+  });
+
   it('the Home screen source uses no AdMob test unit', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'HomeScreen.tsx'), 'utf8');
     expect(src).not.toMatch(/TestIds/);
