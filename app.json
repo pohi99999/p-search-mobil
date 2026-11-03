@@ -19,8 +19,9 @@
       "package": "com.pohankaestarsa.psearch",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#1976D2"
+        "foregroundImage": "./assets/adaptive-foreground.png",
+        "monochromeImage": "./assets/adaptive-monochrome.png",
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "com.android.vending.BILLING",

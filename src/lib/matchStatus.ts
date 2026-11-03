@@ -2,6 +2,17 @@
 // imports) so components and tests can use it without loading the Supabase client.
 export const STALE_MATCH_STATUS = 'stale';
 
+/**
+ * Card 4762e3d7 (round 3, Péter 12976): the home list shows the fresh matches, and the stale ones only in a collapsed
+ * "Korábbi találatok (N)" section below them. The input order (score) is kept inside each group.
+ */
+export function splitFreshAndStale<T extends { status: string }>(rows: T[]): { fresh: T[]; stale: T[] } {
+  return {
+    fresh: rows.filter((r) => r.status !== STALE_MATCH_STATUS),
+    stale: rows.filter((r) => r.status === STALE_MATCH_STATUS),
+  };
+}
+
 /** A new scan marks its older, not re-scored matches 'stale'; they go after the fresh ones, score order kept inside each group. */
 export function sortFreshFirst<T extends { status: string; match_score: number }>(rows: T[]): T[] {
   const rank = (r: T) => (r.status === STALE_MATCH_STATUS ? 1 : 0);

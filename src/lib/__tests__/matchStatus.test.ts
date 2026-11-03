@@ -1,4 +1,4 @@
-import { hasSearchedBefore, isOpenGrant, sortFreshFirst, withoutExpired } from '../matchStatus';
+import { hasSearchedBefore, isOpenGrant, sortFreshFirst, splitFreshAndStale, withoutExpired } from '../matchStatus';
 
 // Card 2428c38f: the owner's list (2026-10-15) mixed 4 fresh and 5 older, not re-scored matches.
 it('stale matches go after the fresh ones, score order kept inside each group', () => {
@@ -65,4 +65,16 @@ it('a call closed at the source drops like an expired one, unless a plan or a st
     { id: 'closed-with-plan', status: 'new', grants: closed },
   ];
   expect(withoutExpired(rows, new Set(['closed-with-plan']), now).map((r) => r.id)).toEqual(['open', 'closed-interested', 'closed-with-plan']);
+});
+
+// Card 4762e3d7: the home list splits the stale matches off into their own collapsed section.
+it('splitFreshAndStale keeps the order inside both groups', () => {
+  const rows = [
+    { id: 'new-82', status: 'new' }, { id: 'old-82', status: 'stale' },
+    { id: 'applied-40', status: 'applied' }, { id: 'old-50', status: 'stale' },
+  ];
+  const { fresh, stale } = splitFreshAndStale(rows);
+  expect(fresh.map((r) => r.id)).toEqual(['new-82', 'applied-40']);
+  expect(stale.map((r) => r.id)).toEqual(['old-82', 'old-50']);
+  expect(splitFreshAndStale([])).toEqual({ fresh: [], stale: [] });
 });
