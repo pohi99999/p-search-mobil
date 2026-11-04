@@ -14,12 +14,31 @@ export function isRepeatedSignUp(user: { identities?: unknown[] | null } | null 
   return !!user && Array.isArray(user.identities) && user.identities.length === 0;
 }
 
+/**
+ * Review 2026-11-03: the envelope and padlock in front of the fields only decorate. Paper renders every
+ * TextInput.Icon as a button, so on web each was a tab stop with no readable name. These props take
+ * them out of the tab order and hide them from assistive technology; the eye button keeps its own.
+ */
+const DECORATIVE_ICON_PROPS = {
+  focusable: false,
+  tabIndex: -1,
+  accessible: false,
+  importantForAccessibility: 'no-hide-descendants',
+  'aria-hidden': true,
+} as const;
+
+/** The password-reset confirmation (same text whether or not the account exists). */
+export const RESET_SENT_TITLE = 'Ellenőrizd az e-mailed';
+export const RESET_SENT_MESSAGE = 'Ha van ilyen fiók, elküldtük a jelszó-visszaállító linket. A link egy óráig érvényes.';
+
 export function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  // Web only: react-native-web's Alert.alert shows nothing, so the reset confirmation is shown on the screen.
+  const [resetNotice, setResetNotice] = useState(false);
   const theme = useTheme();
 
 
@@ -91,6 +110,7 @@ export function AuthScreen() {
       Alert.alert('Érvénytelen adat', 'Add meg a fiókod e-mail címét, és utána kérd a jelszó-visszaállítást.');
       return;
     }
+    setResetNotice(false);
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: RESET_PASSWORD_URL });
     setLoading(false);
@@ -103,7 +123,11 @@ export function AuthScreen() {
       return;
     }
     // Same message whether or not the address exists: no account enumeration.
-    Alert.alert('Ellenőrizd az e-mailed', 'Ha van ilyen fiók, elküldtük a jelszó-visszaállító linket. A link egy óráig érvényes.');
+    if (Platform.OS === 'web') {
+      setResetNotice(true);
+    } else {
+      Alert.alert(RESET_SENT_TITLE, RESET_SENT_MESSAGE);
+    }
   }
 
   return (
@@ -124,7 +148,7 @@ export function AuthScreen() {
         <View style={styles.form}>
           <TextInput
             label="E-mail cím"
-            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="email" {...props} />} />}
+            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="email" {...props} />} {...DECORATIVE_ICON_PROPS} testID="auth-email-icon" />}
             onChangeText={(text) => setEmail(text)}
             value={email}
             placeholder="ceged@pelda.hu"
@@ -140,7 +164,7 @@ export function AuthScreen() {
           />
           <TextInput
             label="Jelszó"
-            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} />}
+            left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} {...DECORATIVE_ICON_PROPS} testID="auth-password-icon" />}
             onChangeText={(text) => setPassword(text)}
             value={password}
             secureTextEntry={!showPassword}
@@ -215,6 +239,19 @@ export function AuthScreen() {
             </Button>
           )}
 
+          {isLogin && resetNotice && (
+            <Text
+              variant="bodyMedium"
+              style={styles.notice}
+              accessibilityLiveRegion="polite"
+              role="status"
+              testID="auth-reset-notice"
+            >
+              <Text style={styles.noticeTitle}>{RESET_SENT_TITLE}</Text>
+              {`\n${RESET_SENT_MESSAGE}`}
+            </Text>
+          )}
+
           <Button
             mode="text"
             onPress={() => setIsLogin(!isLogin)}
@@ -240,6 +277,15 @@ const styles = StyleSheet.create({
   consent: {
     color: '#424242',
     textAlign: 'center',
+  },
+  notice: {
+    color: '#1B5E20',
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 8,
+  },
+  noticeTitle: {
+    fontWeight: 'bold',
   },
   link: {
     color: '#1565C0',

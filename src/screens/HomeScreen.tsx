@@ -5,6 +5,7 @@ import { Text, AnimatedFAB, MD3Colors, IconButton, Button } from 'react-native-p
 import { AdBanner } from '../components/AdBanner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TesterProgress } from '../components/TesterProgress';
+import { showTesterProgress } from '../config/env';
 
 import { RootStackNavigationProp } from '../types/navigation';
 import { useHomeData, MatchWithGrant } from '../hooks/useHomeData';
@@ -110,7 +111,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         </View>
       </View>
       
-      <TesterProgress />
+      {showTesterProgress() && <TesterProgress />}
       
       {matches.length === 0 ? (
         <View style={styles.emptyContainer}>

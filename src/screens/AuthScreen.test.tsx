@@ -1,9 +1,10 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { AuthScreen, PASSWORD_MIN_LENGTH } from './AuthScreen';
+import { AuthScreen, PASSWORD_MIN_LENGTH, RESET_SENT_MESSAGE, RESET_SENT_TITLE } from './AuthScreen';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../lib/legalLinks';
 import { supabase } from '../lib/supabase';
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
+import { contrastRatio, textColor } from '../test-utils/contrast';
 import { Button, TextInput } from 'react-native-paper';
 
 jest.mock('../lib/supabase', () => ({
@@ -349,6 +350,71 @@ describe('AuthScreen', () => {
       expect(open.mock.calls.map((x) => x[0])).toEqual([TERMS_URL, PRIVACY_POLICY_URL]);
       expect(c.root.findAllByProps({ testID: 'auth-terms-link' })[0].props.accessibilityRole).toBe('link');
       open.mockRestore();
+    });
+  });
+  // Review 2026-11-03, web: the decorative field icons were tab stops; the reset confirmation was an invisible Alert.
+  describe('review 2026-11-03', () => {
+    const render = () => {
+      let c: any;
+      act(() => { c = renderer.create(<AuthScreen />); });
+      return c;
+    };
+    // The host element Paper's TouchableRipple renders for a TextInput.Icon (the one with role "button").
+    const pressable = (c: any, testID: string) =>
+      c.root.findAll((n: any) => typeof n.type === 'string' && n.props.testID === testID && n.props.accessibilityRole === 'button')[0];
+
+    it.each(['auth-email-icon', 'auth-password-icon'])('the decorative %s is no tab stop and hidden from assistive technology', (id) => {
+      const icon = pressable(render(), id);
+      expect(icon).toBeDefined();
+      expect(icon.props).toMatchObject({
+        focusable: false,
+        tabIndex: -1,
+        accessible: false,
+        importantForAccessibility: 'no-hide-descendants',
+        'aria-hidden': true,
+      });
+    });
+
+    it('the eye button stays a focusable, named button', () => {
+      const eye = pressable(render(), 'auth-password-toggle');
+      expect(eye.props.accessibilityLabel).toBe('Jelszó megjelenítése');
+      expect(eye.props.focusable).not.toBe(false);
+      expect(eye.props.tabIndex).toBeUndefined();
+      expect(eye.props.accessible).not.toBe(false);
+      expect(eye.props['aria-hidden']).toBeUndefined();
+    });
+
+    describe('password reset confirmation', () => {
+      const originalOS = Platform.OS;
+      afterEach(() => { Platform.OS = originalOS; });
+
+      const requestReset = async () => {
+        const c = render();
+        act(() => { c.root.findAllByType(TextInput)[0].props.onChangeText('user@example.com'); });
+        (supabase.auth.resetPasswordForEmail as jest.Mock).mockResolvedValueOnce({ data: {}, error: null });
+        const forgot = c.root.findAllByType(Button).find((b: any) => b.props.children === 'Elfelejtett jelszó?');
+        await act(async () => { await forgot.props.onPress(); });
+        return c;
+      };
+      const text = (n: any): string => typeof n === 'string' ? n : Array.isArray(n) ? n.map(text).join('') : n?.props ? text(n.props.children) : '';
+
+      it('web: shows the message on the screen as a status, not through Alert', async () => {
+        Platform.OS = 'web';
+        const c = await requestReset();
+        expect(Alert.alert).not.toHaveBeenCalled();
+        const notice = c.root.findAllByProps({ testID: 'auth-reset-notice' })[0];
+        expect(notice).toBeDefined();
+        expect(text(notice.props.children)).toBe(`${RESET_SENT_TITLE}\n${RESET_SENT_MESSAGE}`);
+        expect(notice.props.role).toBe('status');
+        expect(contrastRatio(textColor(notice.props.style), '#E8F5E9')).toBeGreaterThanOrEqual(4.5);
+      });
+
+      it('native: keeps the Alert and adds nothing to the screen', async () => {
+        Platform.OS = 'android';
+        const c = await requestReset();
+        expect(Alert.alert).toHaveBeenCalledWith(RESET_SENT_TITLE, RESET_SENT_MESSAGE);
+        expect(c.root.findAllByProps({ testID: 'auth-reset-notice' })).toHaveLength(0);
+      });
     });
   });
 });

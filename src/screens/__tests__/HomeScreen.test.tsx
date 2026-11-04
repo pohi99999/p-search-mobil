@@ -454,4 +454,35 @@ describe('HomeScreen', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'HomeScreen.tsx'), 'utf8');
     expect(src).not.toMatch(/TestIds/);
   });
+  // Review 2026-11-03: the closed-test progress card is behind EXPO_PUBLIC_SHOW_TESTER_PROGRESS, on unless exactly "false".
+  describe('tester progress flag', () => {
+    const saved = process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS;
+    afterEach(() => {
+      if (saved === undefined) delete process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS;
+      else process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS = saved;
+    });
+
+    it.each([
+      [undefined, 1],
+      ['true', 1],
+      ['', 1],
+      ['FALSE', 1],
+      ['0', 1],
+      ['false', 0],
+    ])('EXPO_PUBLIC_SHOW_TESTER_PROGRESS=%p shows the card %i time(s)', (value, count) => {
+      if (value === undefined) delete process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS;
+      else process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS = value;
+      (useHomeData as jest.Mock).mockReturnValue({
+        loading: false,
+        profile: { company_name: 'Test Company' },
+        matches: [],
+        isPro: false,
+        fetchData: jest.fn(),
+        signOut: jest.fn(),
+        handleNewSearch: jest.fn(),
+      });
+      const root = renderScreen();
+      expect(root.root.findAllByType('TesterProgress')).toHaveLength(count);
+    });
+  });
 });
