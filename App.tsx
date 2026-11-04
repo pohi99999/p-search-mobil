@@ -22,6 +22,7 @@ import { BillingProvider } from './src/context/BillingContext';
 import { ProfileProvider } from './src/context/ProfileContext';
 
 import type { RootStackParamList } from './src/types/navigation';
+import { SCREEN_TITLES } from './src/config/screenTitles';
 
 // Csak akkor inicializáljuk, ha van beállított DSN -- e nélkül a Sentry
 // hívások (logger.ts-en keresztül) biztonságosan no-op-ok maradnak.
@@ -76,17 +77,17 @@ export default function App() {
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {session && session.user ? (
               <>
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                <Stack.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal' }} />
-                <Stack.Screen name="Settings" component={SettingsScreen} />
-                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
-                <Stack.Screen name="GrantDetail" component={GrantDetailScreen} />
-                <Stack.Screen name="ActionPlan" component={ActionPlanScreen} />
-                <Stack.Screen name="CopilotChat" component={CopilotChatScreen} />
+                <Stack.Screen name="Home" component={HomeScreen} options={{ title: SCREEN_TITLES.Home }} />
+                <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ title: SCREEN_TITLES.Onboarding }} />
+                <Stack.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal', title: SCREEN_TITLES.Paywall }} />
+                <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: SCREEN_TITLES.Settings }} />
+                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} options={{ title: SCREEN_TITLES.DocumentUpload }} />
+                <Stack.Screen name="GrantDetail" component={GrantDetailScreen} options={{ title: SCREEN_TITLES.GrantDetail }} />
+                <Stack.Screen name="ActionPlan" component={ActionPlanScreen} options={{ title: SCREEN_TITLES.ActionPlan }} />
+                <Stack.Screen name="CopilotChat" component={CopilotChatScreen} options={{ title: SCREEN_TITLES.CopilotChat }} />
               </>
             ) : (
-              <Stack.Screen name="Auth" component={AuthScreen} />
+              <Stack.Screen name="Auth" component={AuthScreen} options={{ title: SCREEN_TITLES.Auth }} />
             )}
           </Stack.Navigator>
         </NavigationContainer>

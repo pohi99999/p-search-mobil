@@ -9,3 +9,11 @@ export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
 
 export const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
 
+/**
+ * The closed-test progress card on Home (TesterProgress). On by default while the closed test runs;
+ * set EXPO_PUBLIC_SHOW_TESTER_PROGRESS=false (exactly "false") for the public store build.
+ * A function, not a constant, so a test can switch it; Expo inlines the value at build time either way.
+ */
+export function showTesterProgress(): boolean {
+  return process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS !== 'false';
+}

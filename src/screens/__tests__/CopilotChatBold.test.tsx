@@ -42,3 +42,33 @@ describe('Copilot bubble bold', () => {
     expect((StyleSheet.flatten(bold.props.style) as { fontWeight?: string }).fontWeight).toBe('bold');
   });
 });
+
+// Review 2026-11-03 (finding 2): the message timestamp was #9E9E9E, 2.67:1 on the white answer bubble.
+// Fixed in #253 (#616161) without a test; this guards it, and the user bubble's light time on dark blue.
+describe('Copilot timestamp contrast', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { contrastRatio, textColor } = require('../../test-utils/contrast');
+  beforeAll(() => jest.useFakeTimers());
+  afterAll(() => jest.useRealTimers());
+
+  it('both bubbles show their time at 4.5:1 or more', async () => {
+    const nav = { canGoBack: () => true, goBack: jest.fn(), navigate: jest.fn() } as any;
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+          <CopilotChatScreen navigation={nav} route={{ key: 'c', name: 'CopilotChat', params: { matchId: 'm1' } } as any} />
+        </SafeAreaProvider>,
+      );
+    });
+    const times = tree!.root.findAll(
+      (n) => (n.type as unknown) === 'Text' && typeof n.props.children === 'string' && /^\d{1,2}:\d{2}$/.test(n.props.children),
+    );
+    expect(times).toHaveLength(2);
+    const [userTime, aiTime] = times.map((t) => textColor(t.props.style));
+    expect(contrastRatio(userTime, '#1A237E')).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(aiTime, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    // An error answer sits on #FFEBEE with the same timestamp colour.
+    expect(contrastRatio(aiTime, '#FFEBEE')).toBeGreaterThanOrEqual(4.5);
+  });
+});
