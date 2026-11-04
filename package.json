@@ -34,6 +34,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@emnapi/core": "1.11.1",
     "@emnapi/runtime": "1.11.1",
     "@react-native/jest-preset": "0.85.3",
@@ -63,7 +64,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:sql": "node --test supabase/tests/api-grants.pglite.mjs"
   },
   "private": true
 }
