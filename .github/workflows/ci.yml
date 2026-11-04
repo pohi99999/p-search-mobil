@@ -19,6 +19,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --ci
+      # API-role table privileges replayed in PGlite (in-process Postgres, no network, no live database).
+      - run: npm run test:sql
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
