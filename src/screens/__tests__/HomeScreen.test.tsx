@@ -323,26 +323,42 @@ describe('HomeScreen', () => {
     mockInsets.bottom = 0;
   });
 
-  // Card a96dd8e2 #9 (common test 2026-10-07): the wide "Új AI Keresés" button covered the text of the
-  // 2nd card. It shrinks to its round icon once the list is scrolled, and is extended again at the top.
-  it('collapses the search button to its icon while the list is scrolled', () => {
+  // Péter's test 2026-11-07 (P2-3): the wide button sat on "Részletek" at the top of the list too.
+  it.each([
+    ['a list', [{ id: '1', grants: {} }], false, false],
+    ['a list while searching', [{ id: '1', grants: {} }], true, true],
+    ['the empty screen', [], false, true],
+  ])('on %s the search button is extended: %#', (_name, matches, searching, extended) => {
     (useHomeData as jest.Mock).mockReturnValue({
       loading: false,
+      searching,
       profile: { company_name: 'Test' },
-      matches: [{ id: '1', title: 'Match 1', grants: {} }, { id: '2', title: 'Match 2', grants: {} }],
+      matches,
       isPro: false,
       fetchData: jest.fn(),
       signOut: jest.fn(),
       handleNewSearch: jest.fn(),
     });
     const root = renderScreen();
-    const fab = () => root.root.find((n) => n.props.testID === 'new-search-fab' && typeof n.type === 'string');
-    const list = root.root.find((n) => typeof n.props.onScroll === 'function' && n.props.data !== undefined);
-    expect(fab().props.extended).toBe(true);
-    act(() => { list.props.onScroll({ nativeEvent: { contentOffset: { y: 240 } } }); });
-    expect(fab().props.extended).toBe(false);
-    act(() => { list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 } } }); });
-    expect(fab().props.extended).toBe(true);
+    const fab = root.root.find((n) => n.props.testID === 'new-search-fab' && typeof n.type === 'string');
+    expect(fab.props.extended).toBe(extended);
+  });
+
+  // Péter's test 2026-11-07: pinned above the list, the tester card took the phone's height from the matches.
+  it('the tester card scrolls with the list', () => {
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test' },
+      matches: [{ id: '1', grants: {} }],
+      isPro: false,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+    const root = renderScreen();
+    const list = root.root.findByType('FlatList');
+    expect(list.props.ListHeaderComponent.type).toBe('TesterProgress');
+    expect(root.root.findAll((n) => n.type === 'TesterProgress' && n.parent?.type !== 'FlatList')).toHaveLength(0);
   });
 
   it('calls handleNewSearch on FAB press', () => {

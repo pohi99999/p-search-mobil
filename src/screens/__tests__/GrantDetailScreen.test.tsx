@@ -85,6 +85,27 @@ describe('GrantDetailScreen (card [B])', () => {
     expect(byTestId('grant-detail-source')).toBeDefined();
   });
 
+  // Péter's test 2026-11-07: a loan was nowhere called a loan on the view.
+  it.each([
+    ['hitel', 'Hitel'],
+    ['Vissza nem térítendő és hitel', 'Vegyes: támogatás és hitel'],
+    ['Pénzügyi eszköz – kockázati tőke', 'Kockázati tőke'],
+  ])('%s shows its kind: %s', async (grant_type, label) => {
+    const { text } = await renderScreen(makeMatch({ grant_type }));
+    expect(text).toContain(`"${label}"`);
+  });
+
+  it.each([[null], ['Egyéb']])('%p shows no kind label', async (grant_type) => {
+    const { tree } = await renderScreen(makeMatch({ grant_type }));
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-kind-badge')).toHaveLength(0);
+  });
+
+  it('the header does not call a loan a grant', async () => {
+    const { text } = await renderScreen(makeMatch({ grant_type: 'hitel', title: 'Hitel' }));
+    expect(text).not.toContain('Pályázat részletei');
+    expect(text).not.toContain('erre a pályázatra');
+  });
+
   it('opens the official link in the browser', async () => {
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     const { byTestId } = await renderScreen(makeMatch());
