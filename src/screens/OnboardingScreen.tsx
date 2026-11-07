@@ -182,6 +182,22 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
         .select()
         .single();
 
+      // The context cached "no profile" at login, so without a refresh the Copilot sent business_profile_id: null
+      // for the rest of the session (live chat test 2026-10-25, Marveen 4938). A failed refresh must not block Home.
+      const refreshAndGoHome = async () => {
+        try {
+          await refreshProfile();
+        } catch (err) {
+          logger.warn('Profil-frissítés hiba:', err);
+        }
+        navigation.replace('Home');
+      };
+
+      // The unique index on user_id: this user already has a profile (a double tap, another device). Nothing to add.
+      if (dbError?.code === '23505') {
+        await refreshAndGoHome();
+        return;
+      }
       if (dbError) throw dbError;
       track('onboarding_done', profileFlags(values));
 
@@ -195,16 +211,8 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
         }).catch(err => logger.warn('Edge function hívás hiba:', err));
       }
 
-      // The context cached "no profile" at login, so without a refresh the Copilot sent business_profile_id: null
-      // for the rest of the session (live chat test 2026-10-25, Marveen 4938). A failed refresh must not block Home.
-      try {
-        await refreshProfile();
-      } catch (err) {
-        logger.warn('Profil-frissítés hiba:', err);
-      }
-
       // Siker esetén navigálás a Home oldalra
-      navigation.replace('Home');
+      await refreshAndGoHome();
     } catch (e: unknown) {
       setError((getErrorMessage(e)) || 'Hiba történt a mentés során.');
     } finally {
