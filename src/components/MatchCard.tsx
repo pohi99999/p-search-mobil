@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
   actions: {
     flexWrap: 'wrap',
     rowGap: 8,
-    paddingLeft: 8,
     paddingRight: SEARCH_BUTTON_GUTTER,
   },
   // Card.Actions pads 8 px, Card.Content 16 px: the extra 8 px lines the buttons up with the card text.
