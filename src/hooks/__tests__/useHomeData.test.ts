@@ -6,6 +6,7 @@ import { track } from '../../services/events';
 import { sanitizeMeta } from '../../services/eventMeta';
 import { supabase } from '../../lib/supabase';
 import { useBilling } from '../../context/BillingContext';
+import { useProfile } from '../../context/ProfileContext';
 import { logger } from '../../utils/logger';
 
 jest.mock('../../lib/supabase', () => ({
@@ -23,6 +24,10 @@ jest.mock('../../lib/supabase', () => ({
 
 jest.mock('../../context/BillingContext', () => ({
   useBilling: jest.fn(),
+}));
+
+jest.mock('../../context/ProfileContext', () => ({
+  useProfile: jest.fn(),
 }));
 
 jest.mock('../../utils/logger', () => ({
@@ -46,6 +51,7 @@ describe('useHomeData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ refreshProfile: jest.fn().mockResolvedValue(undefined) });
 
     Alert.alert = jest.fn();
     supabase.functions.invoke = jest.fn().mockResolvedValue({ data: { success: true }, error: null });
@@ -62,14 +68,16 @@ describe('useHomeData', () => {
     matchesError = null,
     matchesData: any = mockMatches,
     updateError = null,
-    plans: { data: any; error: any } = { data: [], error: null }
+    plans: { data: any; error: any } = { data: [], error: null },
+    userError: any = null
   ) => {
     const mockFrom = jest.fn((table: string) => {
       if (table === 'business_profiles') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: profileData, error: profileError }),
+          limit: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: profileData, error: profileError }),
         };
       }
       if (table === 'profiles') {
@@ -82,7 +90,7 @@ describe('useHomeData', () => {
               }
               return chain;
           }),
-          single: jest.fn().mockResolvedValue({ data: userData }),
+          single: jest.fn().mockResolvedValue({ data: userData, error: userError }),
         };
         return chain;
       }
@@ -330,38 +338,98 @@ describe('useHomeData', () => {
       expect(mockNavigation.replace).toHaveBeenCalledWith('Onboarding');
     });
 
-    it('handles and logs profile errors (not PGRST116)', async () => {
-      const error = { code: 'OTHER_ERR', message: 'Test error' };
-      setupSupabaseMocks(error as any);
-
-      const { result } = renderHook(() => useHomeData(mockNavigation));
-
-      await waitFor(() => expect(result.current.loading).toBe(false));
-
-      expect(logger.error).toHaveBeenCalledWith(error);
-    });
-
-    it('ignores PGRST116 profile error', async () => {
-      const error = { code: 'PGRST116', message: 'No rows' };
+    // Round 4 P1-1, measured on the phone in flight mode: a failed read sent an existing user to the empty form.
+    it.each([
+      ['a network failure', { message: 'TypeError: Network request failed' }],
+      ['a server error', { code: '500', message: 'Test error' }],
+      ['PGRST116, which the limit(1).maybeSingle() read never gets for "no row"', { code: 'PGRST116', message: 'x' }],
+    ])('%s on the profile read: an error state, not the Onboarding', async (_name, error) => {
       setupSupabaseMocks(error as any, null);
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(logger.error).not.toHaveBeenCalledWith(error);
+      expect(logger.error).toHaveBeenCalledWith(error);
+      expect(result.current.loadError).toBe('profile');
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+    });
+
+    it('a failed read of the profiles row is a load error too, and the company is not treated as never searched', async () => {
+      const error = { message: 'TypeError: Network request failed' };
+      setupSupabaseMocks(null, mockBusinessProfile, null, null, [], null, { data: [], error: null }, error);
+
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.loadError).toBe('profile');
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+      expect(supabase.functions.invoke).not.toHaveBeenCalled();
+    });
+
+    it('no profiles row (PGRST116 on .single()) is no load error', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, null, null, mockMatches, null, { data: [], error: null }, { code: 'PGRST116' });
+
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.loadError).toBeNull();
+    });
+
+    it('a read that finds no row, and only that, goes to the Onboarding, with no load error', async () => {
+      setupSupabaseMocks(null, null);
+
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.loadError).toBeNull();
       expect(mockNavigation.replace).toHaveBeenCalledWith('Onboarding');
     });
 
-    it('handles and logs matches errors', async () => {
+    // Round 4 P1-2: a failed list read looked like "no grant fits you".
+    it('a failed matches read is its own state, and starts no AI search for a company never scanned', async () => {
       const matchesErr = new Error('Matches error');
-      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, matchesErr as any);
+      setupSupabaseMocks(null, mockBusinessProfile, { id: 'test-user-id', last_scan_at: null }, matchesErr as any);
 
       const { result } = renderHook(() => useHomeData(mockNavigation));
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(logger.error).toHaveBeenCalledWith(matchesErr);
+      expect(result.current.loadError).toBe('matches');
+      expect(result.current.profile).toEqual(mockBusinessProfile);
+      expect(supabase.functions.invoke).not.toHaveBeenCalled();
+    });
+
+    it('retryLoad reads again, the context profile too, clears the error, and searches nothing', async () => {
+      const refreshProfile = jest.fn().mockResolvedValue(undefined);
+      (useProfile as jest.Mock).mockReturnValue({ refreshProfile });
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, new Error('Matches error') as any);
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loadError).toBe('matches'));
+
+      setupSupabaseMocks();
+      await act(async () => { await result.current.retryLoad(); });
+
+      expect(refreshProfile).toHaveBeenCalledTimes(1);
+      expect(result.current.loadError).toBeNull();
+      expect(result.current.matches).toEqual(mockMatches);
+      expect(supabase.functions.invoke).not.toHaveBeenCalled();
+    });
+
+    it('a failed reload keeps the list on the screen', async () => {
+      setupSupabaseMocks();
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.matches).toEqual(mockMatches));
+
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, new Error('Matches error') as any);
+      await act(async () => { await result.current.fetchData(); });
+
+      expect(result.current.loadError).toBe('matches');
+      expect(result.current.matches).toEqual(mockMatches);
     });
 
     it('handles catch block in fetchData', async () => {
@@ -374,6 +442,7 @@ describe('useHomeData', () => {
 
        expect(logger.error).toHaveBeenCalledWith(unexpectedErr);
        expect(result.current.loading).toBe(false);
+       expect(result.current.loadError).toBe('profile');
     });
   });
 
