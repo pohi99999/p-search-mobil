@@ -34,7 +34,7 @@ describe('HomeEmptyState', () => {
 
   it('a running search shows the spinner and no button', async () => {
     const r = await render('searching');
-    expect(r.text).toContain('Keressük a cégedhez illő pályázatokat');
+    expect(r.text).toContain('Keressük a cégedhez illő pályázatokat és hiteleket');
     expect(r.spinners).toBeGreaterThan(0);
     expect(r.has('empty-search')).toBe(false);
   });
@@ -58,7 +58,7 @@ describe('HomeEmptyState', () => {
 
   it('0 matches: no spinner, no notification promise, profile and retry buttons', async () => {
     const r = await render('none');
-    expect(r.text).toContain('Most nincs a cégedhez illő nyitott pályázat');
+    expect(r.text).toContain('Most nincs a cégedhez illő nyitott pályázat vagy hitel');
     expect(r.text).not.toContain('értesítünk');
     expect(r.spinners).toBe(0);
     await r.press('empty-edit-profile');

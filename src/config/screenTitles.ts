@@ -12,7 +12,7 @@ export const SCREEN_TITLES: Record<keyof RootStackParamList, string> = {
   Paywall: 'Előfizetés | P-Search',
   Settings: 'Beállítások | P-Search',
   DocumentUpload: 'Dokumentum feltöltése | P-Search',
-  GrantDetail: 'Pályázat részletei | P-Search',
+  GrantDetail: 'Részletek | P-Search',
   ActionPlan: 'Akcióterv | P-Search',
   CopilotChat: 'AI pályázati Copilot | P-Search',
 };

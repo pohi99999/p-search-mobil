@@ -222,8 +222,8 @@ function useGrantSearch({
       Alert.alert(
         'AI keresés kész',
         matchesFound > 0
-          ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
-          : 'Most nem találtunk új, a cégedhez illő pályázatot. Ha új kiírás jelenik meg, a következő automatikus keresés után itt látod.',
+          ? `${matchesFound} illeszkedő pályázatot vagy hitelt találtunk a cégedhez!`
+          : 'Most nem találtunk új, a cégedhez illő pályázatot vagy hitelt. Ha új kiírás jelenik meg, a következő automatikus keresés után itt látod.',
       );
     } catch (err) {
       const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };

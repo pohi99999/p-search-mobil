@@ -10,6 +10,7 @@ import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { deadlineDetailText, formatDeadline } from '../lib/deadline';
 import { logger } from '../utils/logger';
 import { scoreBand, track } from '../services/events';
+import { GrantKindBadge } from '../components/GrantKindBadge';
 import { MatchFeedback } from '../components/MatchFeedback';
 import type { GrantDetailScreenProps } from '../types/navigation';
 
@@ -63,13 +64,14 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
           testID="grant-detail-back-button"
         />
         <Text variant="titleLarge" style={styles.headerTitle}>
-          Pályázat részletei
+          Részletek
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]} testID="grant-detail-scroll">
         <Card style={styles.card} mode="elevated">
           <Card.Content>
+            <GrantKindBadge grantType={grant?.grant_type} variant="detail" style={styles.kind} />
             <Text variant="titleLarge" style={styles.title}>
               {grant?.title || 'Ismeretlen pályázat'}
             </Text>
@@ -147,11 +149,11 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
           <Card.Content>
             {expired ? (
               <Text variant="bodyMedium" style={styles.body}>
-                Ez a kiírás lezárult, beadni már nem lehet. A hasonló, nyitott pályázatokat a kezdőlapon találod.
+                Ez a kiírás lezárult, beadni már nem lehet. A hasonló, nyitott lehetőségeket a kezdőlapon találod.
               </Text>
             ) : (
               <>
-                <Text variant="titleMedium" style={styles.offerTitle}>Készülj fel erre a pályázatra</Text>
+                <Text variant="titleMedium" style={styles.offerTitle}>Készülj fel a beadásra</Text>
                 {isPro ? (
                   <Button
                     mode="contained"
@@ -185,7 +187,7 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
               icon="robot-outline"
               onPress={() => navigation.navigate('CopilotChat', { matchId: match.id })}
               style={styles.copilotButton}
-              accessibilityLabel="Kérdezz a Copilottól erről a pályázatról"
+              accessibilityLabel="Kérdezz a Copilottól erről a találatról"
               testID="grant-detail-copilot"
             >
               {/* The longer label was cut at 360 px; the full sentence stays in the accessibility label. */}
@@ -231,6 +233,9 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     backgroundColor: 'white',
+  },
+  kind: {
+    marginBottom: 8,
   },
   title: {
     fontWeight: 'bold',

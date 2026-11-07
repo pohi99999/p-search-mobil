@@ -235,7 +235,11 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           <Text variant="bodyMedium" style={styles.subtitle}>
             {editRequested && ownLoad.state !== 'none'
               ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'
-              : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!'}
+              : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat és hiteleket!'}
+          </Text>
+          {/* Péter's test 2026-11-07 (P2-5): nothing said that the company name is the only required field. */}
+          <Text variant="bodySmall" style={styles.requiredNote} testID="onboarding-required-note">
+            Csak a csillaggal jelölt cégnév kötelező. Minél több adatot adsz meg, annál pontosabb a találat.
           </Text>
 
           <TextInput
@@ -287,6 +291,9 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
             style={styles.input}
             mode="outlined"
           />
+          <Text variant="bodySmall" style={styles.fieldNote} testID="onboarding-teaor-hint">
+            Például 62.01. Ha nem tudod a kódot, írd le, mivel foglalkozik a cég.
+          </Text>
 
           <TextInput
             label="Alkalmazottak száma"
@@ -319,8 +326,10 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           <FieldError message={fieldErrors.yearly_revenue} />
 
           <TextInput
-            label="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
-            accessibilityLabel="Fejlesztési célok (pl. gépbeszerzés, zöldítés)"
+            // Péter's test 2026-11-07 (P2-5): the long label was cut at "pl. gépbeszer..."; the example is the placeholder now.
+            label="Fejlesztési célok"
+            accessibilityLabel="Fejlesztési célok"
+            placeholder="pl. gépbeszerzés, zöldítés"
             value={form.goals}
             onChangeText={(text) => setForm({ ...form, goals: text })}
             style={styles.input}
@@ -428,8 +437,18 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 8,
     color: '#666',
+  },
+  requiredNote: {
+    textAlign: 'center',
+    marginBottom: 24,
+    color: '#616161',
+  },
+  fieldNote: {
+    color: '#616161',
+    marginTop: -8,
+    marginBottom: 12,
   },
   input: {
     marginBottom: 16,

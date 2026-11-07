@@ -1,11 +1,17 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
-import { Card, Text, Button } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { Card, Text, Button, TouchableRipple } from 'react-native-paper';
 import type { MatchWithGrant } from '../hooks/useHomeData';
 import { formatGrantAmount } from '../lib/grantAmount';
+import { grantKindLabel } from '../lib/grantKind';
 import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { formatDeadline } from '../lib/deadline';
+import { GrantKindBadge } from './GrantKindBadge';
 import { MatchFeedback } from './MatchFeedback';
+
+// The round search button floats over the list's right edge: 56 px wide with a 16 px margin, and the card itself has
+// a 16 px margin. The actions keep out of that column at any scroll position, on any screen width (P2-3).
+const SEARCH_BUTTON_GUTTER = 64;
 
 interface MatchCardProps {
   item: MatchWithGrant;
@@ -22,35 +28,52 @@ export function MatchCard({ item, onPress, rank }: MatchCardProps) {
   const stale = item.status === STALE_MATCH_STATUS;
   // Card [A]: the deadline is the first thing to decide on; expired in red, under 14 days highlighted.
   const deadline = formatDeadline(item.grants?.deadline);
+  const hasKind = grantKindLabel(item.grants?.grant_type) !== null;
   return (
     <Card style={[styles.card, stale && styles.staleCard]} mode="elevated">
-      <Card.Title
-        title={item.grants?.title || 'Ismeretlen pályázat'}
-        titleNumberOfLines={2}
-        style={styles.title}
-        subtitle={stale ? `Korábbi keresés találata (egyezés akkor: ${item.match_score}%)` : `Egyezés: ${item.match_score}%`}
-        subtitleStyle={stale ? styles.staleSubtitle : undefined}
-      />
-      <Card.Content>
-        <Text
-          variant="labelLarge"
-          style={[styles.deadline, deadlineStyles[deadline.tone]]}
-          testID="match-deadline"
-        >
-          {deadline.label}
-        </Text>
-        <Text variant="bodyMedium" style={{ marginBottom: 8, color: '#444' }}>
-          {item.grants?.provider}
-        </Text>
-        <Text variant="bodySmall">
-          {item.match_reasoning || item.grants?.description}
-        </Text>
-        {amountLine && (
-          <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
-            Összeg: {amountLine}
-          </Text>
-        )}
-      </Card.Content>
+      {/* Péter's test 2026-11-07 (P2-2): only "Részletek" opened the view, a tap on the title did nothing. The buttons
+          stay outside this area, so no button sits inside another one. */}
+      <TouchableRipple
+        onPress={onPress}
+        borderless
+        style={styles.openArea}
+        accessibilityRole="button"
+        accessibilityHint="Megnyitja a részleteket"
+        testID="match-card-open"
+      >
+        <View>
+          <GrantKindBadge grantType={item.grants?.grant_type} style={styles.kind} />
+          <Card.Title
+            title={item.grants?.title || 'Ismeretlen pályázat'}
+            titleNumberOfLines={2}
+            style={hasKind ? styles.titleAfterKind : styles.title}
+            subtitle={stale ? `Korábbi keresés találata (egyezés akkor: ${item.match_score}%)` : `Egyezés: ${item.match_score}%`}
+            // Péter's test 2026-11-07: the stale line was cut at "egyezés akk...", before the number it is there for.
+            subtitleNumberOfLines={3}
+            subtitleStyle={stale ? styles.staleSubtitle : undefined}
+          />
+          <Card.Content style={styles.content}>
+            <Text
+              variant="labelLarge"
+              style={[styles.deadline, deadlineStyles[deadline.tone]]}
+              testID="match-deadline"
+            >
+              {deadline.label}
+            </Text>
+            <Text variant="bodyMedium" style={{ marginBottom: 8, color: '#444' }}>
+              {item.grants?.provider}
+            </Text>
+            <Text variant="bodySmall">
+              {item.match_reasoning || item.grants?.description}
+            </Text>
+            {amountLine && (
+              <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
+                Összeg: {amountLine}
+              </Text>
+            )}
+          </Card.Content>
+        </View>
+      </TouchableRipple>
       {/* [G2]: the feedback answer sits in the actions row, before "Részletek"; on a narrow screen the row wraps and
           "Részletek" stays at the right. Card.Actions would make its 2nd child a contained button, hence the explicit mode. */}
       <Card.Actions style={styles.actions}>
@@ -90,6 +113,23 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 4,
   },
+  titleAfterKind: {
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  kind: {
+    marginTop: 12,
+    marginLeft: 16,
+  },
+  // The ripple follows the card's rounded top corners.
+  openArea: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  // Card.Content takes this padding from its siblings in the card, and inside the open area it has none.
+  content: {
+    paddingBottom: 8,
+  },
   staleCard: {
     opacity: 0.75,
   },
@@ -103,12 +143,16 @@ const styles = StyleSheet.create({
   actions: {
     flexWrap: 'wrap',
     rowGap: 8,
+    paddingLeft: 8,
+    paddingRight: SEARCH_BUTTON_GUTTER,
   },
   // Card.Actions pads 8 px, Card.Content 16 px: the extra 8 px lines the buttons up with the card text.
   feedback: {
     marginTop: 0,
     marginLeft: 8,
     marginRight: 'auto',
+    // On a narrow screen the two buttons wrap under each other, instead of running out at the card's left edge.
+    flexShrink: 1,
   },
   details: {
     marginLeft: 'auto',

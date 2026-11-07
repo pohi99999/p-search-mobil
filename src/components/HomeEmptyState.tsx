@@ -20,7 +20,7 @@ export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEd
       <Surface style={styles.surface} elevation={2} testID="empty-searching">
         <ActivityIndicator size="large" color="#1976D2" style={styles.spinner} />
         <Text variant="titleLarge" style={styles.title}>
-          Keressük a cégedhez illő pályázatokat
+          Keressük a cégedhez illő pályázatokat és hiteleket
         </Text>
         <Text variant="bodyMedium" style={styles.body}>
           Az AI most veti össze a cégprofilodat a nyitott kiírásokkal. Ez eltarthat egy kis ideig, nyugodtan maradj ezen
@@ -37,8 +37,8 @@ export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEd
           Még nem kerestünk a cégednek
         </Text>
         <Text variant="bodyMedium" style={styles.body}>
-          Indítsd el az első keresést: az AI a cégprofilod alapján kiválasztja a nyitott pályázatok közül a hozzád
-          illőket.
+          Indítsd el az első keresést: az AI a cégprofilod alapján kiválasztja a nyitott pályázatok és hitelek közül a
+          hozzád illőket.
         </Text>
         <Button mode="contained" onPress={onSearch} testID="empty-search">
           Keresés indítása
@@ -60,7 +60,7 @@ export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEd
   return (
     <Surface style={styles.surface} elevation={2} testID="empty-none">
       <Text variant="titleLarge" style={styles.title}>
-        Most nincs a cégedhez illő nyitott pályázat
+        Most nincs a cégedhez illő nyitott pályázat vagy hitel
       </Text>
       <Text variant="bodyMedium" style={styles.body}>
         Lefuttattuk a keresést, de a jelenlegi kiírások közül egyik sem illik a cégprofilodhoz. Az automatikus keresés a
