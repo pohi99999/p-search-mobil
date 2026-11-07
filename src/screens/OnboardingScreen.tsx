@@ -235,7 +235,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           <Text variant="bodyMedium" style={styles.subtitle}>
             {editRequested && ownLoad.state !== 'none'
               ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'
-              : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat és hiteleket!'}
+              : 'Kérjük, add meg a cég alapvető adatait, hogy az AI megkereshesse számodra a leginkább megfelelő pályázatokat!'}
           </Text>
           {/* Péter's test 2026-11-07 (P2-5): nothing said that the company name is the only required field. */}
           <Text variant="bodySmall" style={styles.requiredNote} testID="onboarding-required-note">

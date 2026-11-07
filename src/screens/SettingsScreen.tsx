@@ -40,7 +40,7 @@ const frequencyOptions: {
   {
     value: 'daily',
     label: 'Naponta',
-    description: 'Minden nap új pályázatokat és hiteleket keresünk a cégedhez.',
+    description: 'Minden nap új pályázatokat keresünk a cégedhez.',
   },
   {
     value: 'weekly',
@@ -258,7 +258,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={styles.card} mode="elevated">
           <Card.Title
             title="Automatikus AI keresés"
-            subtitle="Állítsd be, milyen gyakran keressünk új pályázatokat és hiteleket."
+            subtitle="Állítsd be, milyen gyakran keressünk új pályázatokat."
             subtitleNumberOfLines={2}
             // Card [J]: a 2-line subtitle no longer fits Card.Title's fixed 72 px row without padding.
             style={styles.cardTitle}

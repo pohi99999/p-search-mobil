@@ -140,8 +140,8 @@ export function AuthScreen() {
           <Text variant="headlineMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
             P-Search
           </Text>
-          <Text variant="titleMedium" style={{ color: theme.colors.secondary, marginTop: 8, textAlign: 'center' }}>
-            Pályázat- és hitelkereső magyar KKV-knak
+          <Text variant="titleMedium" style={{ color: theme.colors.secondary, marginTop: 8 }}>
+            Pályázatkereső magyar KKV-knak
           </Text>
         </View>
 
