@@ -72,6 +72,8 @@ jest.mock('react-native', () => {
     Alert: {
       alert: jest.fn(),
     },
+    // notify() reads the platform: these tests are the phone's path, where it stays Alert.alert
+    Platform: { OS: 'ios' },
     StyleSheet: {
       create: jest.fn((styles) => styles),
     },

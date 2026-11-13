@@ -217,7 +217,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           testID="settings-back-button"
           accessibilityLabel="Vissza a főoldalra"
         />
-        <Text variant="titleLarge" style={styles.headerTitle}>
+        <Text role="heading" aria-level={1} variant="titleLarge" style={styles.headerTitle}>
           Beállítások
         </Text>
       </View>

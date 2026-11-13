@@ -202,7 +202,7 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
           testID="document-upload-back-button"
           accessibilityLabel="Vissza a főoldalra"
         />
-        <Text variant="titleLarge" style={styles.headerTitle}>
+        <Text role="heading" aria-level={1} variant="titleLarge" style={styles.headerTitle}>
           Dokumentum feltöltése
         </Text>
       </View>

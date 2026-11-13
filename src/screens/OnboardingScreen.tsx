@@ -232,14 +232,14 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
             accessibilityLabel="Vissza a beállításokhoz"
             testID="onboarding-back"
           />
-          <Text variant="titleLarge" style={styles.headerTitle}>
+          <Text role="heading" aria-level={1} variant="titleLarge" style={styles.headerTitle}>
             Cégprofil
           </Text>
         </View>
       ) : null}
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 16 + insets.bottom }} testID="onboarding-scroll">
         <Surface style={styles.surface} elevation={2}>
-          <Text variant="headlineMedium" style={styles.title}>{editRequested && ownLoad.state !== 'none' ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
+          <Text role="heading" aria-level={2} variant="headlineMedium" style={styles.title}>{editRequested && ownLoad.state !== 'none' ? 'Cégprofil szerkesztése' : 'Cégprofil létrehozása'}</Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
             {editRequested && ownLoad.state !== 'none'
               ? 'Javítsd vagy egészítsd ki a cég adatait. A mentés után a következő AI keresés már az új adatokkal fut.'

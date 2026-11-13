@@ -1,7 +1,7 @@
 import { RootStackNavigationProp } from "../types/navigation";
 import React, { useEffect, useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
-import { View, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import {
   PaywallSuccess,
   PaywallActivePro
 } from '../components/paywall';
+import { notify } from '../lib/notify';
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
@@ -49,13 +50,13 @@ export const PaywallScreen = () => {
         // The RevenueCat package id ($rc_monthly...), never the price.
         track('purchase_done', { package: pkg.identifier });
       } else if (result === 'failed') {
-        Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
+        notify('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
       } else if (result === 'unavailable') {
-        Alert.alert('Hiba', 'A vásárlás most nem érhető el. Kérjük, próbáld újra később.');
+        notify('Hiba', 'A vásárlás most nem érhető el. Kérjük, próbáld újra később.');
       }
     } catch (err: unknown) {
       logger.error('Vásárlási hiba:', getErrorMessage(err));
-      Alert.alert('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
+      notify('Hiba', 'Vásárlási hiba történt. Kérjük, próbáld újra később.');
     } finally {
       setPurchasing(false);
     }
@@ -66,11 +67,11 @@ export const PaywallScreen = () => {
     setPurchasing(true);
     try {
       const { isPro: restored } = await restorePurchases();
-      if (restored) Alert.alert('Siker', 'Előfizetés visszaállítva.');
-      else Alert.alert('Nincs előfizetés', 'Nem találtunk aktív előfizetést ehhez a fiókhoz.');
+      if (restored) notify('Siker', 'Előfizetés visszaállítva.');
+      else notify('Nincs előfizetés', 'Nem találtunk aktív előfizetést ehhez a fiókhoz.');
     } catch (err: unknown) {
       logger.error('Visszaállítási hiba:', getErrorMessage(err));
-      Alert.alert('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
+      notify('Hiba', 'Visszaállítási hiba történt. Kérjük, próbáld újra később.');
     } finally {
       setPurchasing(false);
     }
@@ -99,7 +100,7 @@ export const PaywallScreen = () => {
         {/* Prémium Korona ikon */}
         <IconButton icon="crown" iconColor="#FFD700" size={60} style={styles.crownIcon} />
 
-        <Text variant="displaySmall" style={styles.title}>
+        <Text role="heading" aria-level={1} variant="displaySmall" style={styles.title}>
           P-Search PRO
         </Text>
 
