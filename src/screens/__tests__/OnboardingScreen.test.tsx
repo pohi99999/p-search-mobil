@@ -283,6 +283,28 @@ describe('OnboardingScreen new profile refreshes the context', () => {
     mockProfileContext.profile = null;
   });
 
+  // Round 4: the unique index on business_profiles.user_id. The raw "duplicate key" text must not reach the user.
+  it('a profile that already exists (23505) goes Home with a fresh context, with no error text and no second call', async () => {
+    mockProfileContext.refreshProfile = jest.fn().mockResolvedValue(undefined);
+    const mockNavigation = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'u1' } } } });
+    const mockSingle = jest.fn().mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate key value' } });
+    const mockInsert = jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: mockSingle }) });
+    (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+    supabase.functions.invoke = jest.fn().mockResolvedValue({});
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const root = component!.root;
+    const companyNameInput = root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
+    await act(async () => { companyNameInput!.props.onChangeText('Új Kft'); });
+    await act(async () => { await root.find((n) => n.type === Button && n.props.testID === 'onboarding-save').props.onPress(); });
+    expect(mockProfileContext.refreshProfile).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Home');
+    expect(JSON.stringify(component!.toJSON())).not.toContain('duplicate key');
+    expect(supabase.functions.invoke).not.toHaveBeenCalled();
+    await act(async () => { component!.unmount(); });
+  });
+
   it('refreshes the profile context before it goes Home', async () => {
     mockProfileContext.refreshProfile = jest.fn().mockResolvedValue(undefined);
     const mockNavigation = { replace: jest.fn() } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
