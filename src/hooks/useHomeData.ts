@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
@@ -10,6 +9,7 @@ import { clearStoredChatHistory } from './useCopilotChat';
 
 import { hasSearchedBefore, isOpenGrant, sortFreshFirst, STALE_MATCH_STATUS, withoutExpired } from '../lib/matchStatus';
 import { errorCode, track } from '../services/events';
+import { notify } from '../lib/notify';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 export interface SearchRunResult {
@@ -219,7 +219,7 @@ function useGrantSearch({
       void triggerSearchWebhook(action, businessId);
       await onSearchSuccess();
 
-      Alert.alert(
+      notify(
         'AI keresés kész',
         matchesFound > 0
           ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
@@ -241,7 +241,7 @@ function useGrantSearch({
           track('daily_limit_hit');
           // Daily free cap hit: show the server's message with a Pro upsell,
           // rather than jumping straight to the Paywall.
-          Alert.alert(
+          notify(
             'Napi keresési limit',
             paywallErr.serverMessage || 'Elérted a napi ingyenes keresést. Holnap újra próbálhatod.',
             [
@@ -258,7 +258,7 @@ function useGrantSearch({
       const aiErr = err as { aiUnavailable?: boolean; code?: string; serverMessage?: string };
       if (aiErr?.aiUnavailable) {
         const quota = aiErr.code === 'gemini_quota';
-        Alert.alert(
+        notify(
           quota ? 'Napi AI-keret' : 'Az AI most túlterhelt',
           aiErr.serverMessage ||
             (quota
@@ -275,7 +275,7 @@ function useGrantSearch({
         return;
       }
       logger.error('Hiba az AI keresés során:', err);
-      Alert.alert('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
+      notify('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
     } finally {
       setSearching(false);
     }
@@ -284,12 +284,12 @@ function useGrantSearch({
   // A Button passes its press event here, so anything but 'after_onboarding' counts as a manual search.
   const handleNewSearch = async (trigger?: unknown) => {
     if (!userProfile || !userProfile.id) {
-      Alert.alert('Felhasználói profil nem található!');
+      notify('Felhasználói profil nem található!');
       return;
     }
 
     if (!profile) {
-      Alert.alert('Nincs cégprofilod', 'Előbb töltsd ki a cégprofilodat!');
+      notify('Nincs cégprofilod', 'Előbb töltsd ki a cégprofilodat!');
       navigation.navigate('Onboarding');
       return;
     }

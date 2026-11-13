@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBilling } from '../context/BillingContext';
@@ -12,6 +12,7 @@ import { logger } from '../utils/logger';
 import { scoreBand, track } from '../services/events';
 import { MatchFeedback } from '../components/MatchFeedback';
 import type { GrantDetailScreenProps } from '../types/navigation';
+import { notify } from '../lib/notify';
 
 // Card [B] (review 2026-10-25): "Részletek" opened the action plan, so the grant itself (deadline, official
 // link, eligibility) was never on screen. Free view; the Pro offer sits at the bottom. Texts: Stratéga.
@@ -48,7 +49,7 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
     track('source_link_open', { grant_id: match.grant_id });
     Linking.openURL(sourceUrl).catch((err) => {
       logger.error('A hivatalos kiírás nem nyílt meg:', err);
-      Alert.alert('Hiba', 'Nem sikerült megnyitni a kiírást. Próbáld újra később.');
+      notify('Hiba', 'Nem sikerült megnyitni a kiírást. Próbáld újra később.');
     });
   };
 
@@ -62,7 +63,7 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
           accessibilityLabel="Vissza"
           testID="grant-detail-back-button"
         />
-        <Text variant="titleLarge" style={styles.headerTitle}>
+        <Text role="heading" aria-level={1} variant="titleLarge" style={styles.headerTitle}>
           Pályázat részletei
         </Text>
       </View>
@@ -70,7 +71,7 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]} testID="grant-detail-scroll">
         <Card style={styles.card} mode="elevated">
           <Card.Content>
-            <Text variant="titleLarge" style={styles.title}>
+            <Text role="heading" aria-level={2} variant="titleLarge" style={styles.title}>
               {grant?.title || 'Ismeretlen pályázat'}
             </Text>
             <Text variant="bodyMedium" style={stale ? styles.staleText : styles.matchText}>

@@ -20,6 +20,8 @@ import { DocumentUploadScreen } from './src/screens/DocumentUploadScreen';
 import { GrantDetailScreen } from './src/screens/GrantDetailScreen';
 import { BillingProvider } from './src/context/BillingContext';
 import { ProfileProvider } from './src/context/ProfileContext';
+import { WebNotifier } from './src/components/WebNotifier';
+import { WebFrame } from './src/components/WebFrame';
 
 import type { RootStackParamList } from './src/types/navigation';
 import { SCREEN_TITLES } from './src/config/screenTitles';
@@ -74,6 +76,7 @@ export default function App() {
       <ProfileProvider>
         <PaperProvider theme={theme}>
         <NavigationContainer>
+          <WebFrame>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {session && session.user ? (
               <>
@@ -90,7 +93,9 @@ export default function App() {
               <Stack.Screen name="Auth" component={AuthScreen} options={{ title: SCREEN_TITLES.Auth }} />
             )}
           </Stack.Navigator>
+          </WebFrame>
         </NavigationContainer>
+        <WebNotifier />
         </PaperProvider>
       </ProfileProvider>
     </BillingProvider>

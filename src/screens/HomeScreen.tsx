@@ -90,7 +90,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="titleMedium" style={styles.headerTitle}>
+        <Text role="heading" aria-level={1} variant="titleMedium" style={styles.headerTitle}>
           Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
         <View style={styles.headerActions}>
