@@ -45,6 +45,16 @@ describe('notify', () => {
     expect(seen).toEqual([0]);
   });
 
+  it('native: passes the fourth argument (options) through as well, and adds none when it is absent', () => {
+    Platform.OS = 'ios';
+    const options = { cancelable: true, onDismiss: jest.fn() };
+    notify('Hiba', 'Valami', [{ text: 'Bezár' }], options);
+    expect(alertSpy).toHaveBeenLastCalledWith('Hiba', 'Valami', [{ text: 'Bezár' }], options);
+    expect(alertSpy.mock.calls[0]).toHaveLength(4);
+    notify('Csak cím');
+    expect(alertSpy.mock.calls[1]).toEqual(['Csak cím']);
+  });
+
   it('web: queues the message instead of the silent Alert.alert, with a default button', () => {
     Platform.OS = 'web';
     let last: readonly { title: string; message?: string; buttons: { text?: string }[] }[] = [];

@@ -110,6 +110,9 @@ jest.mock('react-native-google-mobile-ads', () => ({
 jest.mock('../../components/HomeEmptyState', () => ({
   HomeEmptyState: 'HomeEmptyState',
 }));
+jest.mock('../../components/HomeLoadError', () => ({
+  HomeLoadError: 'HomeLoadError',
+}));
 jest.mock('../../components/MatchCard', () => ({
   MatchCard: 'MatchCard',
 }));
@@ -177,6 +180,58 @@ describe('HomeScreen', () => {
 
     const root = renderScreen();
     expect(root.root.findByType('HomeEmptyState')).toBeTruthy();
+  });
+
+  // Round 4 P1-1, P1-2: the failure is named, Újra only reads again, and no search can start from this state.
+  describe('load errors', () => {
+    const failed = (loadError: 'profile' | 'matches', matches: any[] = []) => {
+      const hook = {
+        loading: false,
+        loadError,
+        profile: loadError === 'profile' ? null : { company_name: 'Test Company' },
+        matches,
+        isPro: false,
+        fetchData: jest.fn(),
+        retryLoad: jest.fn().mockResolvedValue(undefined),
+        signOut: jest.fn(),
+        handleNewSearch: jest.fn(),
+      };
+      (useHomeData as jest.Mock).mockReturnValue(hook);
+      return { hook, root: renderScreen() };
+    };
+    const fabs = (root: any) => root.root.findAll((n: any) => n.props.testID === 'new-search-fab');
+
+    it.each(['profile', 'matches'] as const)('%s: the error state, without the empty state and the search button', (kind) => {
+      const { root } = failed(kind);
+      expect(root.root.findByType('HomeLoadError').props.kind).toBe(kind);
+      expect(root.root.findAllByType('HomeEmptyState')).toHaveLength(0);
+      expect(fabs(root)).toHaveLength(0);
+    });
+
+    it('Újra calls retryLoad, not the search', () => {
+      const { root, hook } = failed('matches');
+      act(() => { root.root.findByType('HomeLoadError').props.onRetry(); });
+      expect(hook.retryLoad).toHaveBeenCalledTimes(1);
+      expect(hook.handleNewSearch).not.toHaveBeenCalled();
+    });
+
+    it('a failed reload with a list on the screen keeps the list and the search button', () => {
+      const { root } = failed('matches', [{ id: 'm1', status: 'new', match_score: 90 }]);
+      expect(root.root.findAllByType('HomeLoadError')).toHaveLength(0);
+      expect(root.root.findAllByType('FlatList').length).toBeGreaterThan(0);
+      expect(fabs(root).length).toBeGreaterThan(0);
+    });
+
+    it('no load error: the empty state and the search button, as before', () => {
+      (useHomeData as jest.Mock).mockReturnValue({
+        loading: false, loadError: null, profile: {}, matches: [], isPro: false,
+        fetchData: jest.fn(), retryLoad: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+      });
+      const root = renderScreen();
+      expect(root.root.findAllByType('HomeLoadError')).toHaveLength(0);
+      expect(root.root.findByType('HomeEmptyState')).toBeTruthy();
+      expect(fabs(root).length).toBeGreaterThan(0);
+    });
   });
 
   // Card [D]: the empty home picks one of three states from the hook's searching / hasSearched.

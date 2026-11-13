@@ -59,6 +59,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     setLoading(true);
 
     fetchPromise = (async () => {
+      let failed = false;
       try {
         let currentUserId = userId;
         if (!currentUserId) {
@@ -75,21 +76,22 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
           .from('business_profiles')
           .select('*')
           .eq('user_id', currentUserId)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') {
+        // A failed read says nothing about the profile: what we had stays, and the next fetch reads again.
+        if (error) {
+          failed = true;
           logger.error('Error fetching profile in ProfileContext:', error);
+          return;
         }
 
-        if (data) {
-          cachedProfile = data as BusinessProfile;
-        } else {
-          cachedProfile = null;
-        }
+        cachedProfile = (data as BusinessProfile | null) ?? null;
       } catch (err) {
+        failed = true;
         logger.error('Unexpected error fetching profile in ProfileContext:', err);
       } finally {
-        hasFetched = true;
+        hasFetched = !failed;
         fetchPromise = null;
       }
     })();

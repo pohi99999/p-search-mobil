@@ -65,7 +65,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "test:sql": "node --test supabase/tests/api-grants.pglite.mjs"
+    "test:sql": "node --test supabase/tests/api-grants.pglite.mjs supabase/tests/business-profiles-unique.pglite.mjs"
   },
   "private": true
 }
