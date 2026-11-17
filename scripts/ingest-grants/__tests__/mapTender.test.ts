@@ -11,7 +11,7 @@ import {
   loaderCode,
   MIN_ACTIVE_FOR_CLOSING,
   type ExistingGrant,
-} from '../mapTender';
+} from '../../../supabase/functions/_shared/grant-ingest/mapTender';
 
 const NOW = new Date('2026-09-15T00:00:00.000Z');
 

@@ -27,7 +27,7 @@ describe('ProfileContext Performance Baseline', () => {
     mockGetSession.mockResolvedValue({ data: { session: { user: { id: '123' } } } });
 
     const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'prof', user_id: '123' }, error: null });
-    const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockEq = jest.fn().mockReturnValue({ limit: jest.fn().mockReturnValue({ maybeSingle: mockSingle }) });
     const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
     mockFrom.mockReturnValue({ select: mockSelect });
 

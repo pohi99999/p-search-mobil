@@ -102,7 +102,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           accessibilityLabel="Vissza"
         />
         <View style={styles.headerTextContainer}>
-          <Text variant="titleMedium" style={styles.headerTitle}>AI pályázati Copilot</Text>
+          <Text role="heading" aria-level={1} variant="titleMedium" style={styles.headerTitle}>AI pályázati Copilot</Text>
           <Text variant="bodySmall" style={styles.headerSubtitle}>Kérdezz a kiválasztott pályázatról</Text>
         </View>
       </View>

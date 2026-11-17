@@ -11,7 +11,7 @@
  * Grants without a parseable deadline are flagged, never silently dropped.
  */
 
-import { normalizeDeadline } from '../../supabase/functions/_shared/deadline-normalize.ts';
+import { normalizeDeadline } from '../deadline-normalize.ts';
 
 export interface Tender {
   id: string;

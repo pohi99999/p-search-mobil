@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, Surface, Snackbar, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
 import { useActionPlan } from '../hooks/useActionPlan';
@@ -10,6 +10,7 @@ import type { ActionPlanScreenProps } from "../types/navigation";
 import { logger } from '../utils/logger';
 import { ActionPlanCard } from '../components/action-plan/ActionPlanCard';
 import { useProfileGate } from '../hooks/useProfileGate';
+import { notify } from '../lib/notify';
 
 
 const STATUS_TRANSITION: Record<ActionTaskStatus, ActionTaskStatus> = {
@@ -50,7 +51,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
     try {
       await updateTaskStatus(task.id, task.plan_id, newStatus);
     } catch {
-      Alert.alert('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
+      notify('Hiba', 'Nem sikerült frissíteni a feladat állapotát.');
     }
   }, [updateTaskStatus]);
 
@@ -112,7 +113,7 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
           testID="action-plan-back-button"
           accessibilityLabel="Vissza"
         />
-        <Text variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati felkészülés</Text>
+        <Text role="heading" aria-level={1} variant="titleLarge" style={{ flex: 1, fontWeight: 'bold', color: '#1A237E' }}>Pályázati felkészülés</Text>
         <Button mode="text" onPress={refetch} compact>Frissítés</Button>
       </View>
 

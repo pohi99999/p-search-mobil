@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text, Card, Button, List, ProgressBar, Divider } from 'react-native-paper';
 import { supabase } from '../../lib/supabase';
 import { ActionPlan, ActionTask, ActionTaskStatus, BusinessProfile } from '../../types/database';
@@ -8,6 +8,7 @@ import { logger } from '../../utils/logger';
 import { errorCode, track } from '../../services/events';
 import { TaskItem } from './TaskItem';
 import { useProfileGate } from '../../hooks/useProfileGate';
+import { notify } from '../../lib/notify';
 
 interface ActionPlanCardProps {
   plan: ActionPlan;
@@ -92,7 +93,7 @@ export function ActionPlanCard({
                 );
               } catch (err: unknown) {
                 logger.error('PDF opening error:', err);
-                Alert.alert('Hiba', 'Nem sikerült megnyitni a PDF-et. Kérlek, próbáld újra később.');
+                notify('Hiba', 'Nem sikerült megnyitni a PDF-et. Kérlek, próbáld újra később.');
               }
             }}
             style={[styles.pdfButton, { marginRight: 8 }]}
@@ -108,7 +109,7 @@ export function ActionPlanCard({
           disabled={pdfLoading}
           onPress={() => {
             if (!profile || !plan.match_id) {
-              Alert.alert('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
+              notify('Hiba', 'Nem generálható dokumentum: hiányzó cégprofil vagy pályázati azonosító.');
               return;
             }
             gate(() => showAdIfAvailable(async () => {
@@ -139,7 +140,7 @@ export function ActionPlanCard({
                     serverMessage = body?.error ?? '';
                   } catch { /* fall through */ }
                   track('doc_generated', { ok: false, error_code: 'pro_required' });
-                  Alert.alert('Pro funkció', serverMessage || 'A dokumentum-generálás a Pro csomag része. Válts Pro-ra a használatához.');
+                  notify('Pro funkció', serverMessage || 'A dokumentum-generálás a Pro csomag része. Válts Pro-ra a használatához.');
                   onProRequired?.();
                   return;
                 }
@@ -154,7 +155,7 @@ export function ActionPlanCard({
                   docErrorCode = body?.code ?? null;
                 } catch { /* fall through */ }
                 track('doc_generated', { ok: false, error_code: errorCode(err, docErrorCode) });
-                Alert.alert('Hiba', geminiMessage || 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
+                notify('Hiba', geminiMessage || 'Nem sikerült elkészíteni a PDF-et. Kérlek, próbáld újra később.');
               } finally {
                 setPdfLoading(false);
               }

@@ -1,5 +1,5 @@
-import { fetchActiveTenders, FetchImpl, TENDERS_LIST_URL, ACTIVE_STATUS_ID } from '../fetchTenders';
-import { Tender } from '../mapTender';
+import { fetchActiveTenders, FetchImpl, TENDERS_LIST_URL, ACTIVE_STATUS_ID } from '../../../supabase/functions/_shared/grant-ingest/fetchTenders';
+import { Tender } from '../../../supabase/functions/_shared/grant-ingest/mapTender';
 
 function tender(code: string): Tender {
   return { id: code, code, name: code, status: 'Aktív', endTime: '2026-12-01T00:00:00.000Z' };

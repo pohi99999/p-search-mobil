@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { TextInput, Button, Text, Surface, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../lib/legalLinks';
 import { logger } from '../utils/logger';
+import { notify } from '../lib/notify';
 
 /** The minimum the sign-up check below enforces; shown under the password field before the user types. */
 export const PASSWORD_MIN_LENGTH = 8;
@@ -49,15 +50,15 @@ export function AuthScreen() {
 
   const validateInputs = () => {
     if (!email || !password) {
-      Alert.alert('Érvénytelen adat', 'Kérlek, töltsd ki az összes mezőt.');
+      notify('Érvénytelen adat', 'Kérlek, töltsd ki az összes mezőt.');
       return false;
     }
     if (!isValidEmail(email)) {
-      Alert.alert('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
+      notify('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
       return false;
     }
     if (password.length < PASSWORD_MIN_LENGTH) {
-      Alert.alert('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
+      notify('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
       return false;
     }
     return true;
@@ -71,7 +72,7 @@ export function AuthScreen() {
       password: password,
     });
 
-    if (error) Alert.alert('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.');
+    if (error) notify('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.');
     setLoading(false);
   }
 
@@ -84,20 +85,20 @@ export function AuthScreen() {
     });
 
     if (error) {
-      Alert.alert('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
+      notify('Hiba regisztrációkor', 'A regisztráció során hiba lépett fel. Kérlek, próbáld újra.');
     } else if (isRepeatedSignUp(data.user)) {
       // Supabase answers a sign-up for an already registered, confirmed e-mail with
       // HTTP 200 and an empty `identities` array ("user_repeated_signup") and sends
       // NO e-mail, so the "check your inbox" message would be misleading here.
-      Alert.alert(
+      notify(
         'Ezzel az e-mail címmel már van fiók',
         'Nem küldtünk új megerősítő levelet. Jelentkezz be a jelszavaddal.',
         [{ text: 'Bejelentkezés', onPress: () => setIsLogin(true) }],
       );
     } else if (data.session == null) {
-      Alert.alert('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
+      notify('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
     } else {
-      Alert.alert('Sikeres regisztráció!');
+      notify('Sikeres regisztráció!');
     }
     setLoading(false);
   }
@@ -107,7 +108,7 @@ export function AuthScreen() {
 
   async function sendPasswordReset() {
     if (!email || !isValidEmail(email)) {
-      Alert.alert('Érvénytelen adat', 'Add meg a fiókod e-mail címét, és utána kérd a jelszó-visszaállítást.');
+      notify('Érvénytelen adat', 'Add meg a fiókod e-mail címét, és utána kérd a jelszó-visszaállítást.');
       return;
     }
     setResetNotice(false);
@@ -116,7 +117,7 @@ export function AuthScreen() {
     setLoading(false);
     if (error) {
       const tooMany = /rate limit|too many/i.test(error.message);
-      Alert.alert(
+      notify(
         'Nem sikerült a kérés',
         tooMany ? 'Túl sok kérés érkezett rövid idő alatt. Próbáld újra kicsit később.' : 'Kérlek, próbáld újra később.',
       );
@@ -126,7 +127,7 @@ export function AuthScreen() {
     if (Platform.OS === 'web') {
       setResetNotice(true);
     } else {
-      Alert.alert(RESET_SENT_TITLE, RESET_SENT_MESSAGE);
+      notify(RESET_SENT_TITLE, RESET_SENT_MESSAGE);
     }
   }
 
@@ -137,7 +138,7 @@ export function AuthScreen() {
     >
       <Surface style={styles.surface} elevation={4}>
         <View style={styles.header}>
-          <Text variant="headlineMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
+          <Text variant="headlineMedium" role="heading" aria-level={1} style={{ fontWeight: 'bold', color: theme.colors.primary }}>
             P-Search
           </Text>
           <Text variant="titleMedium" style={{ color: theme.colors.secondary, marginTop: 8 }}>
@@ -233,6 +234,7 @@ export function AuthScreen() {
               onPress={sendPasswordReset}
               disabled={loading}
               style={styles.switchButton}
+              contentStyle={styles.textButtonContent}
               accessibilityLabel="Elfelejtett jelszó, visszaállító levél kérése"
             >
               Elfelejtett jelszó?
@@ -256,6 +258,7 @@ export function AuthScreen() {
             mode="text"
             onPress={() => setIsLogin(!isLogin)}
             style={styles.switchButton}
+            contentStyle={styles.textButtonContent}
           >
             {isLogin ? 'Nincs még fiókod? Regisztrálj!' : 'Már van fiókod? Lépj be!'}
           </Button>
@@ -298,6 +301,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   surface: {
+    // On a laptop the card filled the window (a 1192 px wide button at 1280, 2026-11-13).
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     padding: 24,
     borderRadius: 16,
     backgroundColor: 'white',
@@ -318,5 +325,9 @@ const styles = StyleSheet.create({
   },
   switchButton: {
     marginTop: 8,
+  },
+  // The two text links were 38 px tall; 44 px is the smallest comfortable touch target.
+  textButtonContent: {
+    minHeight: 44,
   },
 });

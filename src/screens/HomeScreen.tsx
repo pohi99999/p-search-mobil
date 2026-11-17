@@ -10,6 +10,7 @@ import { showTesterProgress } from '../config/env';
 import { RootStackNavigationProp } from '../types/navigation';
 import { useHomeData, MatchWithGrant } from '../hooks/useHomeData';
 import { HomeEmptyState, type HomeEmptyStateKind } from '../components/HomeEmptyState';
+import { HomeLoadError } from '../components/HomeLoadError';
 import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
 import { splitFreshAndStale } from '../lib/matchStatus';
@@ -23,12 +24,14 @@ export const staleSectionLabel = (n: number) => `Korábbi találatok (${n})`;
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const {
     loading,
+    loadError,
     searching,
     hasSearched,
     profile,
     matches,
     isPro,
     fetchData,
+    retryLoad,
     handleNewSearch
   } = useHomeData(navigation);
 
@@ -43,6 +46,9 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
 
   // Card [D]: which empty state; a search running wins over the other two.
   const emptyKind: HomeEmptyStateKind = searching ? 'searching' : hasSearched ? 'none' : 'never';
+  // A failed reload keeps a list already on the screen. With nothing to show, the failure is named, and the search
+  // button goes: it would start an AI search, or send a user whose profile was not read to the Onboarding.
+  const failedKind = matches.length === 0 ? loadError : null;
 
   if (loading) {
     return (
@@ -90,7 +96,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="titleMedium" style={styles.headerTitle}>
+        <Text role="heading" aria-level={1} variant="titleMedium" style={styles.headerTitle}>
           Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
         <View style={styles.headerActions}>
@@ -111,7 +117,14 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         </View>
       </View>
       
-      {matches.length === 0 ? (
+      {failedKind ? (
+        <>
+          {testerProgress}
+          <View style={styles.emptyContainer}>
+            <HomeLoadError kind={failedKind} onRetry={() => void retryLoad()} />
+          </View>
+        </>
+      ) : matches.length === 0 ? (
         <>
           {testerProgress}
           <View style={styles.emptyContainer}>
@@ -136,27 +149,29 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         />
       )}
 
-      {/* On a list always the round icon (Péter's test 2026-11-07, P2-3: the wide label sat on "Részletek"); MatchCard
-          keeps its buttons out of this column. The label comes back while a search runs and on the empty screen. */}
-      <AnimatedFAB
-        // While searching (Péter 10518): Paper's disabled FAB ignores `color` and greys the label out
-        // (onSurfaceDisabled on surfaceDisabled), so the button stays enabled-looking and ignores presses instead.
-        // The label must stay short: with iconMode="static" Paper places it at right = textWidth - 56 + 16, so a
-        // label wider than ~112 px starts left of the button (measured on web: "Keresés folyamatban..." is 148 px
-        // and ran 38 px out). The full sentence is in the accessibility label.
-        icon={searching ? 'progress-clock' : 'magnify'}
-        // Card [I]: the MD3 default label colour (onPrimaryContainer #21005D) on our blue was 3.73:1; white is 4.60:1.
-        color="#FFFFFF"
-        style={[styles.fab, { bottom: fabBottom }]}
-        testID="new-search-fab"
-        label={searching ? FAB_SEARCHING_LABEL : FAB_IDLE_LABEL}
-        extended={matches.length === 0 || Boolean(searching)}
-        animateFrom="right"
-        iconMode="static"
-        onPress={() => { if (!searching) void handleNewSearch(); }}
-        accessibilityLabel={searching ? 'Keresés folyamatban' : 'Új AI keresés indítása'}
-        accessibilityState={{ busy: Boolean(searching), disabled: Boolean(searching) }}
-      />
+      {failedKind ? null : (
+        // On a list always the round icon (Péter's test 2026-11-07, P2-3: the wide label sat on "Részletek"); MatchCard
+        // keeps its buttons out of this column. The label comes back while a search runs and on the empty screen.
+        <AnimatedFAB
+          // While searching (Péter 10518): Paper's disabled FAB ignores `color` and greys the label out
+          // (onSurfaceDisabled on surfaceDisabled), so the button stays enabled-looking and ignores presses instead.
+          // The label must stay short: with iconMode="static" Paper places it at right = textWidth - 56 + 16, so a
+          // label wider than ~112 px starts left of the button (measured on web: "Keresés folyamatban..." is 148 px
+          // and ran 38 px out). The full sentence is in the accessibility label.
+          icon={searching ? 'progress-clock' : 'magnify'}
+          // Card [I]: the MD3 default label colour (onPrimaryContainer #21005D) on our blue was 3.73:1; white is 4.60:1.
+          color="#FFFFFF"
+          style={[styles.fab, { bottom: fabBottom }]}
+          testID="new-search-fab"
+          label={searching ? FAB_SEARCHING_LABEL : FAB_IDLE_LABEL}
+          extended={matches.length === 0 || Boolean(searching)}
+          animateFrom="right"
+          iconMode="static"
+          onPress={() => { if (!searching) void handleNewSearch(); }}
+          accessibilityLabel={searching ? 'Keresés folyamatban' : 'Új AI keresés indítása'}
+          accessibilityState={{ busy: Boolean(searching), disabled: Boolean(searching) }}
+        />
+      )}
       
       <AdBanner onHeightChange={setBannerHeight} />
     </View>

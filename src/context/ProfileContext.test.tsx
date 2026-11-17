@@ -27,7 +27,7 @@ describe('ProfileContext', () => {
   let mockFrom: jest.Mock;
   let mockSelect: jest.Mock;
   let mockEq: jest.Mock;
-  let mockSingle: jest.Mock;
+  let mockMaybeSingle: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,8 +41,8 @@ describe('ProfileContext', () => {
 
     mockGetSession = supabase.auth.getSession as jest.Mock;
 
-    mockSingle = jest.fn();
-    mockEq = jest.fn().mockReturnValue({ single: mockSingle });
+    mockMaybeSingle = jest.fn();
+    mockEq = jest.fn().mockReturnValue({ limit: jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle }) });
     mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
     mockFrom = supabase.from as jest.Mock;
     mockFrom.mockReturnValue({ select: mockSelect });
@@ -82,7 +82,7 @@ describe('ProfileContext', () => {
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: 'user-123' } } }
     });
-    mockSingle.mockResolvedValue({ data: mockProfile, error: null });
+    mockMaybeSingle.mockResolvedValue({ data: mockProfile, error: null });
 
     const { getContext } = await renderProvider();
 
@@ -99,8 +99,8 @@ describe('ProfileContext', () => {
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: 'user-123' } } }
     });
-    // PGRST116 is the error code when single() finds no rows
-    mockSingle.mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
+    // maybeSingle(): no row is data null without an error
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
 
     const { getContext } = await renderProvider();
 
@@ -113,7 +113,7 @@ describe('ProfileContext', () => {
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: "user-123" } } }
     });
-    mockSingle.mockResolvedValue({ data: mockProfile, error: null });
+    mockMaybeSingle.mockResolvedValue({ data: mockProfile, error: null });
 
     const { root } = await renderProvider();
 
@@ -136,10 +136,10 @@ describe('ProfileContext', () => {
     });
 
     let resolveMockSingle: any;
-    const mockSinglePromise = new Promise((resolve) => {
+    const mockMaybeSinglePromise = new Promise((resolve) => {
       resolveMockSingle = resolve;
     });
-    mockSingle.mockReturnValue(mockSinglePromise);
+    mockMaybeSingle.mockReturnValue(mockMaybeSinglePromise);
 
     const { getContext } = await renderProvider(); // This starts the first fetch
 
@@ -185,12 +185,12 @@ describe('ProfileContext', () => {
 
 
 
-  it('logs error if fetching profile fails with a non-PGRST116 error', async () => {
+  it('logs error if fetching profile fails', async () => {
     const dbError = { code: 'OTHER_ERR', message: 'DB Error' };
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: 'user-123' } } }
     });
-    mockSingle.mockResolvedValue({ data: null, error: dbError });
+    mockMaybeSingle.mockResolvedValue({ data: null, error: dbError });
 
     const { getContext } = await renderProvider();
 
@@ -199,12 +199,40 @@ describe('ProfileContext', () => {
     expect(getContext().loading).toBe(false);
   });
 
+  // Round 4 P1-1: a failed read used to overwrite the profile with null and count as fetched, for the whole session.
+  it('a failed refresh keeps the profile it had', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'user-123' } } } });
+    mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'profile-v1' }, error: null });
+    const { getContext } = await renderProvider();
+    expect(getContext().profile).toEqual({ id: 'profile-v1' });
+
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'Network request failed' } });
+    await act(async () => {
+      await getContext().refreshProfile();
+    });
+
+    expect(getContext().profile).toEqual({ id: 'profile-v1' });
+    expect(getContext().loading).toBe(false);
+  });
+
+  it('a failed first read is not cached: the next provider reads again and gets the profile', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'user-123' } } } });
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'Network request failed' } });
+    await renderProvider();
+
+    mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'profile-v1' }, error: null });
+    const { getContext } = await renderProvider();
+
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(2);
+    expect(getContext().profile).toEqual({ id: 'profile-v1' });
+  });
+
   it('logs error if the database query throws an exception', async () => {
     const unexpectedError = new Error('Database exception');
     mockGetSession.mockResolvedValue({
       data: { session: { user: { id: 'user-123' } } }
     });
-    mockSingle.mockRejectedValue(unexpectedError);
+    mockMaybeSingle.mockRejectedValue(unexpectedError);
 
     await renderProvider();
 
@@ -240,7 +268,7 @@ describe('ProfileContext', () => {
     // `fetchProfile` inside `authCallback` calls `getSession` so we need to mock it again
     mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'user-456' } } } });
     const mockProfile = { id: 'profile-456' };
-    mockSingle.mockResolvedValue({ data: mockProfile, error: null });
+    mockMaybeSingle.mockResolvedValue({ data: mockProfile, error: null });
 
     await act(async () => {
       authCallback('SIGNED_IN', { user: { id: 'user-456' } });
@@ -267,13 +295,13 @@ describe('ProfileContext', () => {
     });
 
     // First fetch returns one profile
-    mockSingle.mockResolvedValueOnce({ data: { id: 'profile-v1' }, error: null });
+    mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'profile-v1' }, error: null });
 
     const { getContext } = await renderProvider();
     expect(getContext().profile).toEqual({ id: 'profile-v1' });
 
     // Second fetch (via refreshProfile) returns updated profile
-    mockSingle.mockResolvedValueOnce({ data: { id: 'profile-v2' }, error: null });
+    mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'profile-v2' }, error: null });
 
     await act(async () => {
       await getContext().refreshProfile();

@@ -1,15 +1,17 @@
-import { Alert } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
 import { useBilling } from '../context/BillingContext';
+import { useProfile } from '../context/ProfileContext';
 import { logger } from '../utils/logger';
 import { RootStackNavigationProp } from '../types/navigation';
 import { clearStoredChatHistory } from './useCopilotChat';
 
 import { hasSearchedBefore, isOpenGrant, sortFreshFirst, STALE_MATCH_STATUS, withoutExpired } from '../lib/matchStatus';
 import { errorCode, track } from '../services/events';
+import { notify } from '../lib/notify';
+import type { HomeLoadErrorKind } from '../components/HomeLoadError';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
 export interface SearchRunResult {
@@ -121,22 +123,27 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [matches, setMatches] = useState<MatchWithGrant[]>([]);
+  // Round 4 P1-1, P1-2: a failed read is not "no profile" and not "no matches"; it gets its own state and a retry.
+  const [loadError, setLoadError] = useState<HomeLoadErrorKind | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
+    let failing: HomeLoadErrorKind = 'profile';
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
       const [
         { data: profileData, error: profileError },
-        { data: userData }
+        { data: userData, error: userError }
       ] = await Promise.all([
         supabase
           .from('business_profiles')
           .select('*')
           .eq('user_id', session.user.id)
-          .single(),
+          .limit(1)
+          .maybeSingle(),
         supabase
           .from('profiles')
           .select('*')
@@ -148,12 +155,18 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
         setUserProfile(userData as UserProfile);
       }
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        logger.error(profileError);
+      // Only a read that succeeded and found no row means "no profile yet": sending a failed read to the Onboarding
+      // showed an existing user an empty form (measured on the phone, flight mode), and saving it added a second row.
+      const readError = profileError ?? (userError?.code === 'PGRST116' ? null : userError);
+      if (readError) {
+        logger.error(readError);
+        setLoadError('profile');
+        return;
       }
 
       if (profileData) {
         setProfile(profileData);
+        failing = 'matches';
         // Fetch matches, and the matches an action plan hangs on (those stay even when their grant expired).
         const [{ data: matchesData, error: matchesError }, planMatchIds] = await Promise.all([
           supabase
@@ -166,6 +179,7 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
 
         if (matchesError) {
           logger.error(matchesError);
+          setLoadError('matches');
         } else if (matchesData) {
           const rows = matchesData as unknown as MatchWithGrant[];
           // Card [C]: without the plan list nothing is hidden, so a failed lookup never drops a started plan.
@@ -176,6 +190,7 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
       }
     } catch (err) {
       logger.error(err);
+      setLoadError(failing);
     } finally {
       setLoading(false);
     }
@@ -185,7 +200,7 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
     fetchData();
   }, [fetchData]);
 
-  return { loading, profile, userProfile, setUserProfile, matches, fetchData };
+  return { loading, loadError, profile, userProfile, setUserProfile, matches, fetchData };
 }
 
 interface UseGrantSearchProps {
@@ -219,7 +234,7 @@ function useGrantSearch({
       void triggerSearchWebhook(action, businessId);
       await onSearchSuccess();
 
-      Alert.alert(
+      notify(
         'AI keresés kész',
         matchesFound > 0
           ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
@@ -241,7 +256,7 @@ function useGrantSearch({
           track('daily_limit_hit');
           // Daily free cap hit: show the server's message with a Pro upsell,
           // rather than jumping straight to the Paywall.
-          Alert.alert(
+          notify(
             'Napi keresési limit',
             paywallErr.serverMessage || 'Elérted a napi ingyenes keresést. Holnap újra próbálhatod.',
             [
@@ -258,7 +273,7 @@ function useGrantSearch({
       const aiErr = err as { aiUnavailable?: boolean; code?: string; serverMessage?: string };
       if (aiErr?.aiUnavailable) {
         const quota = aiErr.code === 'gemini_quota';
-        Alert.alert(
+        notify(
           quota ? 'Napi AI-keret' : 'Az AI most túlterhelt',
           aiErr.serverMessage ||
             (quota
@@ -275,7 +290,7 @@ function useGrantSearch({
         return;
       }
       logger.error('Hiba az AI keresés során:', err);
-      Alert.alert('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
+      notify('Hiba', 'Nem sikerült lefuttatni a keresést. Kérjük, próbáld újra később.');
     } finally {
       setSearching(false);
     }
@@ -284,12 +299,12 @@ function useGrantSearch({
   // A Button passes its press event here, so anything but 'after_onboarding' counts as a manual search.
   const handleNewSearch = async (trigger?: unknown) => {
     if (!userProfile || !userProfile.id) {
-      Alert.alert('Felhasználói profil nem található!');
+      notify('Felhasználói profil nem található!');
       return;
     }
 
     if (!profile) {
-      Alert.alert('Nincs cégprofilod', 'Előbb töltsd ki a cégprofilodat!');
+      notify('Nincs cégprofilod', 'Előbb töltsd ki a cégprofilodat!');
       navigation.navigate('Onboarding');
       return;
     }
@@ -306,9 +321,11 @@ function useGrantSearch({
 
 export function useHomeData(navigation: RootStackNavigationProp) {
   const { isPro } = useBilling();
+  const { refreshProfile } = useProfile();
 
   const {
     loading,
+    loadError,
     profile,
     userProfile,
     setUserProfile,
@@ -330,10 +347,16 @@ export function useHomeData(navigation: RootStackNavigationProp) {
   const hasSearched = hasSearchedBefore(userProfile?.last_scan_at, matches.length);
   const autoSearched = useRef(false);
   useEffect(() => {
-    if (loading || searching || hasSearched || autoSearched.current || !profile || !userProfile?.id) return;
+    // A list that failed to load says nothing about earlier searches, so it starts no AI search.
+    if (loading || loadError || searching || hasSearched || autoSearched.current || !profile || !userProfile?.id) return;
     autoSearched.current = true;
     void handleNewSearch('after_onboarding');
-  }, [loading, searching, hasSearched, profile, userProfile, handleNewSearch]);
+  }, [loading, loadError, searching, hasSearched, profile, userProfile, handleNewSearch]);
+
+  // The "Újra" button: reads again, the context's profile too (the other screens use that one), and searches nothing.
+  const retryLoad = async () => {
+    await Promise.all([fetchData(), refreshProfile()]);
+  };
 
   // [G2] app_open: the signed-in home's first load in this app session, and again after more than 30 minutes in the
   // background. match_list_view: the first non-empty list of the session (n_expired should be 0 after card [C]).
@@ -378,12 +401,14 @@ export function useHomeData(navigation: RootStackNavigationProp) {
 
   return {
     loading,
+    loadError,
     searching,
     hasSearched,
     profile,
     matches,
     isPro,
     fetchData,
+    retryLoad,
     signOut,
     handleNewSearch
   };
