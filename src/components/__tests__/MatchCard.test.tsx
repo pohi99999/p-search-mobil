@@ -239,6 +239,69 @@ it('labels a stale match as a result of an earlier search', async () => {
   expect(json).not.toContain('Egyezés: 50%');
 });
 
+// Péter's test 2026-11-07: the stale line was cut at "egyezés akk...", before the percentage.
+it('the stale line may wrap, so its percentage stays visible', async () => {
+  const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: '', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi', provider: 'X', description: '', amount_min: null, amount_max: null } } as any;
+  let tree: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
+  const node = tree!.root.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string' && n.props.children.startsWith('Korábbi keresés találata'))[0];
+  expect(node.props.children).toContain('50%');
+  expect(node.props.numberOfLines).toBeGreaterThanOrEqual(2);
+});
+
+// Péter's test 2026-11-07 (P2-2, P2-3, the kind label).
+describe('the open area, the kind label and the button column', () => {
+  const { StyleSheet } = require('react-native');
+  const item = (grant_type: string | null) => ({ id: 'm1', grant_id: 'g', business_id: 'b', match_score: 70, match_reasoning: 'Indoklás', status: 'new', created_at: '', grants: { id: 'g', title: 'Cím', provider: 'X', description: '', amount_min: null, amount_max: null, grant_type } }) as any;
+  const mount = async (el: React.ReactElement) => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(el); });
+    return tree!;
+  };
+  const openArea = (tree: renderer.ReactTestRenderer) => tree.root.findAll((n) => n.props.testID === 'match-card-open' && typeof n.props.onPress === 'function')[0];
+
+  it('a tap on the card body opens the details', async () => {
+    const onPress = jest.fn();
+    const tree = await mount(<MatchCard item={item('hitel')} onPress={onPress} />);
+    act(() => { openArea(tree).props.onPress(); });
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('no button sits inside the open area, and the feedback does not open the details', async () => {
+    const onPress = jest.fn();
+    const tree = await mount(<MatchCard item={item('hitel')} onPress={onPress} rank={1} />);
+    const inside = openArea(tree).findAll((n) => typeof n.props.accessibilityLabel === 'string' && /Részletek|Hasznos|Nem releváns/.test(n.props.accessibilityLabel));
+    expect(inside).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Nem releváns találat').length).toBeGreaterThan(0);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('the card body keeps the title, the deadline and the text', async () => {
+    const tree = await mount(<MatchCard item={item('hitel')} onPress={() => {}} />);
+    const text = JSON.stringify(openArea(tree).findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string').map((n) => n.props.children));
+    for (const t of ['Cím', 'Egyezés: 70%', 'Indoklás']) expect(text).toContain(t);
+  });
+
+  it.each([['hitel', 'Hitel'], ['Vissza nem térítendő támogatás (VNT)', 'Támogatás']])('%s shows %s on the card', async (grantType, label) => {
+    const tree = await mount(<MatchCard item={item(grantType)} onPress={() => {}} />);
+    expect(JSON.stringify(tree.toJSON())).toContain(`"${label}"`);
+  });
+
+  it.each([[null], ['Test']])('%p shows no label', async (grantType) => {
+    const tree = await mount(<MatchCard item={item(grantType)} onPress={() => {}} />);
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-kind-badge')).toHaveLength(0);
+  });
+
+  // 16 px screen margin + 56 px button - 16 px card margin + 8 px gap.
+  it('the actions keep out of the round search button column', async () => {
+    const tree = await mount(<MatchCard item={item('hitel')} onPress={() => {}} />);
+    const details = tree.root.findAll((n) => n.props.accessibilityLabel === 'Részletek: Cím')[0];
+    let row: any = details;
+    while (row && !(StyleSheet.flatten(row.props?.style)?.paddingRight >= 64)) row = row.parent;
+    expect(row).toBeTruthy();
+  });
+});
+
 // Card [A]: the deadline is on the card, expired ones in red.
 describe('deadline line (card [A])', () => {
   const withDeadline = (deadline: string | null) => ({ id: 'm2', business_id: 'b', grant_id: 'g', match_score: 60, match_reasoning: '', status: 'new', created_at: '', grants: { id: 'g', title: 'Határidős pályázat', provider: 'X', description: '', amount_min: null, amount_max: null, deadline } } as any);

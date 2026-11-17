@@ -38,8 +38,6 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // Card bc8e4135 (owner decision 2026-10-04): no ad inside the list, only the bottom banner.
   const insets = useSafeAreaInsets();
   const [bannerHeight, setBannerHeight] = useState(0);
-  // The search button: extended at the top of the list, its round icon once scrolled (card a96dd8e2 #9).
-  const [fabExtended, setFabExtended] = useState(true);
   // The FAB sits above the bottom banner when it is shown, else above the navigation-bar inset.
   const fabBottom = (bannerHeight > 0 ? bannerHeight : insets.bottom) + 4;
 
@@ -72,6 +70,8 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // Card 4762e3d7: the stale matches go under one collapsed header below the fresh ones; their rank continues the list.
   const { fresh, stale } = splitFreshAndStale(matches);
   const staleExpanded = staleOpen ?? fresh.length === 0;
+  // Péter's test 2026-11-07: pinned above the list, the card took the phone's height from the matches. It scrolls away now.
+  const testerProgress = showTesterProgress() ? <TesterProgress /> : null;
   const staleSection = stale.length === 0 ? null : (
     <View style={styles.staleSection} testID="home-stale-section">
       <Button
@@ -117,59 +117,60 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         </View>
       </View>
       
-      {showTesterProgress() && <TesterProgress />}
-      
       {failedKind ? (
-        <View style={styles.emptyContainer}>
-          <HomeLoadError kind={failedKind} onRetry={() => void retryLoad()} />
-        </View>
+        <>
+          {testerProgress}
+          <View style={styles.emptyContainer}>
+            <HomeLoadError kind={failedKind} onRetry={() => void retryLoad()} />
+          </View>
+        </>
       ) : matches.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <HomeEmptyState
-            kind={emptyKind}
-            profileIncomplete={missingProfileFields(profile).length > 0}
-            onSearch={handleNewSearch}
-            onEditProfile={() => navigation.navigate('Onboarding', { edit: true })}
-          />
-        </View>
+        <>
+          {testerProgress}
+          <View style={styles.emptyContainer}>
+            <HomeEmptyState
+              kind={emptyKind}
+              profileIncomplete={missingProfileFields(profile).length > 0}
+              onSearch={handleNewSearch}
+              onEditProfile={() => navigation.navigate('Onboarding', { edit: true })}
+            />
+          </View>
+        </>
       ) : (
         <FlatList<MatchWithGrant>
           data={fresh}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListHeaderComponent={testerProgress}
           ListFooterComponent={staleSection}
           contentContainerStyle={[styles.listContent, { paddingBottom: 80 + fabBottom }]}
-          onScroll={({ nativeEvent }) => setFabExtended(nativeEvent.contentOffset.y <= 8)}
-          scrollEventThrottle={64}
           refreshing={loading}
           onRefresh={fetchData}
         />
       )}
-      
+
       {failedKind ? null : (
-        <>
-          {/* Extended only at the top of the list; once scrolled it is the round icon, so it covers far less of
-              the cards (card a96dd8e2 #9: the wide label covered the 2nd card's text). */}
-          <AnimatedFAB
-            // While searching (Péter 10518): Paper's disabled FAB ignores `color` and greys the label out
-            // (onSurfaceDisabled on surfaceDisabled), so the button stays enabled-looking and ignores presses instead.
-            // The label must stay short: with iconMode="static" Paper places it at right = textWidth - 56 + 16, so a
-            // label wider than ~112 px starts left of the button (measured on web: "Keresés folyamatban..." is 148 px
-            // and ran 38 px out). The full sentence is in the accessibility label.
-            icon={searching ? 'progress-clock' : 'magnify'}
-            // Card [I]: the MD3 default label colour (onPrimaryContainer #21005D) on our blue was 3.73:1; white is 4.60:1.
-            color="#FFFFFF"
-            style={[styles.fab, { bottom: fabBottom }]}
-            testID="new-search-fab"
-            label={searching ? FAB_SEARCHING_LABEL : FAB_IDLE_LABEL}
-            extended={fabExtended || Boolean(searching)}
-            animateFrom="right"
-            iconMode="static"
-            onPress={() => { if (!searching) void handleNewSearch(); }}
-            accessibilityLabel={searching ? 'Keresés folyamatban' : 'Új AI keresés indítása'}
-            accessibilityState={{ busy: Boolean(searching), disabled: Boolean(searching) }}
-          />
-        </>
+        // On a list always the round icon (Péter's test 2026-11-07, P2-3: the wide label sat on "Részletek"); MatchCard
+        // keeps its buttons out of this column. The label comes back while a search runs and on the empty screen.
+        <AnimatedFAB
+          // While searching (Péter 10518): Paper's disabled FAB ignores `color` and greys the label out
+          // (onSurfaceDisabled on surfaceDisabled), so the button stays enabled-looking and ignores presses instead.
+          // The label must stay short: with iconMode="static" Paper places it at right = textWidth - 56 + 16, so a
+          // label wider than ~112 px starts left of the button (measured on web: "Keresés folyamatban..." is 148 px
+          // and ran 38 px out). The full sentence is in the accessibility label.
+          icon={searching ? 'progress-clock' : 'magnify'}
+          // Card [I]: the MD3 default label colour (onPrimaryContainer #21005D) on our blue was 3.73:1; white is 4.60:1.
+          color="#FFFFFF"
+          style={[styles.fab, { bottom: fabBottom }]}
+          testID="new-search-fab"
+          label={searching ? FAB_SEARCHING_LABEL : FAB_IDLE_LABEL}
+          extended={matches.length === 0 || Boolean(searching)}
+          animateFrom="right"
+          iconMode="static"
+          onPress={() => { if (!searching) void handleNewSearch(); }}
+          accessibilityLabel={searching ? 'Keresés folyamatban' : 'Új AI keresés indítása'}
+          accessibilityState={{ busy: Boolean(searching), disabled: Boolean(searching) }}
+        />
       )}
       
       <AdBanner onHeightChange={setBannerHeight} />

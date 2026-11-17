@@ -234,6 +234,19 @@ describe('OnboardingScreen edit mode', () => {
     await act(async () => { component!.unmount(); });
   });
 
+  // Péter's test 2026-11-07 (P2-5): the goals label was cut, TEÁOR had no example, nothing said what is required.
+  it('the form says what is required, gives a TEÁOR example and has a short goals label', async () => {
+    const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const text = JSON.stringify(component!.toJSON());
+    expect(text).toContain('Csak a csillaggal jelölt cégnév kötelező.');
+    expect(text).toContain('Például 62.01.');
+    const goals = component!.root.findAllByType(TextInput).find((node) => node.props.label === 'Fejlesztési célok');
+    expect(goals!.props.placeholder).toBe('pl. gépbeszerzés, zöldítés');
+    await act(async () => { component!.unmount(); });
+  });
+
   it('without the edit param the form still creates a profile (insert), even when one exists', async () => {
     const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
     (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
