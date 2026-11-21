@@ -187,3 +187,26 @@ describe('isOpenableUrl', () => {
     expect(isOpenableUrl(null)).toBe(false);
   });
 });
+
+// Round 11-21 (#5): the follow button sits on the view, for the signed-in user, and opens the paywall at the limit.
+describe('GrantDetailScreen follow button (round 11-21)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    (useActionPlan as jest.Mock).mockReturnValue({ plans: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('is shown with the user id and the Pro state, and its paywall goes to the grant detail source', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp-1', user_id: 'u-1' } });
+    const { tree, navigation } = await renderScreen(makeMatch());
+    const { FollowButton } = require('../../components/FollowButton');
+    const button = tree.root.findByType(FollowButton);
+    expect(button.props.userId).toBe('u-1');
+    expect(button.props.isPro).toBe(false);
+    expect(button.props.match.grant_id).toBe('g-1');
+    button.props.onOpenPaywall();
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'grant_detail' });
+  });
+});

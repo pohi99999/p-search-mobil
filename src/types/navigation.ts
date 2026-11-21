@@ -20,6 +20,8 @@ export type RootStackParamList = {
   // Card [B]: the match as the home list loaded it (grants(*) included), so the view needs no query.
   // [G2]: rank = its 1-based position in the home list, for the match_open / match_feedback events.
   GrantDetail: { match: MatchWithGrant; rank?: number };
+  // Round 11-21 (#5): the followed grants with their deadlines.
+  FollowedGrants: undefined;
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -29,4 +31,5 @@ export type CopilotChatScreenRouteProp = RouteProp<RootStackParamList, 'CopilotC
 export type ActionPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'ActionPlan'>;
 export type GrantDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'GrantDetail'>;
 export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+export type FollowedGrantsScreenProps = NativeStackScreenProps<RootStackParamList, 'FollowedGrants'>;
 export type DocumentUploadScreenProps = NativeStackScreenProps<RootStackParamList, 'DocumentUpload'>;

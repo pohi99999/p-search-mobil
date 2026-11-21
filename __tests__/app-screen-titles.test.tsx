@@ -25,7 +25,7 @@ jest.mock('@react-navigation/native-stack', () => ({
 }));
 jest.mock('../src/context/BillingContext', () => ({ BillingProvider: ({ children }: any) => children }));
 jest.mock('../src/context/ProfileContext', () => ({ ProfileProvider: ({ children }: any) => children }));
-for (const name of ['Auth', 'Home', 'Onboarding', 'Paywall', 'ActionPlan', 'CopilotChat', 'Settings', 'DocumentUpload', 'GrantDetail']) {
+for (const name of ['Auth', 'Home', 'Onboarding', 'Paywall', 'ActionPlan', 'CopilotChat', 'Settings', 'DocumentUpload', 'GrantDetail', 'FollowedGrants']) {
   jest.doMock(`../src/screens/${name}Screen`, () => ({ [`${name}Screen`]: () => null }));
 }
 
@@ -46,7 +46,8 @@ describe('screen titles (web browser tab)', () => {
 
   it('every signed-in screen has its own title from SCREEN_TITLES', async () => {
     const screens = await registeredScreens({ user: { id: 'u1' } });
-    expect(screens.length).toBe(8);
+    // Round 11-21 (#5): FollowedGrants is the 9th.
+    expect(screens.length).toBe(9);
     for (const { name, title } of screens) {
       expect(title).toBe(SCREEN_TITLES[name as keyof typeof SCREEN_TITLES]);
       expect(title).not.toBe(name);

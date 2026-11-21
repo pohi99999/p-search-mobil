@@ -557,3 +557,20 @@ describe('HomeScreen', () => {
     });
   });
 });
+
+// Round 11-21 (#5): the header opens the followed grants.
+describe('round 11-21: the followed grants button', () => {
+  it('opens "Saját pályázataim"', () => {
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false, profile: { company_name: 'T' }, matches: [], isPro: false,
+      fetchData: jest.fn(), retryLoad: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+    });
+    const navigation = { navigate: jest.fn(), replace: jest.fn() } as any;
+    let root: any;
+    act(() => { root = renderer.create(<HomeScreen navigation={navigation} />); });
+    const button = root.root.findByProps({ testID: 'home-followed-button' });
+    expect(button.props.accessibilityLabel).toBe('Saját pályázataim');
+    act(() => { button.props.onPress(); });
+    expect(navigation.navigate).toHaveBeenCalledWith('FollowedGrants');
+  });
+});
