@@ -364,3 +364,41 @@ describe('round 2: the details button name and the stale subtitle contrast', () 
     expect(contrastRatio(blended, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+// Round 11-21 (#2): the "Új" label of a match that came in after the previous visit.
+describe('round 11-21: the "Új" label', () => {
+  const { contrastRatio } = require('../../test-utils/contrast');
+  const { NEW_BADGE_BG } = require('../MatchCard');
+  const item = (grantType: string | null, status = 'new') =>
+    ({ id: 'm', business_id: 'b', grant_id: 'g', match_score: 70, match_reasoning: '', status, created_at: '2026-11-21T09:00:00Z', grants: { id: 'g', title: 'GINOP Plusz', provider: 'X', description: '', grant_type: grantType, amount_min: null, amount_max: null } }) as any;
+  const render = async (props: Record<string, unknown>) => {
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard onPress={() => {}} {...(props as any)} />); });
+    return tree!;
+  };
+  const badges = (tree: renderer.ReactTestRenderer) => tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'match-new-badge');
+
+  it('shows "Új" only when the card is new, next to the kind label', async () => {
+    const fresh = await render({ item: item('Vissza nem térítendő támogatás (VNT)'), isNew: true });
+    expect(badges(fresh)).toHaveLength(1);
+    expect(fresh.root.findAll((n) => typeof n.type === 'string' && n.props.children === 'Új').length).toBeGreaterThan(0);
+    expect(fresh.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'grant-kind-badge')).toHaveLength(1);
+    expect(badges(fresh)[0].props.accessibilityLabel).toBe('Új találat a legutóbbi látogatásod óta');
+    expect(badges(await render({ item: item('Vissza nem térítendő támogatás (VNT)') }))).toHaveLength(0);
+    expect(badges(await render({ item: item('Vissza nem térítendő támogatás (VNT)'), isNew: false }))).toHaveLength(0);
+  });
+
+  it('a new card without a kind label still gets the label, and the title keeps the row\'s spacing', async () => {
+    const tree = await render({ item: item(null), isNew: true });
+    expect(badges(tree)).toHaveLength(1);
+    const title = tree.root.findAll((n) => n.props.title === 'GINOP Plusz' && n.props.style)[0];
+    expect(title.props.style.paddingTop).toBe(4);
+  });
+
+  it('white on the label stays at least 4.5:1, under the stale opacity too', () => {
+    const onWhite = (hex: string, opacity: number) =>
+      '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * opacity + 255 * (1 - opacity)).toString(16).padStart(2, '0')).join('');
+    expect(contrastRatio('#FFFFFF', NEW_BADGE_BG)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(onWhite('#FFFFFF', 0.75), onWhite(NEW_BADGE_BG, 0.75))).toBeGreaterThanOrEqual(4.5);
+  });
+});

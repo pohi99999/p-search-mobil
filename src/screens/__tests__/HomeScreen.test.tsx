@@ -116,6 +116,14 @@ jest.mock('../../components/HomeLoadError', () => ({
 jest.mock('../../components/MatchCard', () => ({
   MatchCard: 'MatchCard',
 }));
+jest.mock('../../components/HomeStatusHeader', () => ({
+  HomeStatusHeader: 'HomeStatusHeader',
+}));
+// Round 11-21 (#2, #4): set per test; by default a first visit and no freshness line.
+const mockHomeStatus: { previousVisit: string | null | undefined; freshness: unknown } = { previousVisit: null, freshness: null };
+jest.mock('../../hooks/useHomeStatus', () => ({
+  useHomeStatus: jest.fn(() => mockHomeStatus),
+}));
 jest.mock('../../utils/logger', () => ({
   logger: {
     warn: jest.fn(),
@@ -414,10 +422,13 @@ describe('HomeScreen', () => {
     });
     const root = renderScreen();
     const list = root.root.findByType('FlatList');
-    // vc23: the header is HomeListHeader, which renders the tester card first (and the search summary below it).
+    // vc23: the header is HomeListHeader: the tester card first, then the search summary, then the status lines
+    // (HomeStatusHeader, Kenshin's round 11-21 #2/#4) as its child.
     const { HomeListHeader } = require('../../components/HomeListHeader');
     expect(list.props.ListHeaderComponent.type).toBe(HomeListHeader);
     expect(list.props.ListHeaderComponent.props.showTester).toBe(true);
+    const headerChildren = [].concat(list.props.ListHeaderComponent.props.children) as any[];
+    expect(headerChildren[0]?.type).toBe('HomeStatusHeader');
     expect(root.root.findAll((n) => n.type === 'TesterProgress' && n.parent?.type !== 'FlatList')).toHaveLength(0);
   });
 
@@ -578,5 +589,100 @@ describe('HomeScreen', () => {
       const root = renderScreen();
       expect(root.root.findAllByType('TesterProgress')).toHaveLength(count);
     });
+  });
+});
+
+// Round 11-21 (#2, #4): the matches since the previous visit are marked, and the header gets the count and freshness.
+describe('round 11-21: new since the previous visit', () => {
+  const { useHomeStatus } = require('../../hooks/useHomeStatus');
+  const match = (id: string, created_at: string, status = 'new') => ({
+    id, business_id: 'b', grant_id: `g${id}`, match_score: 80, match_reasoning: '', status, created_at,
+    grants: { id: `g${id}`, title: `Pályázat ${id}`, deadline: null },
+  });
+  const matches = [
+    match('1', '2026-11-21T09:00:00Z'),
+    match('2', '2026-11-10T09:00:00Z'),
+    match('3', '2026-11-20T09:00:00Z', 'stale'),
+  ];
+  const render = () => {
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false, loadError: null, profile: { company_name: 'Teszt Kft.', user_id: 'u1' }, matches, isPro: false,
+      fetchData: jest.fn(), retryLoad: jest.fn(), handleNewSearch: jest.fn(), hasSearched: true, searching: false,
+    });
+    let root: any;
+    act(() => {
+      root = renderer.create(<HomeScreen navigation={{ navigate: jest.fn(), replace: jest.fn() } as any} />);
+    });
+    return root;
+  };
+  const header = (root: any) => {
+    const list = root.root.findByType('FlatList');
+    const children = [].concat(list.props.ListHeaderComponent.props.children);
+    return children.find((c: any) => c && c.type === 'HomeStatusHeader') as any;
+  };
+  const isNewOf = (root: any, id: string) => {
+    const list = root.root.findByType('FlatList');
+    const item = matches.find((m) => m.id === id)!;
+    if (list.props.data.includes(item)) {
+      // vc23 (Lumen L3): the first cards come wrapped in their entrance animation.
+      const rendered = list.props.renderItem({ item, index: 0 });
+      return (rendered.props.item ? rendered : rendered.props.children).props.isNew;
+    }
+    return root.root.findAllByType('MatchCard').find((c: any) => c.props.item.id === id)?.props.isNew;
+  };
+
+  afterEach(() => {
+    mockHomeStatus.previousVisit = null;
+    mockHomeStatus.freshness = null;
+  });
+
+  it('marks only the current matches created after the previous visit, and counts them', () => {
+    mockHomeStatus.previousVisit = '2026-11-15T00:00:00Z';
+    mockHomeStatus.freshness = { updatedAt: '2026-11-21T09:07:00Z', openCount: 52 };
+    const root = render();
+    expect(isNewOf(root, '1')).toBe(true);
+    expect(isNewOf(root, '2')).toBe(false);
+    const h = header(root);
+    expect(h.props.newCount).toBe(1);
+    expect(h.props.freshness).toEqual({ updatedAt: '2026-11-21T09:07:00Z', openCount: 52 });
+    expect(useHomeStatus).toHaveBeenCalledWith('u1', matches);
+  });
+
+  // Ellenőr #267 (2): the stale section is collapsed while fresh matches exist; a new stale match was counted in the
+  // header but its label was not on screen. A stale match is never "Új" now, so the count equals the visible labels.
+  it('the header count equals the "Új" labels on screen, the stale section collapsed and opened', () => {
+    mockHomeStatus.previousVisit = '2026-11-15T00:00:00Z';
+    const root = render();
+    const list = root.root.findByType('FlatList');
+    const visibleLabels = () => {
+      // vc23 (Lumen L3): the first cards come wrapped in their entrance animation.
+      const cardOf = (el: any) => (el.props.item ? el : el.props.children);
+      const fresh = list.props.data.filter((item: any) => cardOf(list.props.renderItem({ item, index: 0 })).props.isNew).length;
+      let footer: any;
+      act(() => { footer = renderer.create(root.root.findByType('FlatList').props.ListFooterComponent); });
+      const staleCards = footer.root.findAllByType('MatchCard').filter((c: any) => c.props.isNew).length;
+      return { fresh, staleCards, footer };
+    };
+    const collapsed = visibleLabels();
+    expect(header(root).props.newCount).toBe(collapsed.fresh + collapsed.staleCards);
+    act(() => { collapsed.footer.root.findByProps({ testID: 'home-stale-toggle' }).props.onPress(); });
+    const opened = visibleLabels();
+    const staleCard = opened.footer.root.findAllByType('MatchCard');
+    expect(staleCard.map((c: any) => [c.props.item.id, c.props.isNew])).toEqual([['3', false]]);
+    expect(header(root).props.newCount).toBe(opened.fresh + opened.staleCards);
+  });
+
+  it('a first visit marks nothing', () => {
+    mockHomeStatus.previousVisit = null;
+    const root = render();
+    expect(isNewOf(root, '1')).toBe(false);
+    expect(header(root).props.newCount).toBe(0);
+  });
+
+  it('while the previous visit is read nothing is marked', () => {
+    mockHomeStatus.previousVisit = undefined;
+    const root = render();
+    expect(isNewOf(root, '1')).toBe(false);
+    expect(header(root).props.newCount).toBe(0);
   });
 });
