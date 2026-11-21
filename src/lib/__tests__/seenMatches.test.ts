@@ -52,3 +52,12 @@ describe('seenMatches (round 11-21 #2)', () => {
     expect(isNewSince(created as string | null, seen as string | null | undefined)).toBe(expected);
   });
 });
+
+describe('isNewMatch (Ellenőr #267 (2))', () => {
+  const { isNewMatch } = require('../seenMatches');
+  it('a current match after the previous visit is new; a stale one never is', () => {
+    expect(isNewMatch({ created_at: '2026-11-20T10:00:00Z', status: 'new' }, '2026-11-19T10:00:00Z')).toBe(true);
+    expect(isNewMatch({ created_at: '2026-11-20T10:00:00Z', status: 'stale' }, '2026-11-19T10:00:00Z')).toBe(false);
+    expect(isNewMatch({ created_at: '2026-11-18T10:00:00Z', status: 'new' }, '2026-11-19T10:00:00Z')).toBe(false);
+  });
+});

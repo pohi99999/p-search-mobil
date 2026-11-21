@@ -609,16 +609,38 @@ describe('round 11-21: new since the previous visit', () => {
     mockHomeStatus.freshness = null;
   });
 
-  it('marks only the matches created after the previous visit, the stale section too, and counts them', () => {
+  it('marks only the current matches created after the previous visit, and counts them', () => {
     mockHomeStatus.previousVisit = '2026-11-15T00:00:00Z';
     mockHomeStatus.freshness = { updatedAt: '2026-11-21T09:07:00Z', openCount: 52 };
     const root = render();
     expect(isNewOf(root, '1')).toBe(true);
     expect(isNewOf(root, '2')).toBe(false);
     const h = header(root);
-    expect(h.props.newCount).toBe(2);
+    expect(h.props.newCount).toBe(1);
     expect(h.props.freshness).toEqual({ updatedAt: '2026-11-21T09:07:00Z', openCount: 52 });
     expect(useHomeStatus).toHaveBeenCalledWith('u1', matches);
+  });
+
+  // Ellenőr #267 (2): the stale section is collapsed while fresh matches exist; a new stale match was counted in the
+  // header but its label was not on screen. A stale match is never "Új" now, so the count equals the visible labels.
+  it('the header count equals the "Új" labels on screen, the stale section collapsed and opened', () => {
+    mockHomeStatus.previousVisit = '2026-11-15T00:00:00Z';
+    const root = render();
+    const list = root.root.findByType('FlatList');
+    const visibleLabels = () => {
+      const fresh = list.props.data.filter((item: any) => list.props.renderItem({ item, index: 0 }).props.isNew).length;
+      let footer: any;
+      act(() => { footer = renderer.create(root.root.findByType('FlatList').props.ListFooterComponent); });
+      const staleCards = footer.root.findAllByType('MatchCard').filter((c: any) => c.props.isNew).length;
+      return { fresh, staleCards, footer };
+    };
+    const collapsed = visibleLabels();
+    expect(header(root).props.newCount).toBe(collapsed.fresh + collapsed.staleCards);
+    act(() => { collapsed.footer.root.findByProps({ testID: 'home-stale-toggle' }).props.onPress(); });
+    const opened = visibleLabels();
+    const staleCard = opened.footer.root.findAllByType('MatchCard');
+    expect(staleCard.map((c: any) => [c.props.item.id, c.props.isNew])).toEqual([['3', false]]);
+    expect(header(root).props.newCount).toBe(opened.fresh + opened.staleCards);
   });
 
   it('a first visit marks nothing', () => {

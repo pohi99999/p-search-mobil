@@ -16,7 +16,7 @@ import { MatchCard } from '../components/MatchCard';
 import { splitFreshAndStale } from '../lib/matchStatus';
 import { HomeStatusHeader } from '../components/HomeStatusHeader';
 import { useHomeStatus } from '../hooks/useHomeStatus';
-import { isNewSince } from '../lib/seenMatches';
+import { isNewMatch } from '../lib/seenMatches';
 
 /** FAB labels; the searching one must not be wider than the idle one (see the FAB below). */
 export const FAB_IDLE_LABEL = 'Új AI-keresés';
@@ -70,7 +70,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     <MatchCard
       item={item}
       rank={index + 1}
-      isNew={isNewSince(item.created_at, previousVisit)}
+      isNew={isNewMatch(item, previousVisit)}
       onPress={() => navigation.navigate('GrantDetail', { match: item, rank: index + 1 })}
     />
   );
@@ -80,7 +80,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   const staleExpanded = staleOpen ?? fresh.length === 0;
   // Péter's test 2026-11-07: pinned above the list, the card took the phone's height from the matches. It scrolls away now.
   const testerProgress = showTesterProgress() ? <TesterProgress /> : null;
-  const newCount = matches.filter((m) => isNewSince(m.created_at, previousVisit)).length;
+  const newCount = matches.filter((m) => isNewMatch(m, previousVisit)).length;
   const listHeader = (
     <>
       {testerProgress}

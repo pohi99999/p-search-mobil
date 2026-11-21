@@ -35,6 +35,8 @@ describe('HomeStatusHeader (round 11-21 #2, #4)', () => {
     const tree = render({ newCount: 2, freshness: null });
     expect(tree.root.findAll((n) => n.props.testID === 'home-status-freshness')).toHaveLength(0);
     expect(texts(tree).join(' ')).not.toMatch(/frissítve/);
+    // Ellenőr #267 (5b): the "új" line stays when only the freshness is missing.
+    expect(texts(tree)).toContain('2 új pályázat a legutóbbi látogatásod óta');
   });
 
   it('nothing to say: renders nothing', () => {

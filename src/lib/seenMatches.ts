@@ -2,6 +2,7 @@
 // says how many there are. The automatic weekly scan already runs for everyone (scheduled-grant-scan), but nothing
 // told the user that it found something. No migration: the previous visit is kept on the device, per user.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STALE_MATCH_STATUS } from './matchStatus';
 
 const KEY_PREFIX = '@p-search/last-seen/';
 
@@ -42,6 +43,15 @@ export function isNewSince(createdAt: string | null | undefined, previousVisit: 
   const seen = new Date(previousVisit).getTime();
   if (Number.isNaN(created) || Number.isNaN(seen)) return false;
   return created > seen;
+}
+
+/**
+ * Is this match "Új" on the list? Newer than the previous visit AND a current match: a stale one (the latest scan did
+ * not re-score it, "Korábbi találatok") is never new, so the header's count always equals the labels the user can see
+ * (Ellenőr #267 (2): the stale section is collapsed while fresh matches exist, and its new ones were counted unseen).
+ */
+export function isNewMatch(m: { created_at?: string | null; status?: string | null }, previousVisit: string | null | undefined): boolean {
+  return m.status !== STALE_MATCH_STATUS && isNewSince(m.created_at, previousVisit);
 }
 
 /** Test hook: a new app session. */
