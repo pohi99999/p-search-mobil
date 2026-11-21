@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
 import { Text, AnimatedFAB, MD3Colors, IconButton, Button } from 'react-native-paper';
 
 import { AdBanner } from '../components/AdBanner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TesterProgress } from '../components/TesterProgress';
+import { HomeListHeader } from '../components/HomeListHeader';
+import { SearchAnnouncer } from '../components/SearchSummary';
+import { AppearIn, APPEAR_MAX_STEPS } from '../components/AppearIn';
 import { showTesterProgress } from '../config/env';
 
 import { RootStackNavigationProp } from '../types/navigation';
@@ -31,6 +34,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     loading,
     loadError,
     searching,
+    lastSearch,
     hasSearched,
     profile,
     matches,
@@ -46,6 +50,12 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // The FAB sits above the bottom banner when it is shown, else above the navigation-bar inset.
   const fabBottom = (bannerHeight > 0 ? bannerHeight : insets.bottom) + 4;
 
+  // vc23 (Lumen L3): a finished search scrolls the list to the top, where its summary line is.
+  const listRef = useRef<FlatList<MatchWithGrant>>(null);
+  useEffect(() => {
+    if (lastSearch) listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [lastSearch]);
+
   // Card 4762e3d7: collapsed by default; open when there is nothing fresh, so the list is never just a header.
   const [staleOpen, setStaleOpen] = useState<boolean | null>(null);
 
@@ -59,16 +69,24 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // button goes: it would start an AI search, or send a user whose profile was not read to the Onboarding.
   const failedKind = matches.length === 0 ? loadError : null;
 
+  // vc23 (Lumen L3): the web screen reader hears the search result through this live region. It is the first child of
+  // the same fragment in both returns, so React keeps the one DOM node: the reload after a search shows the spinner
+  // branch for a moment, and a region re-created with its text already in it is not announced (measured on web).
+  const announcer = <SearchAnnouncer result={lastSearch} />;
+
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={MD3Colors.primary50} />
-        <Text style={styles.loadingText}>Adataid betöltése...</Text>
-      </View>
+      <>
+        {announcer}
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={MD3Colors.primary50} />
+          <Text style={styles.loadingText}>Adataid betöltése...</Text>
+        </View>
+      </>
     );
   }
 
-  const renderItem = ({ item, index }: { item: MatchWithGrant; index: number }) => (
+  const renderCard = (item: MatchWithGrant, index: number) => (
     <MatchCard
       item={item}
       rank={index + 1}
@@ -76,6 +94,10 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       onPress={() => navigation.navigate('GrantDetail', { match: item, rank: index + 1 })}
     />
   );
+  // vc23 (Lumen L3): the first cards come in one after the other; the rest (and the stale ones) appear as they are,
+  // so scrolling a long list never waits for an entrance.
+  const renderItem = ({ item, index }: { item: MatchWithGrant; index: number }) =>
+    index <= APPEAR_MAX_STEPS ? <AppearIn index={index}>{renderCard(item, index)}</AppearIn> : renderCard(item, index);
 
   // Card 4762e3d7: the stale matches go under one collapsed header below the fresh ones; their rank continues the list.
   const { fresh, stale } = splitFreshAndStale(matches);
@@ -83,11 +105,11 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // Péter's test 2026-11-07: pinned above the list, the card took the phone's height from the matches. It scrolls away now.
   const testerProgress = showTesterProgress() ? <TesterProgress /> : null;
   const newCount = matches.filter((m) => isNewMatch(m, previousVisit)).length;
+  // vc23: one header component (Lumen L3 + Kenshin #2/#4): tester card, the last search's summary, the status lines.
   const listHeader = (
-    <>
-      {testerProgress}
+    <HomeListHeader showTester={showTesterProgress()} lastSearch={lastSearch}>
       <HomeStatusHeader newCount={newCount} freshness={freshness} />
-    </>
+    </HomeListHeader>
   );
   const staleSection = stale.length === 0 ? null : (
     <View style={styles.staleSection} testID="home-stale-section">
@@ -106,12 +128,14 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       </Button>
       {staleExpanded &&
         stale.map((item, i) => (
-          <React.Fragment key={item.id}>{renderItem({ item, index: fresh.length + i })}</React.Fragment>
+          <React.Fragment key={item.id}>{renderCard(item, fresh.length + i)}</React.Fragment>
         ))}
     </View>
   );
 
   return (
+    <>
+    {announcer}
     <View style={styles.container}>
       <View style={styles.header}>
         <Text role="heading" aria-level={1} variant="titleMedium" style={styles.headerTitle}>
@@ -159,6 +183,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
               profileIncomplete={missingProfileFields(profile).length > 0}
               onSearch={handleNewSearch}
               onEditProfile={() => navigation.navigate('Onboarding', { edit: true })}
+              lastSearch={lastSearch}
             />
           </View>
         </>
@@ -167,6 +192,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           data={fresh}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ref={listRef}
           ListHeaderComponent={listHeader}
           ListFooterComponent={staleSection}
           contentContainerStyle={[styles.listContent, { paddingBottom: 80 + fabBottom }]}
@@ -201,6 +227,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       
       <AdBanner onHeightChange={setBannerHeight} />
     </View>
+    </>
   );
 }
 

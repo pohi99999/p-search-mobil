@@ -286,7 +286,9 @@ describe('HomeScreen', () => {
 
     const root = renderScreen();
     const list = root.root.findByType('FlatList');
-    const card = list.props.renderItem({ item: match, index: 0 });
+    // vc23 (Lumen L3): the first cards come wrapped in their entrance animation.
+    const rendered = list.props.renderItem({ item: match, index: 0 });
+    const card = rendered.props.onPress ? rendered : rendered.props.children;
     act(() => { card.props.onPress(); });
     expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match, rank: 1 });
     expect(mockNavigation.navigate).not.toHaveBeenCalledWith('ActionPlan', expect.anything());
@@ -420,11 +422,103 @@ describe('HomeScreen', () => {
     });
     const root = renderScreen();
     const list = root.root.findByType('FlatList');
-    // Round 11-21: the header holds the tester card first, then the status lines (HomeStatusHeader).
+    // vc23: the header is HomeListHeader: the tester card first, then the search summary, then the status lines
+    // (HomeStatusHeader, Kenshin's round 11-21 #2/#4) as its child.
+    const { HomeListHeader } = require('../../components/HomeListHeader');
+    expect(list.props.ListHeaderComponent.type).toBe(HomeListHeader);
+    expect(list.props.ListHeaderComponent.props.showTester).toBe(true);
     const headerChildren = [].concat(list.props.ListHeaderComponent.props.children) as any[];
-    expect(headerChildren[0]?.type).toBe('TesterProgress');
-    expect(headerChildren[1]?.type).toBe('HomeStatusHeader');
+    expect(headerChildren[0]?.type).toBe('HomeStatusHeader');
     expect(root.root.findAll((n) => n.type === 'TesterProgress' && n.parent?.type !== 'FlatList')).toHaveLength(0);
+  });
+
+  // vc23 (Lumen L3): the finished search's counts go to the list header, not to a modal.
+  it('the list header gets the last search result', () => {
+    const lastSearch = { matchesFound: 6, candidatesConsidered: 60 };
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test' },
+      matches: [{ id: '1', grants: {} }],
+      isPro: false,
+      lastSearch,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+    const root = renderScreen();
+    const list = root.root.findByType('FlatList');
+    expect(list.props.ListHeaderComponent.props.lastSearch).toEqual(lastSearch);
+  });
+
+  // Ellenőr #268 (K3): exactly the first seven cards come in with the entrance; the eighth is plain.
+  it('the first seven cards are wrapped in the entrance, the rest are not', () => {
+    const { AppearIn } = require('../../components/AppearIn');
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false, profile: { company_name: 'Test' }, matches: [{ id: '1', grants: {} }], isPro: false,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+    });
+    const list = renderScreen().root.findByType('FlatList');
+    const item = { id: 'x', grants: {} };
+    expect(list.props.renderItem({ item, index: 6 }).type).toBe(AppearIn);
+    expect(list.props.renderItem({ item, index: 7 }).type).not.toBe(AppearIn);
+  });
+
+  // Ellenőr #268 (K11): with no list the empty state gets the search result to name the count.
+  it('the empty state gets the last search result', () => {
+    const lastSearch = { matchesFound: 0, candidatesConsidered: 54 };
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false, profile: { company_name: 'Test' }, matches: [], isPro: false, hasSearched: true, lastSearch,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+    });
+    const empty = renderScreen().root.findAll((n: any) => n.type === 'HomeEmptyState')[0];
+    expect(empty.props.lastSearch).toEqual(lastSearch);
+  });
+
+  // Ellenőr #268: the reload after a search shows the spinner for a moment. The web live region must stay the same
+  // node across it, or the browser treats the result as text that was there from the start and says nothing.
+  it('the search announcer is not re-created when the screen passes through loading', () => {
+    const summary = require('../../components/SearchSummary');
+    let mounts = 0;
+    const Counting = () => {
+      React.useEffect(() => { mounts += 1; }, []);
+      return null;
+    };
+    const spy = jest.spyOn(summary, 'SearchAnnouncer').mockImplementation(Counting as any);
+    const base = { profile: { company_name: 'Test' }, matches: [{ id: '1', grants: {} }], isPro: false,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(), lastSearch: null };
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false });
+    const tree = () => (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <HomeScreen navigation={mockNavigation} />
+      </SafeAreaProvider>
+    );
+    let root: any;
+    act(() => { root = renderer.create(tree()); });
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: true });
+    act(() => { root.update(tree()); });
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false, lastSearch: { matchesFound: 1, candidatesConsidered: 9 } });
+    act(() => { root.update(tree()); });
+    expect(mounts).toBe(1);
+    spy.mockRestore();
+  });
+
+  // Ellenőr #268 (K6): a finished search scrolls the list back to the top, where its line is.
+  it('a new search result scrolls the list to the top', () => {
+    const scrollToOffset = jest.fn();
+    const base = { loading: false, profile: { company_name: 'Test' }, matches: [{ id: '1', grants: {} }], isPro: false,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn() };
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, lastSearch: null });
+    let root: any;
+    const tree = () => (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <HomeScreen navigation={mockNavigation} />
+      </SafeAreaProvider>
+    );
+    act(() => { root = renderer.create(tree(), { createNodeMock: () => ({ scrollToOffset }) }); });
+    expect(scrollToOffset).not.toHaveBeenCalled();
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, lastSearch: { matchesFound: 2, candidatesConsidered: 30 } });
+    act(() => { root.update(tree()); });
+    expect(scrollToOffset).toHaveBeenCalledWith({ offset: 0, animated: true });
   });
 
   it('calls handleNewSearch on FAB press', () => {
@@ -658,7 +752,11 @@ describe('round 11-21: new since the previous visit', () => {
   const isNewOf = (root: any, id: string) => {
     const list = root.root.findByType('FlatList');
     const item = matches.find((m) => m.id === id)!;
-    if (list.props.data.includes(item)) return list.props.renderItem({ item, index: 0 }).props.isNew;
+    if (list.props.data.includes(item)) {
+      // vc23 (Lumen L3): the first cards come wrapped in their entrance animation.
+      const rendered = list.props.renderItem({ item, index: 0 });
+      return (rendered.props.item ? rendered : rendered.props.children).props.isNew;
+    }
     return root.root.findAllByType('MatchCard').find((c: any) => c.props.item.id === id)?.props.isNew;
   };
 
@@ -686,7 +784,9 @@ describe('round 11-21: new since the previous visit', () => {
     const root = render();
     const list = root.root.findByType('FlatList');
     const visibleLabels = () => {
-      const fresh = list.props.data.filter((item: any) => list.props.renderItem({ item, index: 0 }).props.isNew).length;
+      // vc23 (Lumen L3): the first cards come wrapped in their entrance animation.
+      const cardOf = (el: any) => (el.props.item ? el : el.props.children);
+      const fresh = list.props.data.filter((item: any) => cardOf(list.props.renderItem({ item, index: 0 })).props.isNew).length;
       let footer: any;
       act(() => { footer = renderer.create(root.root.findByType('FlatList').props.ListFooterComponent); });
       const staleCards = footer.root.findAllByType('MatchCard').filter((c: any) => c.props.isNew).length;

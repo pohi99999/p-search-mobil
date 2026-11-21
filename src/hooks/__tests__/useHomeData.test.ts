@@ -246,10 +246,9 @@ describe('useHomeData', () => {
       const { result } = renderHook(() => useHomeData(mockNavigation));
       await waitFor(() => expect(matchGrantsCalls()).toBe(1));
       expect(result.current.hasSearched).toBe(false);
-      // The no-match message promises no notification any more.
-      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.any(String)));
-      const text = (Alert.alert as jest.Mock).mock.calls.find(([t]: [string]) => t === 'AI keresés kész')[1];
-      expect(text).not.toMatch(/értesítünk/);
+      // vc23 (Lumen L3): no "AI keresés kész" modal; the result is state the home screen shows.
+      await waitFor(() => expect(result.current.lastSearch).toEqual({ matchesFound: 0, candidatesConsidered: 0 }));
+      expect(Alert.alert).not.toHaveBeenCalledWith('AI keresés kész', expect.anything());
       await act(async () => { await result.current.fetchData(); });
       expect(matchGrantsCalls()).toBe(1);
     });
@@ -499,10 +498,8 @@ describe('useHomeData', () => {
         body: { business_profile_id: mockBusinessProfile.id },
       });
       expect(supabase.functions.invoke).toHaveBeenCalledWith('trigger-n8n-webhook', expect.any(Object));
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'AI keresés kész',
-        expect.stringContaining('3'),
-      );
+      expect(result.current.lastSearch?.matchesFound).toBe(3);
+      expect(Alert.alert).not.toHaveBeenCalledWith('AI keresés kész', expect.anything());
     });
 
     // Card 6303fd73: 429/503 from match-grants carry {code, error}; the Hungarian text must reach the
@@ -561,7 +558,7 @@ describe('useHomeData', () => {
         await new Promise((r) => setTimeout(r, 0));
       });
       expect(matchCalls).toBe(2);
-      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.stringContaining('1')));
+      await waitFor(() => expect(result.current.lastSearch?.matchesFound).toBe(1));
     });
 
     it('Free user: search runs match-grants directly (no increment-search-count)', async () => {
@@ -585,7 +582,8 @@ describe('useHomeData', () => {
       expect(supabase.functions.invoke).toHaveBeenCalledWith('match-grants', {
         body: { business_profile_id: mockBusinessProfile.id },
       });
-      expect(Alert.alert).toHaveBeenCalledWith('AI keresés kész', expect.stringContaining('2'));
+      expect(result.current.lastSearch).toEqual({ matchesFound: 2, candidatesConsidered: 0 });
+      expect(Alert.alert).not.toHaveBeenCalledWith('AI keresés kész', expect.anything());
     });
 
     it('surfaces an error when the matching engine fails', async () => {
@@ -651,5 +649,40 @@ describe('useHomeData', () => {
       expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Paywall', expect.anything());
       expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Paywall');
     });
+  });
+
+  // vc23 (Lumen L3): the server's two counts reach the screen, and no modal opens.
+  it('a finished search keeps both counts for the summary line', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ isPro: true });
+    setupSupabaseMocks();
+    (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+      Promise.resolve(fn === 'match-grants'
+        ? { data: { success: true, matches_found: 6, candidates_considered: 60 }, error: null }
+        : { data: {}, error: null }),
+    );
+    const { result } = renderHook(() => useHomeData(mockNavigation));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.lastSearch).toBeNull();
+    await act(async () => { await result.current.handleNewSearch(); });
+    expect(result.current.lastSearch).toEqual({ matchesFound: 6, candidatesConsidered: 60 });
+    expect(Alert.alert).not.toHaveBeenCalledWith('AI keresés kész', expect.anything());
+  });
+
+  // Ellenőr #268 (K5): on a phone the screen reader hears the same line the screen shows.
+  it('a finished search is announced to the screen reader', async () => {
+    const { AccessibilityInfo } = require('react-native');
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    (useBilling as jest.Mock).mockReturnValue({ isPro: true });
+    setupSupabaseMocks();
+    (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+      Promise.resolve(fn === 'match-grants'
+        ? { data: { success: true, matches_found: 0, candidates_considered: 54 }, error: null }
+        : { data: {}, error: null }),
+    );
+    const { result } = renderHook(() => useHomeData(mockNavigation));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => { await result.current.handleNewSearch(); });
+    expect(announce).toHaveBeenCalledWith('54 nyitott kiírást néztünk át, most egyik sem illik a cégedhez.');
+    announce.mockRestore();
   });
 });
