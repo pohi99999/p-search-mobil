@@ -292,7 +292,25 @@ describe('AuthScreen', () => {
     });
 
     expect(supabase.auth.signUp).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Sikeres regisztráció!');
+    // vc23 (Lumen L8): with a session the app moves on to the company profile; no modal stands over it.
+    expect(Alert.alert).not.toHaveBeenCalledWith('Sikeres regisztráció!');
+    expect(Alert.alert).not.toHaveBeenCalledWith('Sikeres regisztráció!', expect.anything());
+  });
+
+  // vc23 (Lumen L8): the sign-in screen says what the app does before it asks for the e-mail.
+  it('shows the three promise lines above the form, in both modes', async () => {
+    const { AUTH_PROMISE_LINES } = require('./AuthScreen');
+    let component: any;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+    const text = () => JSON.stringify(component.toJSON());
+    expect(AUTH_PROMISE_LINES).toHaveLength(3);
+    for (const line of AUTH_PROMISE_LINES) expect(text()).toContain(line.text);
+    expect(text().indexOf(AUTH_PROMISE_LINES[0].text)).toBeLessThan(text().indexOf('ceged@pelda.hu'));
+    const switchBtn = component.root.findAllByType(Button).find((b: any) => b.props.children === 'Nincs még fiókod? Regisztrálj!');
+    await act(async () => { switchBtn.props.onPress(); });
+    for (const line of AUTH_PROMISE_LINES) expect(text()).toContain(line.text);
   });
 
   // Round 3 (Lumen P1, 2026-11-03): mobile field types, a visible password rule, and the legal links at sign-up.

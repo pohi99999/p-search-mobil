@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ProfileStrength } from '../components/ProfileStrength';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText, IconButton } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
@@ -249,6 +250,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           <Text variant="bodySmall" style={styles.requiredNote} testID="onboarding-required-note">
             Csak a csillaggal jelölt cégnév kötelező. Minél több adatot adsz meg, annál pontosabb a találat.
           </Text>
+          <ProfileStrength form={form} />
 
           <TextInput
             label="Cégnév *"

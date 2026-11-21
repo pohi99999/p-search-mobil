@@ -247,6 +247,22 @@ describe('OnboardingScreen edit mode', () => {
     await act(async () => { component!.unmount(); });
   });
 
+  // vc23 (Lumen L8): the bar under the required note follows the form as the user types.
+  it('the profile bar counts the matching fields as they are filled', async () => {
+    const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const text = () => JSON.stringify(component!.toJSON());
+    expect(text()).toContain('A találatot pontosító adatok: 0/4');
+    const teaor = component!.root.findAllByType(TextInput).find((node) => node.props.label === 'Főtevékenység (TEÁOR)');
+    await act(async () => { teaor!.props.onChangeText('62.01'); });
+    expect(text()).toContain('A találatot pontosító adatok: 1/4');
+    const name = component!.root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
+    await act(async () => { name!.props.onChangeText('Példa Kft.'); });
+    expect(text()).toContain('A találatot pontosító adatok: 1/4');
+    await act(async () => { component!.unmount(); });
+  });
+
   it('without the edit param the form still creates a profile (insert), even when one exists', async () => {
     const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
     (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
