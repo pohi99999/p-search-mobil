@@ -177,17 +177,6 @@ describe('GrantDetailScreen (card [B])', () => {
   });
 });
 
-describe('isOpenableUrl', () => {
-  it('opens only http(s) links from the scraped data', () => {
-    expect(isOpenableUrl('https://palyazat.gov.hu')).toBe(true);
-    expect(isOpenableUrl(' http://example.hu ')).toBe(true);
-    expect(isOpenableUrl('javascript:alert(1)')).toBe(false);
-    expect(isOpenableUrl('intent://x#Intent;end')).toBe(false);
-    expect(isOpenableUrl('')).toBe(false);
-    expect(isOpenableUrl(null)).toBe(false);
-  });
-});
-
 // Round 11-21 (#5): the follow button sits on the view, for the signed-in user, and opens the paywall at the limit.
 describe('GrantDetailScreen follow button (round 11-21)', () => {
   beforeEach(() => {
@@ -208,5 +197,16 @@ describe('GrantDetailScreen follow button (round 11-21)', () => {
     expect(button.props.match.grant_id).toBe('g-1');
     button.props.onOpenPaywall();
     expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'grant_detail' });
+  });
+});
+
+describe('isOpenableUrl', () => {
+  it('opens only http(s) links from the scraped data', () => {
+    expect(isOpenableUrl('https://palyazat.gov.hu')).toBe(true);
+    expect(isOpenableUrl(' http://example.hu ')).toBe(true);
+    expect(isOpenableUrl('javascript:alert(1)')).toBe(false);
+    expect(isOpenableUrl('intent://x#Intent;end')).toBe(false);
+    expect(isOpenableUrl('')).toBe(false);
+    expect(isOpenableUrl(null)).toBe(false);
   });
 });
