@@ -2,14 +2,20 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card, List } from 'react-native-paper';
 
+/** The feature titles' blue (#1565C0, 5.75:1 on white). */
+const ICON_COLOR = '#1565C0';
+
 export const PaywallFeatures = () => {
   return (
     <Card style={styles.featureCard} mode="outlined">
       <Card.Content>
         {/* Only what the app really does (owner-approved text, Telegram 6057, card bc8e4135). The descriptions
-            may run to 8 lines: at 3 the Copilot one was cut on the phone (card a96dd8e2 #4). */}
+            may run to 8 lines: at 3 the Copilot one was cut on the phone (card a96dd8e2 #4).
+            vc23 (Lumen L7): the app's own icons instead of emoji (an emoji looks different on every phone and
+            stuck to the title without a space); the search line is neutral until Péter sets the free/Pro limit. */}
         <List.Item
-          title="✍️ Copilot akcióterv és pályázati dokumentum"
+          title="Copilot akcióterv és pályázati dokumentum"
+          left={(props) => <List.Icon {...props} icon="file-document-edit-outline" color={ICON_COLOR} />}
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
           description="Az AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
@@ -17,15 +23,17 @@ export const PaywallFeatures = () => {
           descriptionNumberOfLines={8}
         />
         <List.Item
-          title="🔎 Korlátlan AI keresés"
+          title="Bővebb AI keresés"
+          left={(props) => <List.Icon {...props} icon="magnify" color={ICON_COLOR} />}
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
-          description="Nincs napi keresési korlát."
+          description="Naponta több keresés, mint az ingyenes használatban."
           descriptionStyle={styles.featureDesc}
           descriptionNumberOfLines={8}
         />
         <List.Item
-          title="🚫 Hirdetésmentesség"
+          title="Hirdetésmentesség"
+          left={(props) => <List.Icon {...props} icon="advertisements-off" color={ICON_COLOR} />}
           titleStyle={styles.featureTitle}
           titleNumberOfLines={2}
           description="Tiszta, reklám nélküli felület."

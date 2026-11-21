@@ -41,13 +41,17 @@ describe('PaywallFeatures', () => {
     });
     const items = component!.root.findAll((n) => n.props['data-testID'] === 'list-item' && typeof n.props.title === 'string');
     const titles = items.map((n) => n.props.title as string);
+    // vc23 (Lumen L7): icons instead of emoji; the search line names no limit until Péter sets the free/Pro one.
     expect(titles).toEqual([
-      '✍️ Copilot akcióterv és pályázati dokumentum',
-      '🔎 Korlátlan AI keresés',
-      '🚫 Hirdetésmentesség',
+      'Copilot akcióterv és pályázati dokumentum',
+      'Bővebb AI keresés',
+      'Hirdetésmentesség',
     ]);
     const text = items.map((n) => `${n.props.title} ${n.props.description}`).join(' ');
     expect(text).not.toMatch(/DOCX|Hitel|OCR/);
+    expect(text).not.toMatch(/[Kk]orlátlan|korlát nélkül|Nincs napi/);
+    expect(text).not.toMatch(/\p{Extended_Pictographic}/u);
+    expect(items.every((n) => typeof n.props.left === 'function')).toBe(true);
   });
 
   // Card a96dd8e2 #4 (common test 2026-10-07): the Copilot description was cut at "...a kiv..." on the phone

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, IconButton, Text } from 'react-native-paper';
+import { Button, Card, Icon, IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBilling } from '../context/BillingContext';
 import { useProfile } from '../context/ProfileContext';
@@ -149,11 +149,17 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
                   </Button>
                 ) : (
                   <>
-                    <Text variant="bodyMedium" style={styles.offerLine}>✍️ Lépésenkénti akcióterv ehhez a kiíráshoz</Text>
-                    <Text variant="bodyMedium" style={styles.offerLine}>📄 Dokumentum-vázlat a cégprofilod alapján, PDF-ben</Text>
+                    <OfferLine icon="clipboard-list-outline">Lépésenkénti akcióterv ehhez a kiíráshoz</OfferLine>
+                    <OfferLine icon="file-document-edit-outline">Dokumentum-vázlat a cégprofilod alapján, PDF-ben</OfferLine>
                     <Button
                       mode="contained"
-                      onPress={() => navigation.navigate('Paywall', { source: 'grant_detail' })}
+                      onPress={() =>
+                        navigation.navigate('Paywall', {
+                          source: 'grant_detail',
+                          grantTitle: grant?.title ?? undefined,
+                          deadline: grant?.deadline ?? null,
+                        })
+                      }
                       style={styles.primaryButton}
                       testID="grant-detail-upgrade"
                     >
@@ -232,6 +238,16 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
           </Card.Content>
         </Card>
       </ScrollView>
+    </View>
+  );
+}
+
+// vc23 (Lumen L7): the app's own icons instead of the ✍️ / 📄 emoji, which stuck to the text and look different per phone.
+function OfferLine({ icon, children }: { icon: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.offerRow}>
+      <Icon source={icon} size={20} color="#1A237E" />
+      <Text variant="bodyMedium" style={styles.offerRowText}>{children}</Text>
     </View>
   );
 }
@@ -327,9 +343,15 @@ const styles = StyleSheet.create({
     color: '#1A237E',
     marginBottom: 8,
   },
-  offerLine: {
+  offerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  offerRowText: {
+    flex: 1,
     color: '#424242',
-    marginBottom: 4,
   },
   primaryButton: {
     marginTop: 12,

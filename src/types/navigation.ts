@@ -9,7 +9,8 @@ export type RootStackParamList = {
   Auth: undefined;
   Onboarding: { edit?: boolean } | undefined;
   // [G2]: where it was opened from, for the paywall_view event.
-  Paywall: { source?: PaywallSource } | undefined;
+  // vc23 (Lumen L7): from a grant, its title and deadline, so the offer names what the user came for.
+  Paywall: { source?: PaywallSource; grantTitle?: string; deadline?: string | null } | undefined;
   Settings: undefined;
   DocumentUpload: undefined;
   ActionPlan: {

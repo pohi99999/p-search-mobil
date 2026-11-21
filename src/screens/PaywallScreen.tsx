@@ -2,7 +2,7 @@ import { RootStackNavigationProp } from "../types/navigation";
 import React, { useEffect, useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar } from 'react-native-paper';
+import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar, Icon } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../types/navigation';
@@ -19,6 +19,7 @@ import {
   PaywallActivePro
 } from '../components/paywall';
 import { notify } from '../lib/notify';
+import { formatDeadline } from '../lib/deadline';
 
 export const PaywallScreen = () => {
   const { packages, purchasePackage, restorePurchases, isLoading, isPro } = useBilling();
@@ -31,6 +32,11 @@ export const PaywallScreen = () => {
   const [justPurchased, setJustPurchased] = useState(false);
   // [G2]: one paywall_view per opening, with where it came from (a Pro user sees the success view, not the offer).
   const source = route.params?.source;
+  // vc23 (Lumen L7): opened from a grant, the offer names it and its deadline (an unknown deadline is left out).
+  const grantTitle = route.params?.grantTitle?.trim() || null;
+  const deadlineInfo = formatDeadline(route.params?.deadline);
+  // The match card's own wording ("Beadás: 2026. 12. 11. (még 20 nap)"), so the date never stands without a label.
+  const deadlineLine = deadlineInfo.tone === 'soon' || deadlineInfo.tone === 'normal' ? deadlineInfo.label : null;
   useEffect(() => {
     // A route without a source is 'other', never guessed as one of the known places.
     if (!isPro) track('paywall_view', { source: source ?? 'other' });
@@ -107,6 +113,19 @@ export const PaywallScreen = () => {
         <Text variant="bodyLarge" style={styles.subtitle}>
           Készülj fel a kiválasztott pályázatra: akcióterv, dokumentum-vázlat PDF-ben, hirdetések nélkül.
         </Text>
+
+        {grantTitle ? (
+          <View style={styles.contextBox} testID="paywall-grant-context">
+            <Icon source="calendar-clock" size={22} color="#1A237E" />
+            <View style={styles.contextText}>
+              <Text variant="labelMedium" style={styles.contextLabel}>Ehhez a kiíráshoz készülsz:</Text>
+              <Text variant="bodyMedium" style={styles.contextTitle} numberOfLines={3}>{grantTitle}</Text>
+              {deadlineLine ? (
+                <Text variant="bodyMedium" style={styles.contextDeadline} testID="paywall-grant-deadline">{deadlineLine}</Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
 
         <PaywallFeatures />
 
@@ -202,6 +221,32 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 22,
     paddingHorizontal: 12,
+  },
+  // On #E8EAF6: #1A237E 11.06:1, #3949AB 6.46:1, the deadline's #8A4F00 5.48:1 (the card's #A15C00 would be 4.33).
+  contextBox: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: '#E8EAF6',
+  },
+  contextText: {
+    flex: 1,
+  },
+  contextLabel: {
+    color: '#3949AB',
+    marginBottom: 2,
+  },
+  contextTitle: {
+    color: '#1A237E',
+    fontWeight: 'bold',
+  },
+  contextDeadline: {
+    color: '#8A4F00',
+    fontWeight: 'bold',
+    marginTop: 4,
   },
   loader: {
     marginVertical: 30,

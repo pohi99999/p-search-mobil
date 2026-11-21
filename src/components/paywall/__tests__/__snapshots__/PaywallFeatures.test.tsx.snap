@@ -27,7 +27,8 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="✍️ Copilot akcióterv és pályázati dokumentum"
+      left={[Function]}
+      title="Copilot akcióterv és pályázati dokumentum"
       titleNumberOfLines={2}
       titleStyle={
         {
@@ -39,7 +40,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
     />
     <View
       data-testID="list-item"
-      description="Nincs napi keresési korlát."
+      description="Naponta több keresés, mint az ingyenes használatban."
       descriptionNumberOfLines={8}
       descriptionStyle={
         {
@@ -48,7 +49,8 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="🔎 Korlátlan AI keresés"
+      left={[Function]}
+      title="Bővebb AI keresés"
       titleNumberOfLines={2}
       titleStyle={
         {
@@ -69,7 +71,8 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="🚫 Hirdetésmentesség"
+      left={[Function]}
+      title="Hirdetésmentesség"
       titleNumberOfLines={2}
       titleStyle={
         {
