@@ -313,6 +313,29 @@ describe('AuthScreen', () => {
     for (const line of AUTH_PROMISE_LINES) expect(text()).toContain(line.text);
   });
 
+  // Ellenőr #273 (K1): the lines may only promise what the app does now, so the exact words are pinned here. A changed
+  // promise has to change this test too, on purpose (the app does not submit anything, it has no deadline reminder).
+  it('the promise lines are exactly these, and the text and icons are readable', () => {
+    const { AUTH_PROMISE_LINES } = require('./AuthScreen');
+    const { contrastRatio, textColor } = require('../test-utils/contrast');
+    expect(AUTH_PROMISE_LINES.map((l: { text: string }) => l.text)).toEqual([
+      'A cégprofilod alapján az AI kiválasztja a hozzád illő nyitott kiírásokat.',
+      'Minden találatnál látod, miért illik, mekkora az összeg és meddig adható be.',
+      'Pro: akcióterv és dokumentum-vázlat a beadáshoz.',
+    ]);
+    const joined = AUTH_PROMISE_LINES.map((l: { text: string }) => l.text).join(' ');
+    expect(joined).not.toMatch(/beadjuk|helyetted|emlékeztet|garant/i);
+    let component: any;
+    act(() => { component = renderer.create(<AuthScreen />); });
+    const promise = component.root.findAll((n: any) => n.props.testID === 'auth-promise')[0];
+    const texts = promise.findAll((n: any) => typeof n.props.children === 'string' && n.props.style && n.props.children.length > 20);
+    expect(texts.length).toBeGreaterThanOrEqual(3);
+    for (const t of texts) expect(contrastRatio(textColor(t.props.style), '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    const icons = promise.findAll((n: any) => n.props.name && n.props.color);
+    expect(icons.length).toBeGreaterThanOrEqual(3);
+    for (const i of icons) expect(contrastRatio(i.props.color, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+  });
+
   // Round 3 (Lumen P1, 2026-11-03): mobile field types, a visible password rule, and the legal links at sign-up.
   describe('round 3 sign-up pack', () => {
     const render = () => {

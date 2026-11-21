@@ -1,11 +1,18 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ProgressBar, Text } from 'react-native-paper';
-import { PROFILE_FIELDS, type ProfileFieldKey } from '../lib/profileCompleteness';
+import { PROFILE_FIELDS, profileUpdateFromForm, type ProfileFieldKey } from '../lib/profileCompleteness';
 
-/** How many of the fields the matching reads (matching.ts buildProfileText) are filled in the form. */
+/**
+ * How many of the fields the matching reads (matching.ts buildProfileText) are filled with a value the save accepts.
+ * Ellenőr #273: counting any non-blank text showed 4/4 and green for "0" or "abc" employees, which the save refuses
+ * ("egész számot adj meg") and which so never reaches the search. Each field goes through the save's own rule.
+ */
 export function filledMatchFields(form: Partial<Record<ProfileFieldKey, string>>): number {
-  return PROFILE_FIELDS.filter((f) => (form[f.key] ?? '').trim() !== '').length;
+  return PROFILE_FIELDS.filter((f) => {
+    const one = profileUpdateFromForm({ [f.key]: form[f.key] ?? '' });
+    return one.ok && f.key in one.update;
+  }).length;
 }
 
 /**
