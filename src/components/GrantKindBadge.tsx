@@ -36,6 +36,8 @@ export const KIND_COLORS: Record<GrantKind, { bg: string; fg: string }> = {
   loan: { bg: '#FFF3E0', fg: '#633500' },
   equity: { bg: '#EDE7F6', fg: '#3A2085' },
   mixed: { bg: '#E3F2FD', fg: '#0B3D85' },
+  // Round 11-21 (J1): repaid like a loan, so the loan's colours.
+  repayable: { bg: '#FFF3E0', fg: '#633500' },
 };
 
 const styles = StyleSheet.create({
