@@ -473,6 +473,23 @@ describe('HomeScreen', () => {
 
   // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.
   // Card 4762e3d7: fresh matches first, the stale ones in a collapsed "Korábbi találatok (N)" section below.
+  // Round 11-21 (#5): the header opens the followed grants.
+  describe('round 11-21: the followed grants button', () => {
+    it('opens "Saját pályázataim"', () => {
+      (useHomeData as jest.Mock).mockReturnValue({
+        loading: false, profile: { company_name: 'T' }, matches: [], isPro: false,
+        fetchData: jest.fn(), retryLoad: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+      });
+      const navigation = { navigate: jest.fn(), replace: jest.fn() } as any;
+      let root: any;
+      act(() => { root = renderer.create(<HomeScreen navigation={navigation} />); });
+      const button = root.root.findByProps({ testID: 'home-followed-button' });
+      expect(button.props.accessibilityLabel).toBe('Saját pályázataim');
+      act(() => { button.props.onPress(); });
+      expect(navigation.navigate).toHaveBeenCalledWith('FollowedGrants');
+    });
+  });
+
   describe('stale matches section', () => {
     const fresh1 = { id: 'f1', status: 'new', match_score: 90, grants: { title: 'Friss 1' } };
     const fresh2 = { id: 'f2', status: 'viewed', match_score: 70, grants: { title: 'Friss 2' } };

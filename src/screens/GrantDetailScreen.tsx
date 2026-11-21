@@ -10,6 +10,7 @@ import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { deadlineDetailText, formatDeadline } from '../lib/deadline';
 import { logger } from '../utils/logger';
 import { scoreBand, track } from '../services/events';
+import { FollowButton } from '../components/FollowButton';
 import { GrantKindBadge } from '../components/GrantKindBadge';
 import { MatchFeedback } from '../components/MatchFeedback';
 import type { GrantDetailScreenProps } from '../types/navigation';
@@ -87,6 +88,14 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
                 {deadlineDetailText(deadline)}
               </Text>
             </Field>
+            {/* Round 11-21 (#5): follow the grant; it goes on "Saját pályázataim" with its deadline. */}
+            <FollowButton
+              match={match}
+              userId={profile?.user_id}
+              isPro={isPro}
+              onOpenPaywall={() => navigation.navigate('Paywall', { source: 'grant_detail' })}
+              style={styles.follow}
+            />
 
             <Field label="Összeg">
               <Text variant="bodyLarge" style={amount ? styles.value : styles.missing}>
@@ -211,6 +220,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const styles = StyleSheet.create({
+  follow: {
+    marginTop: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

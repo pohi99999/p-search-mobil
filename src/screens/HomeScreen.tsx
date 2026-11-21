@@ -118,6 +118,14 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
         <View style={styles.headerActions}>
+          {/* Round 11-21 (#5): the followed grants with their deadlines. */}
+          <IconButton
+            icon="bookmark-multiple"
+            size={22}
+            onPress={() => navigation.navigate('FollowedGrants')}
+            accessibilityLabel="Saját pályázataim"
+            testID="home-followed-button"
+          />
           <IconButton
             icon="file-document-plus"
             size={22}

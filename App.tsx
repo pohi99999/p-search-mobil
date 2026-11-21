@@ -18,6 +18,7 @@ import { CopilotChatScreen } from './src/screens/CopilotChatScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { DocumentUploadScreen } from './src/screens/DocumentUploadScreen';
 import { GrantDetailScreen } from './src/screens/GrantDetailScreen';
+import { FollowedGrantsScreen } from './src/screens/FollowedGrantsScreen';
 import { BillingProvider } from './src/context/BillingContext';
 import { ProfileProvider } from './src/context/ProfileContext';
 import { WebNotifier } from './src/components/WebNotifier';
@@ -88,6 +89,7 @@ export default function App() {
                 <Stack.Screen name="GrantDetail" component={GrantDetailScreen} options={{ title: SCREEN_TITLES.GrantDetail }} />
                 <Stack.Screen name="ActionPlan" component={ActionPlanScreen} options={{ title: SCREEN_TITLES.ActionPlan }} />
                 <Stack.Screen name="CopilotChat" component={CopilotChatScreen} options={{ title: SCREEN_TITLES.CopilotChat }} />
+                <Stack.Screen name="FollowedGrants" component={FollowedGrantsScreen} options={{ title: SCREEN_TITLES.FollowedGrants }} />
               </>
             ) : (
               <Stack.Screen name="Auth" component={AuthScreen} options={{ title: SCREEN_TITLES.Auth }} />

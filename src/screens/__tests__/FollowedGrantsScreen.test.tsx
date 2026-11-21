@@ -1,0 +1,110 @@
+import React from 'react';
+import renderer, { act } from 'react-test-renderer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { FollowedGrantsScreen, FOLLOWED_EMPTY, CLOSED_AT_SOURCE, followedCountLine } from '../FollowedGrantsScreen';
+import { followGrant, loadFollowed, resetFollowedForTest } from '../../lib/followedGrants';
+import { useBilling } from '../../context/BillingContext';
+import { useProfile } from '../../context/ProfileContext';
+import { supabase } from '../../lib/supabase';
+
+jest.mock('../../context/BillingContext', () => ({ useBilling: jest.fn() }));
+jest.mock('../../context/ProfileContext', () => ({ useProfile: jest.fn() }));
+jest.mock('../../utils/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn() } }));
+jest.mock('../../lib/supabase', () => ({ supabase: { from: jest.fn() } }));
+
+const NOW = new Date(2026, 10, 21, 10, 0);
+const match = (n: number, deadline: Date | null) =>
+  ({
+    id: `m${n}`, business_id: 'b', grant_id: `g${n}`, match_score: 80, match_reasoning: '', status: 'new', created_at: '',
+    grants: { id: `g${n}`, title: `Pályázat ${n}`, deadline: deadline ? deadline.toISOString() : null },
+  }) as any;
+
+let mockRows: unknown[] = [];
+const grantsRead = () => ({ select: () => ({ in: (_c: string, ids: string[]) => Promise.resolve({ data: (mockRows as { id: string }[]).filter((r) => ids.includes(r.id)), error: null }) }) });
+
+const navigation = { navigate: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as any;
+
+const render = async () => {
+  let tree: renderer.ReactTestRenderer;
+  await act(async () => {
+    tree = renderer.create(
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <FollowedGrantsScreen navigation={navigation} route={{ key: 'f', name: 'FollowedGrants' } as any} />
+      </SafeAreaProvider>,
+    );
+  });
+  await act(async () => {});
+  return tree!;
+};
+const strings = (tree: renderer.ReactTestRenderer) =>
+  tree.root.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string').map((n) => n.props.children as string);
+const byTestId = (tree: renderer.ReactTestRenderer, id: string) =>
+  tree.root.findAll((n) => n.props.testID === id && typeof n.props.onPress === 'function');
+
+describe('FollowedGrantsScreen (round 11-21 #5)', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    jest.setSystemTime(NOW);
+    jest.clearAllMocks();
+    resetFollowedForTest();
+    await AsyncStorage.clear();
+    mockRows = [];
+    (supabase.from as jest.Mock).mockImplementation(grantsRead);
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp', user_id: 'u1' } });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('says how to follow when the list is empty', async () => {
+    const tree = await render();
+    expect(strings(tree)).toContain(FOLLOWED_EMPTY);
+  });
+
+  it('lists the nearest deadline first, with the countdown and the free counter', async () => {
+    await followGrant('u1', match(1, new Date(2026, 11, 20)), false);
+    await followGrant('u1', match(2, new Date(2026, 10, 25)), false);
+    await followGrant('u1', match(3, null), false);
+    const tree = await render();
+    const deadlines = tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'followed-deadline').map((n) => n.props.children);
+    expect(deadlines).toEqual([
+      `Beadás: ${new Date(2026, 10, 25).toLocaleDateString('hu-HU')} (még 4 nap)`,
+      `Beadás: ${new Date(2026, 11, 20).toLocaleDateString('hu-HU')} (még 29 nap)`,
+      'Beadási határidő: nincs megadva',
+    ]);
+    expect(strings(tree)).toContain(followedCountLine(3, false));
+    expect(followedCountLine(3, false)).toBe('3 / 3 követett pályázat (ingyenes fiók)');
+    expect(followedCountLine(5, true)).toBe('5 követett pályázat');
+  });
+
+  it("today's grant row wins: a moved deadline and a closing at the source show", async () => {
+    await followGrant('u1', match(1, new Date(2026, 11, 20)), false);
+    await followGrant('u1', match(2, new Date(2026, 11, 22)), false);
+    mockRows = [
+      { id: 'g1', title: 'Pályázat 1', deadline: new Date(2026, 10, 30).toISOString(), source_closed_at: null },
+      { id: 'g2', title: 'Pályázat 2', deadline: new Date(2026, 11, 22).toISOString(), source_closed_at: '2026-11-20T00:00:00Z' },
+    ];
+    const tree = await render();
+    const deadlines = tree.root.findAll((n) => typeof n.type === 'string' && n.props.testID === 'followed-deadline').map((n) => n.props.children);
+    expect(deadlines).toEqual([`Beadás: ${new Date(2026, 10, 30).toLocaleDateString('hu-HU')} (még 9 nap)`, CLOSED_AT_SOURCE]);
+  });
+
+  it('a tap opens the detail view with the match; the remove button unfollows', async () => {
+    await followGrant('u1', match(1, new Date(2026, 11, 20)), false);
+    const tree = await render();
+    await act(async () => { byTestId(tree, 'followed-open')[0].props.onPress(); });
+    expect(navigation.navigate).toHaveBeenCalledWith('GrantDetail', { match: expect.objectContaining({ id: 'm1', grant_id: 'g1' }) });
+    const remove = byTestId(tree, 'followed-remove')[0];
+    expect(remove.props.accessibilityLabel).toBe('Követés leállítása: Pályázat 1');
+    await act(async () => { remove.props.onPress(); });
+    await act(async () => {});
+    expect(await loadFollowed('u1')).toEqual([]);
+    expect(strings(tree)).toContain(FOLLOWED_EMPTY);
+  });
+
+  it('the screen is a level-1 heading "Saját pályázataim"', async () => {
+    const tree = await render();
+    const h = tree.root.findAll((n) => typeof n.type === 'string' && n.props.role === 'heading');
+    expect(h.map((n) => [n.props['aria-level'], n.props.children])).toEqual([[1, 'Saját pályázataim']]);
+  });
+});
