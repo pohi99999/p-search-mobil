@@ -70,4 +70,15 @@ describe('PaywallFeatures', () => {
       expect(lines === undefined ? 2 : lines === 0 ? Infinity : lines).toBeGreaterThanOrEqual(6);
     }
   });
+
+  // vc23 follow-up: with the icon on the left, the longest title needs 3 lines on a 320 px screen (measured on web).
+  it('lets a feature title run to 3 lines', () => {
+    let component: renderer.ReactTestRenderer;
+    act(() => {
+      component = renderer.create(<PaywallFeatures />);
+    });
+    const items = component!.root.findAll((n) => n.props['data-testID'] === 'list-item' && typeof n.props.title === 'string');
+    expect(items.length).toBeGreaterThan(0);
+    for (const n of items) expect(n.props.titleNumberOfLines).toBeGreaterThanOrEqual(3);
+  });
 });

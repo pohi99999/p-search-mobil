@@ -46,7 +46,8 @@ export const PaywallFeatures = () => {
             title={f.title}
             left={(props) => <List.Icon {...props} icon={f.icon} color={ICON_COLOR} />}
             titleStyle={styles.featureTitle}
-            titleNumberOfLines={2}
+            // 3, not 2: with the icon, "Akcióterv és pályázati dokumentum" needed 3 lines at 320 px and was cut (web).
+            titleNumberOfLines={3}
             description={f.description}
             descriptionStyle={styles.featureDesc}
             descriptionNumberOfLines={8}

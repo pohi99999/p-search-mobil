@@ -29,7 +29,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
       }
       left={[Function]}
       title="Akcióterv és pályázati dokumentum"
-      titleNumberOfLines={2}
+      titleNumberOfLines={3}
       titleStyle={
         {
           "color": "#1565C0",
@@ -51,7 +51,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
       }
       left={[Function]}
       title="Napi automatikus figyelés"
-      titleNumberOfLines={2}
+      titleNumberOfLines={3}
       titleStyle={
         {
           "color": "#1565C0",
@@ -73,7 +73,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
       }
       left={[Function]}
       title="Korlátlan keresés és Copilot"
-      titleNumberOfLines={2}
+      titleNumberOfLines={3}
       titleStyle={
         {
           "color": "#1565C0",
@@ -95,7 +95,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
       }
       left={[Function]}
       title="Hirdetésmentesség"
-      titleNumberOfLines={2}
+      titleNumberOfLines={3}
       titleStyle={
         {
           "color": "#1565C0",
