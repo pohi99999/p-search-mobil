@@ -450,6 +450,77 @@ describe('HomeScreen', () => {
     expect(list.props.ListHeaderComponent.props.lastSearch).toEqual(lastSearch);
   });
 
+  // Ellenőr #268 (K3): exactly the first seven cards come in with the entrance; the eighth is plain.
+  it('the first seven cards are wrapped in the entrance, the rest are not', () => {
+    const { AppearIn } = require('../../components/AppearIn');
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false, profile: { company_name: 'Test' }, matches: [{ id: '1', grants: {} }], isPro: false,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+    });
+    const list = renderScreen().root.findByType('FlatList');
+    const item = { id: 'x', grants: {} };
+    expect(list.props.renderItem({ item, index: 6 }).type).toBe(AppearIn);
+    expect(list.props.renderItem({ item, index: 7 }).type).not.toBe(AppearIn);
+  });
+
+  // Ellenőr #268 (K11): with no list the empty state gets the search result to name the count.
+  it('the empty state gets the last search result', () => {
+    const lastSearch = { matchesFound: 0, candidatesConsidered: 54 };
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false, profile: { company_name: 'Test' }, matches: [], isPro: false, hasSearched: true, lastSearch,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+    });
+    const empty = renderScreen().root.findAll((n: any) => n.type === 'HomeEmptyState')[0];
+    expect(empty.props.lastSearch).toEqual(lastSearch);
+  });
+
+  // Ellenőr #268: the reload after a search shows the spinner for a moment. The web live region must stay the same
+  // node across it, or the browser treats the result as text that was there from the start and says nothing.
+  it('the search announcer is not re-created when the screen passes through loading', () => {
+    const summary = require('../../components/SearchSummary');
+    let mounts = 0;
+    const Counting = () => {
+      React.useEffect(() => { mounts += 1; }, []);
+      return null;
+    };
+    const spy = jest.spyOn(summary, 'SearchAnnouncer').mockImplementation(Counting as any);
+    const base = { profile: { company_name: 'Test' }, matches: [{ id: '1', grants: {} }], isPro: false,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(), lastSearch: null };
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false });
+    const tree = () => (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <HomeScreen navigation={mockNavigation} />
+      </SafeAreaProvider>
+    );
+    let root: any;
+    act(() => { root = renderer.create(tree()); });
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: true });
+    act(() => { root.update(tree()); });
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false, lastSearch: { matchesFound: 1, candidatesConsidered: 9 } });
+    act(() => { root.update(tree()); });
+    expect(mounts).toBe(1);
+    spy.mockRestore();
+  });
+
+  // Ellenőr #268 (K6): a finished search scrolls the list back to the top, where its line is.
+  it('a new search result scrolls the list to the top', () => {
+    const scrollToOffset = jest.fn();
+    const base = { loading: false, profile: { company_name: 'Test' }, matches: [{ id: '1', grants: {} }], isPro: false,
+      fetchData: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn() };
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, lastSearch: null });
+    let root: any;
+    const tree = () => (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <HomeScreen navigation={mockNavigation} />
+      </SafeAreaProvider>
+    );
+    act(() => { root = renderer.create(tree(), { createNodeMock: () => ({ scrollToOffset }) }); });
+    expect(scrollToOffset).not.toHaveBeenCalled();
+    (useHomeData as jest.Mock).mockReturnValue({ ...base, lastSearch: { matchesFound: 2, candidatesConsidered: 30 } });
+    act(() => { root.update(tree()); });
+    expect(scrollToOffset).toHaveBeenCalledWith({ offset: 0, animated: true });
+  });
+
   it('calls handleNewSearch on FAB press', () => {
     const mockHandleNewSearch = jest.fn();
     (useHomeData as jest.Mock).mockReturnValue({

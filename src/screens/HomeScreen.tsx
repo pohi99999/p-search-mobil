@@ -6,6 +6,7 @@ import { AdBanner } from '../components/AdBanner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TesterProgress } from '../components/TesterProgress';
 import { HomeListHeader } from '../components/HomeListHeader';
+import { SearchAnnouncer } from '../components/SearchSummary';
 import { AppearIn, APPEAR_MAX_STEPS } from '../components/AppearIn';
 import { showTesterProgress } from '../config/env';
 
@@ -66,12 +67,20 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // button goes: it would start an AI search, or send a user whose profile was not read to the Onboarding.
   const failedKind = matches.length === 0 ? loadError : null;
 
+  // vc23 (Lumen L3): the web screen reader hears the search result through this live region. It is the first child of
+  // the same fragment in both returns, so React keeps the one DOM node: the reload after a search shows the spinner
+  // branch for a moment, and a region re-created with its text already in it is not announced (measured on web).
+  const announcer = <SearchAnnouncer result={lastSearch} />;
+
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={MD3Colors.primary50} />
-        <Text style={styles.loadingText}>Adataid betöltése...</Text>
-      </View>
+      <>
+        {announcer}
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={MD3Colors.primary50} />
+          <Text style={styles.loadingText}>Adataid betöltése...</Text>
+        </View>
+      </>
     );
   }
 
@@ -122,6 +131,8 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   );
 
   return (
+    <>
+    {announcer}
     <View style={styles.container}>
       <View style={styles.header}>
         <Text role="heading" aria-level={1} variant="titleMedium" style={styles.headerTitle}>
@@ -205,6 +216,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       
       <AdBanner onHeightChange={setBannerHeight} />
     </View>
+    </>
   );
 }
 

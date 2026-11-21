@@ -1,11 +1,12 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { AccessibilityInfo, Animated } from 'react-native';
+import { AccessibilityInfo, Animated, Platform } from 'react-native';
 import { HomeListHeader } from '../HomeListHeader';
+import { SearchAnnouncer } from '../SearchSummary';
 import { HomeEmptyState } from '../HomeEmptyState';
 import { AppearIn, APPEAR_MAX_STEPS, APPEAR_STEP_MS } from '../AppearIn';
 
-jest.mock('../TesterProgress', () => ({ TesterProgress: () => null }));
+jest.mock('../TesterProgress', () => ({ TesterProgress: 'TesterProgress' }));
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -24,6 +25,24 @@ describe('search summary on the home screen', () => {
     });
     expect(has(root, 'search-summary')).toBe(true);
     expect(textOf(root)).toContain('60 nyitott kiírást néztünk át, 6 illik a cégedhez.');
+  });
+
+  // Ellenőr #268: with a list on screen, a search that found nothing gave no answer at all.
+  it('a search that found nothing gets the line too, with the none text', async () => {
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => {
+      root = renderer.create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 0, candidatesConsidered: 54 }} />);
+    });
+    expect(has(root, 'search-summary')).toBe(true);
+    expect(textOf(root)).toContain('54 nyitott kiírást néztünk át, most egyik sem illik a cégedhez.');
+  });
+
+  it('the tester card is in the header when asked for, and only then', async () => {
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<HomeListHeader showTester lastSearch={null} />); });
+    expect(root.root.findAll((n) => (n.type as unknown) === 'TesterProgress')).toHaveLength(1);
+    await act(async () => { root.update(<HomeListHeader showTester={false} lastSearch={null} />); });
+    expect(root.root.findAll((n) => (n.type as unknown) === 'TesterProgress')).toHaveLength(0);
   });
 
   it('no line before any search in this session', async () => {
@@ -62,11 +81,50 @@ describe('search summary on the home screen', () => {
       root.update(<HomeEmptyState kind="none" onSearch={jest.fn()} onEditProfile={jest.fn()} lastSearch={null} />);
     });
     expect(has(root, 'empty-none-looked')).toBe(false);
+    // no "0 nyitott kiírást" line when the server weighed none
+    await act(async () => {
+      root.update(<HomeEmptyState kind="none" onSearch={jest.fn()} onEditProfile={jest.fn()} lastSearch={{ matchesFound: 0, candidatesConsidered: 0 }} />);
+    });
+    expect(has(root, 'empty-none-looked')).toBe(false);
     jest.useRealTimers();
   });
 });
 
+// Ellenőr #268: announceForAccessibility says nothing in a browser; a live region that is there from the start does.
+describe('SearchAnnouncer', () => {
+  const setOS = (os: string) => Object.defineProperty(Platform, 'OS', { configurable: true, get: () => os });
+  const realOS = Platform.OS;
+  afterEach(() => setOS(realOS));
+
+  it('on web: a polite live region, empty before a search, the summary after it', async () => {
+    setOS('web');
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<SearchAnnouncer result={null} />); });
+    const region = () => root.root.findAll((n) => n.props.testID === 'search-announcer')[0];
+    expect(region().props['aria-live']).toBe('polite');
+    expect(textOf(root)).not.toContain('néztünk át');
+    await act(async () => { root.update(<SearchAnnouncer result={{ matchesFound: 6, candidatesConsidered: 60 }} />); });
+    expect(region().props['aria-live']).toBe('polite');
+    expect(textOf(root)).toContain('60 nyitott kiírást néztünk át, 6 illik a cégedhez.');
+  });
+
+  it('on a phone it renders nothing (announceForAccessibility speaks there)', async () => {
+    setOS('android');
+    let root!: renderer.ReactTestRenderer;
+    await act(async () => { root = renderer.create(<SearchAnnouncer result={{ matchesFound: 6, candidatesConsidered: 60 }} />); });
+    expect(root.toJSON()).toBeNull();
+  });
+});
+
 describe('AppearIn', () => {
+  it('a failed reduce-motion query still shows the card (the fade runs)', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockRejectedValue(new Error('no'));
+    const timing = jest.spyOn(Animated, 'timing');
+    await act(async () => { renderer.create(<AppearIn index={0}><></></AppearIn>); });
+    await act(async () => { await Promise.resolve(); });
+    expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1 }));
+  });
+
   const opacityOf = (root: renderer.ReactTestRenderer) => {
     const view = root.root.findAll((n) => n.props.testID === 'appear-in')[0];
     const o = view.props.style.opacity as Animated.Value | number;

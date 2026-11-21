@@ -21,7 +21,7 @@ export function HomeListHeader({
   return (
     <View testID="home-list-header">
       {showTester ? <TesterProgress /> : null}
-      {lastSearch && lastSearch.matchesFound > 0 ? <SearchSummary result={lastSearch} /> : null}
+      {lastSearch ? <SearchSummary result={lastSearch} /> : null}
       {children}
     </View>
   );

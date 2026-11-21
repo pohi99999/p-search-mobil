@@ -667,4 +667,22 @@ describe('useHomeData', () => {
     expect(result.current.lastSearch).toEqual({ matchesFound: 6, candidatesConsidered: 60 });
     expect(Alert.alert).not.toHaveBeenCalledWith('AI keresés kész', expect.anything());
   });
+
+  // Ellenőr #268 (K5): on a phone the screen reader hears the same line the screen shows.
+  it('a finished search is announced to the screen reader', async () => {
+    const { AccessibilityInfo } = require('react-native');
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    (useBilling as jest.Mock).mockReturnValue({ isPro: true });
+    setupSupabaseMocks();
+    (supabase.functions.invoke as jest.Mock).mockImplementation((fn: string) =>
+      Promise.resolve(fn === 'match-grants'
+        ? { data: { success: true, matches_found: 0, candidates_considered: 54 }, error: null }
+        : { data: {}, error: null }),
+    );
+    const { result } = renderHook(() => useHomeData(mockNavigation));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => { await result.current.handleNewSearch(); });
+    expect(announce).toHaveBeenCalledWith('54 nyitott kiírást néztünk át, most egyik sem illik a cégedhez.');
+    announce.mockRestore();
+  });
 });
