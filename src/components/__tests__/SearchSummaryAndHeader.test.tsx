@@ -8,7 +8,20 @@ import { AppearIn, APPEAR_MAX_STEPS, APPEAR_STEP_MS } from '../AppearIn';
 
 jest.mock('../TesterProgress', () => ({ TesterProgress: 'TesterProgress' }));
 
+// Every tree is unmounted after its test (the SettingsScreen.round2 "mounted" pattern). An AppearIn left mounted kept
+// its Animated.timing running past the Jest environment's teardown, and the next test file in the same worker failed
+// with "import after the environment has been torn down" (Kenshin, CI run 44896239132: a different file each time).
+const mounted: renderer.ReactTestRenderer[] = [];
+const create = (el: React.ReactElement) => {
+  const r = renderer.create(el);
+  mounted.push(r);
+  return r;
+};
+
 afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach((r) => r.unmount());
+  });
   jest.restoreAllMocks();
 });
 
@@ -21,7 +34,7 @@ describe('search summary on the home screen', () => {
   it('the list header shows the counts after a search that found something', async () => {
     let root!: renderer.ReactTestRenderer;
     await act(async () => {
-      root = renderer.create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 6, candidatesConsidered: 60 }} />);
+      root = create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 6, candidatesConsidered: 60 }} />);
     });
     expect(has(root, 'search-summary')).toBe(true);
     expect(textOf(root)).toContain('60 nyitott kiírást néztünk át, 6 illik a cégedhez.');
@@ -31,7 +44,7 @@ describe('search summary on the home screen', () => {
   it('a search that found nothing gets the line too, with the none text', async () => {
     let root!: renderer.ReactTestRenderer;
     await act(async () => {
-      root = renderer.create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 0, candidatesConsidered: 54 }} />);
+      root = create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 0, candidatesConsidered: 54 }} />);
     });
     expect(has(root, 'search-summary')).toBe(true);
     expect(textOf(root)).toContain('54 nyitott kiírást néztünk át, most egyik sem illik a cégedhez.');
@@ -39,7 +52,7 @@ describe('search summary on the home screen', () => {
 
   it('the tester card is in the header when asked for, and only then', async () => {
     let root!: renderer.ReactTestRenderer;
-    await act(async () => { root = renderer.create(<HomeListHeader showTester lastSearch={null} />); });
+    await act(async () => { root = create(<HomeListHeader showTester lastSearch={null} />); });
     expect(root.root.findAll((n) => (n.type as unknown) === 'TesterProgress')).toHaveLength(1);
     await act(async () => { root.update(<HomeListHeader showTester={false} lastSearch={null} />); });
     expect(root.root.findAll((n) => (n.type as unknown) === 'TesterProgress')).toHaveLength(0);
@@ -48,7 +61,7 @@ describe('search summary on the home screen', () => {
   it('no line before any search in this session', async () => {
     let root!: renderer.ReactTestRenderer;
     await act(async () => {
-      root = renderer.create(<HomeListHeader showTester={false} lastSearch={null} />);
+      root = create(<HomeListHeader showTester={false} lastSearch={null} />);
     });
     expect(has(root, 'search-summary')).toBe(false);
   });
@@ -57,7 +70,7 @@ describe('search summary on the home screen', () => {
     const { Text } = require('react-native');
     let root!: renderer.ReactTestRenderer;
     await act(async () => {
-      root = renderer.create(
+      root = create(
         <HomeListHeader showTester={false} lastSearch={{ matchesFound: 2, candidatesConsidered: 40 }}>
           <Text testID="other-line">Frissítve</Text>
         </HomeListHeader>,
@@ -72,7 +85,7 @@ describe('search summary on the home screen', () => {
     jest.useFakeTimers();
     let root!: renderer.ReactTestRenderer;
     await act(async () => {
-      root = renderer.create(
+      root = create(
         <HomeEmptyState kind="none" onSearch={jest.fn()} onEditProfile={jest.fn()} lastSearch={{ matchesFound: 0, candidatesConsidered: 52 }} />,
       );
     });
@@ -99,7 +112,7 @@ describe('SearchAnnouncer', () => {
   it('on web: a polite live region, empty before a search, the summary after it', async () => {
     setOS('web');
     let root!: renderer.ReactTestRenderer;
-    await act(async () => { root = renderer.create(<SearchAnnouncer result={null} />); });
+    await act(async () => { root = create(<SearchAnnouncer result={null} />); });
     const region = () => root.root.findAll((n) => n.props.testID === 'search-announcer')[0];
     expect(region().props['aria-live']).toBe('polite');
     expect(textOf(root)).not.toContain('néztünk át');
@@ -111,7 +124,7 @@ describe('SearchAnnouncer', () => {
   it('on a phone it renders nothing (announceForAccessibility speaks there)', async () => {
     setOS('android');
     let root!: renderer.ReactTestRenderer;
-    await act(async () => { root = renderer.create(<SearchAnnouncer result={{ matchesFound: 6, candidatesConsidered: 60 }} />); });
+    await act(async () => { root = create(<SearchAnnouncer result={{ matchesFound: 6, candidatesConsidered: 60 }} />); });
     expect(root.toJSON()).toBeNull();
   });
 });
@@ -120,7 +133,7 @@ describe('AppearIn', () => {
   it('a failed reduce-motion query still shows the card (the fade runs)', async () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockRejectedValue(new Error('no'));
     const timing = jest.spyOn(Animated, 'timing');
-    await act(async () => { renderer.create(<AppearIn index={0}><></></AppearIn>); });
+    await act(async () => { create(<AppearIn index={0}><></></AppearIn>); });
     await act(async () => { await Promise.resolve(); });
     expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1 }));
   });
@@ -134,7 +147,7 @@ describe('AppearIn', () => {
   it('with reduce motion on, the card is visible at once', async () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
     let root!: renderer.ReactTestRenderer;
-    await act(async () => { root = renderer.create(<AppearIn index={3}><></></AppearIn>); });
+    await act(async () => { root = create(<AppearIn index={3}><></></AppearIn>); });
     await act(async () => { await Promise.resolve(); });
     expect(opacityOf(root)).toBe(1);
   });
@@ -143,7 +156,7 @@ describe('AppearIn', () => {
     jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
     const timing = jest.spyOn(Animated, 'timing');
     let root!: renderer.ReactTestRenderer;
-    await act(async () => { root = renderer.create(<AppearIn index={2}><></></AppearIn>); });
+    await act(async () => { root = create(<AppearIn index={2}><></></AppearIn>); });
     await act(async () => { await Promise.resolve(); });
     expect(opacityOf(root)).toBe(0);
     expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1, delay: 2 * APPEAR_STEP_MS }));
