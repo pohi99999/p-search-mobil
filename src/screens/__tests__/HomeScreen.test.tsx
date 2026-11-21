@@ -278,7 +278,9 @@ describe('HomeScreen', () => {
 
     const root = renderScreen();
     const list = root.root.findByType('FlatList');
-    const card = list.props.renderItem({ item: match, index: 0 });
+    // vc23 (Lumen L3): the first cards come wrapped in their entrance animation.
+    const rendered = list.props.renderItem({ item: match, index: 0 });
+    const card = rendered.props.onPress ? rendered : rendered.props.children;
     act(() => { card.props.onPress(); });
     expect(mockNavigation.navigate).toHaveBeenCalledWith('GrantDetail', { match, rank: 1 });
     expect(mockNavigation.navigate).not.toHaveBeenCalledWith('ActionPlan', expect.anything());
@@ -412,8 +414,29 @@ describe('HomeScreen', () => {
     });
     const root = renderScreen();
     const list = root.root.findByType('FlatList');
-    expect(list.props.ListHeaderComponent.type).toBe('TesterProgress');
+    // vc23: the header is HomeListHeader, which renders the tester card first (and the search summary below it).
+    const { HomeListHeader } = require('../../components/HomeListHeader');
+    expect(list.props.ListHeaderComponent.type).toBe(HomeListHeader);
+    expect(list.props.ListHeaderComponent.props.showTester).toBe(true);
     expect(root.root.findAll((n) => n.type === 'TesterProgress' && n.parent?.type !== 'FlatList')).toHaveLength(0);
+  });
+
+  // vc23 (Lumen L3): the finished search's counts go to the list header, not to a modal.
+  it('the list header gets the last search result', () => {
+    const lastSearch = { matchesFound: 6, candidatesConsidered: 60 };
+    (useHomeData as jest.Mock).mockReturnValue({
+      loading: false,
+      profile: { company_name: 'Test' },
+      matches: [{ id: '1', grants: {} }],
+      isPro: false,
+      lastSearch,
+      fetchData: jest.fn(),
+      signOut: jest.fn(),
+      handleNewSearch: jest.fn(),
+    });
+    const root = renderScreen();
+    const list = root.root.findByType('FlatList');
+    expect(list.props.ListHeaderComponent.props.lastSearch).toEqual(lastSearch);
   });
 
   it('calls handleNewSearch on FAB press', () => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, Button, Surface } from 'react-native-paper';
+import type { SearchRunResult } from '../lib/searchSummary';
 
 // Card [D] (review 2026-10-25): the empty home always showed a spinner and "Keresés folyamatban...", also when
 // nothing ran and after a search that found nothing. Three states now; texts: Stratéga (szovegek-stratega.md).
@@ -12,9 +13,11 @@ interface HomeEmptyStateProps {
   profileIncomplete?: boolean;
   onSearch: () => void;
   onEditProfile: () => void;
+  /** vc23 (Lumen L3): the search just run in this session; its count replaces the "AI keresés kész" modal. */
+  lastSearch?: SearchRunResult | null;
 }
 
-export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEditProfile }: HomeEmptyStateProps) {
+export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEditProfile, lastSearch = null }: HomeEmptyStateProps) {
   if (kind === 'searching') {
     return (
       <Surface style={styles.surface} elevation={2} testID="empty-searching">
@@ -62,6 +65,11 @@ export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEd
       <Text variant="titleLarge" style={styles.title}>
         Most nincs a cégedhez illő nyitott pályázat
       </Text>
+      {lastSearch && lastSearch.candidatesConsidered > 0 ? (
+        <Text variant="bodyMedium" style={styles.looked} testID="empty-none-looked">
+          {`${lastSearch.candidatesConsidered} nyitott kiírást néztünk át.`}
+        </Text>
+      ) : null}
       <Text variant="bodyMedium" style={styles.body}>
         Lefuttattuk a keresést, de a jelenlegi kiírások közül egyik sem illik a cégprofilodhoz. Az automatikus keresés a
         Beállításokban megadott gyakorisággal újra lefut, és ha új, hozzád illő kiírás jön, itt látod.
@@ -89,6 +97,12 @@ const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
     marginBottom: 12,
+  },
+  looked: {
+    textAlign: 'center',
+    marginBottom: 8,
+    color: '#1B5E20',
+    fontWeight: '600',
   },
   body: {
     textAlign: 'center',

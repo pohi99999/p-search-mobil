@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AccessibilityInfo, AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { BusinessProfile, UserProfile, GrantMatch, Grant } from '../types/database';
 import { useBilling } from '../context/BillingContext';
@@ -11,13 +11,11 @@ import { clearStoredChatHistory } from './useCopilotChat';
 import { hasSearchedBefore, isOpenGrant, sortFreshFirst, STALE_MATCH_STATUS, withoutExpired } from '../lib/matchStatus';
 import { errorCode, track } from '../services/events';
 import { notify } from '../lib/notify';
+import { searchSummaryText, type SearchRunResult } from '../lib/searchSummary';
 import type { HomeLoadErrorKind } from '../components/HomeLoadError';
 
 export type MatchWithGrant = GrantMatch & { grants: Grant };
-export interface SearchRunResult {
-  matchesFound: number;
-  candidatesConsidered: number;
-}
+export type { SearchRunResult } from '../lib/searchSummary';
 
 // [G2] events: once per app session, and app_open again after more than 30 minutes in the background.
 const APP_OPEN_AFTER_BACKGROUND_MS = 30 * 60 * 1000;
@@ -219,6 +217,9 @@ function useGrantSearch({
   onSearchSuccess
 }: UseGrantSearchProps) {
   const [searching, setSearching] = useState(false);
+  // vc23 (Lumen L3): the result of the last search run in this session, shown as a line on the list instead of a
+  // modal ("AI keresés kész"): how many open grants the AI weighed and how many fit.
+  const [lastSearch, setLastSearch] = useState<SearchRunResult | null>(null);
 
   const executeSearch = async (
     businessId: string,
@@ -234,12 +235,9 @@ function useGrantSearch({
       void triggerSearchWebhook(action, businessId);
       await onSearchSuccess();
 
-      notify(
-        'AI keresés kész',
-        matchesFound > 0
-          ? `${matchesFound} illeszkedő pályázatot találtunk a cégedhez!`
-          : 'Most nem találtunk új, a cégedhez illő pályázatot. Ha új kiírás jelenik meg, a következő automatikus keresés után itt látod.',
-      );
+      setLastSearch({ matchesFound, candidatesConsidered });
+      // The modal used to be the screen reader's cue that the search ended; the summary line is announced instead.
+      AccessibilityInfo.announceForAccessibility?.(searchSummaryText({ matchesFound, candidatesConsidered }));
     } catch (err) {
       const paywallErr = err as { paywall?: boolean; code?: string; serverMessage?: string };
       const aiFailure = err as { aiUnavailable?: boolean; code?: string; searchRefunded?: boolean };
@@ -316,7 +314,7 @@ function useGrantSearch({
     await executeSearch(profile.id, isPro ? 'new_search_pro' : 'new_search_free', trigger === 'after_onboarding' ? 'after_onboarding' : 'manual');
   };
 
-  return { searching, handleNewSearch };
+  return { searching, lastSearch, handleNewSearch };
 }
 
 export function useHomeData(navigation: RootStackNavigationProp) {
@@ -333,7 +331,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     fetchData
   } = useHomeDataFetch(navigation);
 
-  const { searching, handleNewSearch } = useGrantSearch({
+  const { searching, lastSearch, handleNewSearch } = useGrantSearch({
     navigation,
     profile,
     userProfile,
@@ -403,6 +401,7 @@ export function useHomeData(navigation: RootStackNavigationProp) {
     loading,
     loadError,
     searching,
+    lastSearch,
     hasSearched,
     profile,
     matches,
