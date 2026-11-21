@@ -187,3 +187,24 @@ describe('isOpenableUrl', () => {
     expect(isOpenableUrl(null)).toBe(false);
   });
 });
+
+// Round 11-21 (Ellenőr after #263, D3, D4): the view's heading structure of #264 had no test.
+describe('GrantDetailScreen headings (round 11-21)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp-1' } });
+    (useActionPlan as jest.Mock).mockReturnValue({ plans: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('one level-1 heading for the view, the grant title as level 2', async () => {
+    const { tree } = await renderScreen(makeMatch());
+    const headings = tree.root
+      .findAll((n) => typeof n.type === 'string' && n.props.role === 'heading')
+      .map((n) => [n.props['aria-level'], [].concat(n.props.children).join('')]);
+    expect(headings.filter(([level]) => level === 1)).toHaveLength(1);
+    expect(headings).toContainEqual([2, 'KKV Digitalizációs Támogatás']);
+  });
+});
