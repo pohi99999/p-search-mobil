@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,14 @@ import type { GrantDetailScreenProps } from '../types/navigation';
 import { notify } from '../lib/notify';
 
 // Card [B] (review 2026-10-25): "Részletek" opened the action plan, so the grant itself (deadline, official
-// link, eligibility) was never on screen. Free view; the Pro offer sits at the bottom. Texts: Stratéga.
+// link, eligibility) was never on screen. Free view. Texts: Stratéga.
+// vc23 (Lumen L6): the view was 1680 px on a 390x844 phone (web, measured 11-21) with the Pro offer at its very end.
+// Order now: the summary (deadline, amount, why it fits), the offer while the user is deciding, then the long part
+// (eligibility, the description folded, the official link).
+
+/** A description longer than this is folded to DESCRIPTION_FOLDED_LINES lines until "Teljes leírás" is pressed. */
+export const DESCRIPTION_FOLD_CHARS = 280;
+export const DESCRIPTION_FOLDED_LINES = 6;
 
 /** Only web links are opened: source_url comes from scraped data, not from us. */
 export function isOpenableUrl(url: string | null | undefined): url is string {
@@ -40,6 +47,9 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
   const stale = match.status === STALE_MATCH_STATUS;
   const rawUrl = grant?.source_url;
   const sourceUrl = isOpenableUrl(rawUrl) ? rawUrl.trim() : null;
+  const description = grant?.description?.trim() || '';
+  const foldable = description.length > DESCRIPTION_FOLD_CHARS;
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
   // [G2]: one match_open per opening of the view (rank 0 = opened from somewhere other than the home list).
   useEffect(() => {
@@ -125,33 +135,6 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
               style={styles.feedback}
             />
 
-            <Field label="Kinek szól">
-              <Text variant="bodyMedium" style={grant?.eligibility_criteria ? styles.body : styles.missing}>
-                {grant?.eligibility_criteria || 'A jogosultsági feltételeket a hivatalos kiírás tartalmazza.'}
-              </Text>
-            </Field>
-
-            {grant?.description ? (
-              <Field label="Leírás">
-                <Text variant="bodyMedium" style={styles.body}>{grant.description}</Text>
-              </Field>
-            ) : null}
-
-            {sourceUrl ? (
-              <Button
-                mode="outlined"
-                icon="open-in-new"
-                onPress={openSource}
-                style={styles.sourceButton}
-                accessibilityLabel="A hivatalos kiírás megnyitása a böngészőben"
-                testID="grant-detail-source"
-              >
-                Hivatalos kiírás megnyitása
-              </Button>
-            ) : null}
-            <Text variant="bodySmall" style={styles.disclaimer}>
-              A P-Search összefoglalja a kiírás adatait, de a beadás előtt mindig a hivatalos kiírás a mérvadó.
-            </Text>
           </Card.Content>
         </Card>
 
@@ -203,6 +186,58 @@ export function GrantDetailScreen({ route, navigation }: GrantDetailScreenProps)
               {/* The longer label was cut at 360 px; the full sentence stays in the accessibility label. */}
               Kérdezz a Copilottól
             </Button>
+          </Card.Content>
+        </Card>
+        <Card style={styles.card} mode="elevated" testID="grant-detail-more">
+          <Card.Content>
+            <Field label="Kinek szól">
+              <Text variant="bodyMedium" style={grant?.eligibility_criteria ? styles.body : styles.missing}>
+                {grant?.eligibility_criteria || 'A jogosultsági feltételeket a hivatalos kiírás tartalmazza.'}
+              </Text>
+            </Field>
+
+            {description ? (
+              <Field label="Leírás">
+                <Text
+                  variant="bodyMedium"
+                  style={styles.body}
+                  numberOfLines={foldable && !descriptionOpen ? DESCRIPTION_FOLDED_LINES : undefined}
+                  testID="grant-detail-description"
+                >
+                  {description}
+                </Text>
+                {foldable ? (
+                  <Button
+                    mode="text"
+                    compact
+                    icon={descriptionOpen ? 'chevron-up' : 'chevron-down'}
+                    contentStyle={styles.foldContent}
+                    style={styles.foldButton}
+                    onPress={() => setDescriptionOpen(!descriptionOpen)}
+                    accessibilityState={{ expanded: descriptionOpen }}
+                    testID="grant-detail-description-toggle"
+                  >
+                    {descriptionOpen ? 'Kevesebb' : 'Teljes leírás'}
+                  </Button>
+                ) : null}
+              </Field>
+            ) : null}
+
+            {sourceUrl ? (
+              <Button
+                mode="outlined"
+                icon="open-in-new"
+                onPress={openSource}
+                style={styles.sourceButton}
+                accessibilityLabel="A hivatalos kiírás megnyitása a böngészőben"
+                testID="grant-detail-source"
+              >
+                Hivatalos kiírás megnyitása
+              </Button>
+            ) : null}
+            <Text variant="bodySmall" style={styles.disclaimer}>
+              A P-Search összefoglalja a kiírás adatait, de a beadás előtt mindig a hivatalos kiírás a mérvadó.
+            </Text>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -263,6 +298,15 @@ const styles = StyleSheet.create({
   },
   field: {
     marginTop: 16,
+  },
+  foldButton: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    marginLeft: -8,
+  },
+  foldContent: {
+    flexDirection: 'row-reverse',
+    minHeight: 44,
   },
   feedback: {
     marginTop: 12,
