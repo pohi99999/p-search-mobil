@@ -87,4 +87,35 @@ describe('followedGrants (round 11-21 #5)', () => {
     ];
     expect(sortByDeadline(list, now).map((x) => x.grantId)).toEqual(['g4', 'g5', 'g2', 'g1', 'g3', 'g6']);
   });
+
+  // Ellenőr #274 J1: closed at the source goes with the expired ones, last, whatever its deadline.
+  it('a grant closed at the source sorts with the expired ones', () => {
+    const now = new Date(2026, 10, 21, 15, 0);
+    const f = (n: number, deadline: string | null, closed: string | null = null): FollowedGrant => ({
+      grantId: `g${n}`,
+      followedAt: '',
+      match: { ...match(n, deadline), grants: { ...match(n, deadline).grants, source_closed_at: closed } },
+    });
+    const list = [
+      f(1, new Date(2026, 10, 23).toISOString(), '2026-11-20T00:00:00Z'),
+      f(2, new Date(2026, 10, 25).toISOString()),
+      f(3, null),
+      f(4, new Date(2026, 9, 1).toISOString()),
+    ];
+    expect(sortByDeadline(list, now).map((x) => x.grantId)).toEqual(['g2', 'g3', 'g1', 'g4']);
+  });
+
+  // Ellenőr #274 L1: a failed write changes nothing, on screen or in the limit count.
+  it('a failed device write keeps the list as it was and throws', async () => {
+    await followGrant('u1', match(1), false);
+    const listener = jest.fn();
+    subscribeFollowed(listener);
+    jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('disk full'));
+    await expect(followGrant('u1', match(2), false)).rejects.toThrow('disk full');
+    expect((await loadFollowed('u1')).map((x) => x.grantId)).toEqual(['g1']);
+    expect(listener).not.toHaveBeenCalled();
+    jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('disk full'));
+    await expect(unfollowGrant('u1', 'g1')).rejects.toThrow('disk full');
+    expect((await loadFollowed('u1')).map((x) => x.grantId)).toEqual(['g1']);
+  });
 });

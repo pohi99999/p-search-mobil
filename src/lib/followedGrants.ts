@@ -63,10 +63,12 @@ export function peekFollowed(userId: string): FollowedGrant[] | undefined {
   return cache.get(userId);
 }
 
+/** Writes the device first; only a stored list becomes the session's list (Ellenőr #274 L1: a failed write left the
+ *  follow on screen and in the limit count, and the next start forgot it). A failed write throws, nothing changes. */
 async function save(userId: string, list: FollowedGrant[]): Promise<void> {
+  await AsyncStorage.setItem(followedKey(userId), JSON.stringify(list));
   cache.set(userId, list);
   emit();
-  await AsyncStorage.setItem(followedKey(userId), JSON.stringify(list));
 }
 
 export type FollowResult = 'followed' | 'already' | 'limit';
@@ -98,6 +100,9 @@ export function sortByDeadline(list: FollowedGrant[], now: Date = new Date()): F
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const rank = (f: FollowedGrant): [number, number] => {
     const d = f.match.grants?.deadline ? new Date(f.match.grants.deadline).getTime() : NaN;
+    // Ellenőr #274 J1: a grant closed at the source can no longer be submitted; it goes with the expired ones, last
+    // (the home list treats it the same way).
+    if ((f.match.grants as { source_closed_at?: string | null } | undefined)?.source_closed_at) return [2, Number.isNaN(d) ? 0 : -d];
     if (Number.isNaN(d)) return [1, 0];
     const dayStart = new Date(new Date(d).getFullYear(), new Date(d).getMonth(), new Date(d).getDate()).getTime();
     return dayStart < startOfToday ? [2, -d] : [0, d];
