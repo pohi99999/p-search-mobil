@@ -18,6 +18,9 @@ jest.mock('../../lib/supabase', () => ({
 }));
 
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '8' }));
+// Round 11-21: the daily scan is Pro; Pro by default here, the free account set per test.
+const mockBilling = { isPro: true };
+jest.mock('../../context/BillingContext', () => ({ useBilling: () => mockBilling }));
 
 jest.mock('../../utils/logger', () => ({ logger: { error: jest.fn() } }));
 
@@ -135,5 +138,64 @@ describe('SettingsScreen sign-out', () => {
     await act(async () => { byTestID(c, 'logout-open')[0].props.onPress(); });
     await act(async () => { await byTestID(c, 'logout-confirm')[0].props.onPress(); });
     expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Round 11-21 (Péter GO 17591): the daily scan is Pro. A free account sees the daily row as a Pro offer.
+describe('SettingsScreen daily scan for a free account', () => {
+  const { DAILY_PRO_LABEL, DAILY_PRO_DESCRIPTION } = require('../SettingsScreen');
+  const rows = (c: renderer.ReactTestRenderer) => ['daily', 'weekly', 'manual'].map((v) => byTestID(c, `frequency-${v}`)[0]);
+  const withStored = (search_frequency: string) => {
+    const updateEq = jest.fn().mockResolvedValue({ data: null, error: null });
+    const update = jest.fn().mockReturnValue({ eq: updateEq });
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { search_frequency, last_scan_at: null, next_scan_at: null }, error: null }),
+      update,
+    });
+    return update;
+  };
+  const save = async (c: renderer.ReactTestRenderer) => {
+    const button = c.root.findAll((n) => typeof n.type !== 'string' && n.props.children === 'Mentés' && typeof n.props.onPress === 'function')[0];
+    await act(async () => { await button.props.onPress(); });
+  };
+
+  beforeEach(() => { mockBilling.isPro = false; });
+  afterEach(() => { mockBilling.isPro = true; });
+
+  it('the daily row names the Pro, and a tap opens the paywall instead of selecting it', async () => {
+    withStored('weekly');
+    const c = await render();
+    const [daily] = rows(c);
+    expect(daily.props.title).toBe(DAILY_PRO_LABEL);
+    expect(daily.props.description).toBe(DAILY_PRO_DESCRIPTION);
+    expect(daily.props.accessibilityLabel).toBe(`${DAILY_PRO_LABEL} ${DAILY_PRO_DESCRIPTION}`);
+    await act(async () => { daily.props.onPress(); });
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall');
+    expect(rows(c).map((r) => r.props.accessibilityState.checked)).toEqual([false, true, false]);
+  });
+
+  it('a free account with "daily" stored sees and saves weekly, as the server scans it', async () => {
+    const update = withStored('daily');
+    const c = await render();
+    expect(rows(c).map((r) => r.props.accessibilityState.checked)).toEqual([false, true, false]);
+    await save(c);
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ search_frequency: 'weekly' }));
+    const next = new Date(update.mock.calls[0][0].next_scan_at).getTime();
+    const days = (next - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThan(7.1);
+  });
+
+  it('a Pro account keeps the plain daily row and can select it', async () => {
+    mockBilling.isPro = true;
+    withStored('weekly');
+    const c = await render();
+    const [daily] = rows(c);
+    expect(daily.props.title).toBe('Naponta');
+    await act(async () => { daily.props.onPress(); });
+    expect(navigation.navigate).not.toHaveBeenCalledWith('Paywall');
+    expect(rows(c).map((r) => r.props.accessibilityState.checked)).toEqual([true, false, false]);
   });
 });

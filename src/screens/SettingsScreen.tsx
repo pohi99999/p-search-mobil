@@ -57,6 +57,17 @@ const frequencyOptions: {
 /** The word the user must type before the account is deleted for good. */
 export const DELETE_CONFIRM_WORD = 'TÖRLÉS';
 
+/** Round 11-21 (Péter GO 17591): the daily scan is Pro. The row's texts for a free account. */
+export const DAILY_PRO_LABEL = 'Naponta (Pro)';
+export const DAILY_PRO_DESCRIPTION = 'A napi figyelés a Pro-előfizetés része. Ingyenes fióknál hetente keresünk.';
+
+/**
+ * The cadence a free account really gets: the server scans a free 'daily' weekly (effectiveScanFrequency in
+ * supabase/functions/_shared/entitlement.ts), so the screen shows and saves that.
+ */
+export const effectiveFrequency = (frequency: SearchFrequency, isPro: boolean): SearchFrequency =>
+  frequency === 'daily' && !isPro ? 'weekly' : frequency;
+
 const isSearchFrequency = (value: string | null): value is SearchFrequency =>
   value === 'daily' || value === 'weekly' || value === 'manual';
 
@@ -92,6 +103,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteWord, setDeleteWord] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  const isPro = Boolean(billing?.isPro);
+  const shownFrequency = effectiveFrequency(selectedFrequency, isPro);
 
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
@@ -136,7 +150,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 
   const handleSave = async () => {
     setSaving(true);
-    const computedNextScanAt = computeNextScanAt(selectedFrequency);
+    const computedNextScanAt = computeNextScanAt(shownFrequency);
 
     try {
       const {
@@ -150,7 +164,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       const { error } = await supabase
         .from('profiles')
         .update({
-          search_frequency: selectedFrequency,
+          search_frequency: shownFrequency,
           next_scan_at: computedNextScanAt,
         })
         .eq('id', session.user.id);
@@ -268,17 +282,23 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                 With a separate RadioButton inside, screen readers met an unnamed radio without its state. */}
             <View accessibilityRole="radiogroup" accessibilityLabel="Automatikus AI keresés gyakorisága">
               {frequencyOptions.map((option) => {
-                const checked = selectedFrequency === option.value;
+                const checked = shownFrequency === option.value;
+                // Round 11-21: for a free account the daily row names the Pro and opens the paywall, it does not select.
+                const proLocked = option.value === 'daily' && !isPro;
+                const title = proLocked ? DAILY_PRO_LABEL : option.label;
+                const description = proLocked ? DAILY_PRO_DESCRIPTION : option.description;
                 return (
                   <List.Item
                     key={option.value}
-                    title={option.label}
-                    description={option.description}
-                    onPress={() => setSelectedFrequency(option.value)}
+                    title={title}
+                    description={description}
+                    descriptionNumberOfLines={3}
+                    onPress={() => (proLocked ? navigation.navigate('Paywall') : setSelectedFrequency(option.value))}
                     accessibilityRole="radio"
                     accessibilityState={{ checked }}
                     aria-checked={checked}
-                    accessibilityLabel={`${option.label} ${option.description}`}
+                    accessibilityLabel={`${title} ${description}`}
+                    accessibilityHint={proLocked ? 'Megnyitja a Pro-előfizetés oldalát' : undefined}
                     testID={`frequency-${option.value}`}
                     left={(props) => (
                       <View aria-hidden importantForAccessibility="no-hide-descendants">
