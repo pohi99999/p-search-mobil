@@ -111,7 +111,8 @@ export const PaywallScreen = () => {
         </Text>
 
         <Text variant="bodyLarge" style={styles.subtitle}>
-          Ingyen megtalálod a cégedhez illő kiírást. A Pro-val nem maradsz le róla, és be is tudod adni.
+          {/* Péter, Telegram 17610: "fel is készülsz a beadásra", because the app does not submit anything itself. */}
+          Ingyen megtalálod a cégedhez illő kiírást. A Pro-val nem maradsz le róla, és fel is készülsz a beadásra.
         </Text>
 
         {grantTitle ? (
