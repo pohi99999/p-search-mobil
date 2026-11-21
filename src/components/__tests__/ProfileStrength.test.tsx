@@ -13,17 +13,31 @@ describe('ProfileStrength', () => {
     expect(filledMatchFields({ company_name: 'X Kft.', tax_number: '12345678-2-20' } as never)).toBe(0);
   });
 
-  // Ellenőr #273: the bar counted "0" or "abc" employees, which the save refuses. It counts only what the save takes.
-  it.each([['0'], ['abc'], ['-5'], ['1,5']])('a value the save refuses (%p employees) is not counted', (employees) => {
-    const { profileUpdateFromForm } = require('../../lib/profileCompleteness');
+  // Ellenőr #273 (two rounds): the bar counts a number only if this form's Save keeps it (companyFormNumber: spaces
+  // removed, digits only), and not 0, which the app treats as missing.
+  it.each([['0'], ['abc'], ['-5'], ['1,5'], ['1.5']])('employees %p is not counted', (employees) => {
     const form = { industry_code: '62.01', yearly_revenue: '50000000', goals: 'gépbeszerzés', employee_count: employees };
-    expect(profileUpdateFromForm(form).ok).toBe(false);
     expect(filledMatchFields(form)).toBe(3);
   });
 
-  it('a value the save accepts is counted, with spaces or dots as thousands separators', () => {
+  it.each([['abc'], ['-1'], ['50.000.000'], ['0']])('revenue %p is not counted', (revenue) => {
+    expect(filledMatchFields({ yearly_revenue: revenue })).toBe(0);
+  });
+
+  it('a number with spaces as thousands separators is counted', () => {
     expect(filledMatchFields({ employee_count: '8', yearly_revenue: '50 000 000' })).toBe(2);
-    expect(filledMatchFields({ yearly_revenue: '50.000.000' })).toBe(1);
+    expect(filledMatchFields({ yearly_revenue: '180 000 000' })).toBe(1);
+  });
+
+  it('the bar is not green before all four, and its track is not invisible on the white card', () => {
+    let root!: renderer.ReactTestRenderer;
+    act(() => { root = renderer.create(<ProfileStrength form={{ industry_code: '62.01', employee_count: '8', goals: 'gép' }} />); });
+    const bar = root.root.findByType(ProgressBar);
+    expect(JSON.stringify(root.toJSON())).toContain('3/4');
+    expect(bar.props.color).not.toBe('#2E7D32');
+    const track = String(StyleSheet.flatten(bar.props.style).backgroundColor ?? '').toUpperCase();
+    expect(track).not.toBe('');
+    expect(['#FFFFFF', '#FFF', 'WHITE', 'TRANSPARENT']).not.toContain(track);
   });
 
   it('the bar turns green only when all four are filled, and names its count for a screen reader', () => {

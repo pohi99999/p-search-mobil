@@ -25,6 +25,17 @@ export function missingProfileFields(profile: ProfileLike | null | undefined): P
 export type ProfileForm = Partial<Record<ProfileFieldKey, string>>;
 
 /**
+ * The company form's (OnboardingScreen) rule for a number field, in one place for its Save and its profile bar
+ * (Ellenőr #273: the bar followed profileUpdateFromForm below, which also takes dots, while the Save refuses them).
+ * Spaces are thousands separators and are removed ("50 000 000"); after that only digits are accepted, so "1.5",
+ * "50.000.000", "-5" and "abc" are refused. Returns the digits, or null for a refused value.
+ */
+export function companyFormNumber(raw: string): string | null {
+  const digits = raw.replace(/\s/g, '');
+  return /^\d+$/.test(digits) ? digits : null;
+}
+
+/**
  * The form -> the business_profiles update. Only the filled fields go in; numbers may carry spaces or dots
  * as thousands separators ("50 000 000", "50.000.000"). Anything else that is not a whole number is an error.
  */

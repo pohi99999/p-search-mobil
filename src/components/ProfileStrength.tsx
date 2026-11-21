@@ -1,17 +1,21 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ProgressBar, Text } from 'react-native-paper';
-import { PROFILE_FIELDS, profileUpdateFromForm, type ProfileFieldKey } from '../lib/profileCompleteness';
+import { PROFILE_FIELDS, companyFormNumber, type ProfileFieldKey } from '../lib/profileCompleteness';
 
 /**
- * How many of the fields the matching reads (matching.ts buildProfileText) are filled with a value the save accepts.
- * Ellenőr #273: counting any non-blank text showed 4/4 and green for "0" or "abc" employees, which the save refuses
- * ("egész számot adj meg") and which so never reaches the search. Each field goes through the save's own rule.
+ * How many of the fields the matching reads (matching.ts buildProfileText) hold a value this form's Save keeps.
+ * Ellenőr #273: counting any non-blank text showed 4/4 and green for "abc" employees, which the Save refuses; the
+ * first fix used the other form's rule (dots allowed), so "50.000.000" still counted while this Save refuses it.
+ * Numbers go through companyFormNumber, the rule validateProfileForm uses, and 0 does not count (the app treats a
+ * non-positive number as missing, profileCompleteness isEmpty). Text fields count when not blank.
  */
 export function filledMatchFields(form: Partial<Record<ProfileFieldKey, string>>): number {
   return PROFILE_FIELDS.filter((f) => {
-    const one = profileUpdateFromForm({ [f.key]: form[f.key] ?? '' });
-    return one.ok && f.key in one.update;
+    const raw = form[f.key] ?? '';
+    if (!f.numeric) return raw.trim() !== '';
+    const digits = companyFormNumber(raw);
+    return digits !== null && Number(digits) > 0;
   }).length;
 }
 

@@ -248,6 +248,23 @@ describe('OnboardingScreen edit mode', () => {
   });
 
   // vc23 (Lumen L8): the bar under the required note follows the form as the user types.
+  // Ellenőr #273 (second round): the bar and this screen's Save must agree on every number. The Save strips spaces
+  // (handleSave) and runs validateProfileForm; the bar counts a number only where the Save keeps it, and not 0.
+  it.each([
+    ['employee_count', 'abc'], ['employee_count', '-5'], ['employee_count', '1,5'], ['employee_count', '1.5'],
+    ['employee_count', '12'], ['employee_count', ' 12 '], ['employee_count', '0'],
+    ['yearly_revenue', 'abc'], ['yearly_revenue', '-1'], ['yearly_revenue', '50.000.000'],
+    ['yearly_revenue', '180 000 000'], ['yearly_revenue', '0'],
+  ])('the bar and the Save agree on %s %p', (field, value) => {
+    const { validateProfileForm } = require('../OnboardingScreen');
+    const { filledMatchFields } = require('../../components/ProfileStrength');
+    const stripped = value.replace(/\s/g, '');
+    const errs = validateProfileForm('Példa Kft.', field === 'employee_count' ? stripped : '', field === 'yearly_revenue' ? stripped : '');
+    const saveKeeps = !(field in errs);
+    const counted = filledMatchFields({ [field]: value }) === 1;
+    expect(counted).toBe(saveKeeps && Number(stripped) > 0);
+  });
+
   it('the profile bar counts the matching fields as they are filled', async () => {
     const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
     let component: renderer.ReactTestRenderer;
