@@ -169,7 +169,12 @@ describe('GrantDetailScreen (card [B])', () => {
     const { byTestId, navigation } = await renderScreen(makeMatch());
     expect(byTestId('grant-detail-plan')).toBeUndefined();
     await act(async () => { byTestId('grant-detail-upgrade').props.onPress(); });
-    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'grant_detail' });
+    // vc23 (Lumen L7): the paywall gets the grant's title and deadline to name them.
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', {
+      source: 'grant_detail',
+      grantTitle: 'KKV Digitalizációs Támogatás',
+      deadline: new Date(2026, 11, 15, 12).toISOString(),
+    });
   });
 
   it('a Pro user goes to the action plan, labelled by whether one exists', async () => {

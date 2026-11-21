@@ -18,7 +18,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
   <View>
     <View
       data-testID="list-item"
-      description="Az AI személyre szabott felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
+      description="Az AI lépésenkénti felkészülési tervet és dokumentum-vázlatot készít a kiválasztott pályázathoz, PDF-ben letölthetően."
       descriptionNumberOfLines={8}
       descriptionStyle={
         {
@@ -27,7 +27,8 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="✍️ Copilot akcióterv és pályázati dokumentum"
+      left={[Function]}
+      title="Akcióterv és pályázati dokumentum"
       titleNumberOfLines={2}
       titleStyle={
         {
@@ -39,7 +40,7 @@ exports[`PaywallFeatures renders correctly 1`] = `
     />
     <View
       data-testID="list-item"
-      description="Nincs napi keresési korlát."
+      description="Az AI akár naponta lefuttatja a keresést a cégednek, így nem maradsz le az új kiírásokról. Ingyen hetente."
       descriptionNumberOfLines={8}
       descriptionStyle={
         {
@@ -48,7 +49,30 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="🔎 Korlátlan AI keresés"
+      left={[Function]}
+      title="Napi automatikus figyelés"
+      titleNumberOfLines={2}
+      titleStyle={
+        {
+          "color": "#1565C0",
+          "fontSize": 16,
+          "fontWeight": "bold",
+        }
+      }
+    />
+    <View
+      data-testID="list-item"
+      description="Ingyen naponta 3 keresés és 5 Copilot-üzenet jár."
+      descriptionNumberOfLines={8}
+      descriptionStyle={
+        {
+          "color": "#757575",
+          "fontSize": 13,
+          "marginTop": 2,
+        }
+      }
+      left={[Function]}
+      title="Korlátlan keresés és Copilot"
       titleNumberOfLines={2}
       titleStyle={
         {
@@ -69,7 +93,8 @@ exports[`PaywallFeatures renders correctly 1`] = `
           "marginTop": 2,
         }
       }
-      title="🚫 Hirdetésmentesség"
+      left={[Function]}
+      title="Hirdetésmentesség"
       titleNumberOfLines={2}
       titleStyle={
         {

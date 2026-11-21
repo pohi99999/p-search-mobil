@@ -236,6 +236,40 @@ describe('PaywallScreen', () => {
     expect(metasOutsideWhitelist()).toEqual([]);
   });
 
+  // vc23 (Lumen L7): opened from a grant, the offer names it and its deadline.
+  describe('the grant the user came from', () => {
+    const has = (c: renderer.ReactTestRenderer, id: string) => c.root.findAll((n) => n.props.testID === id).length > 0;
+    const in20days = () => new Date(Date.now() + 20 * 864e5).toISOString();
+
+    it('shows the title and the deadline', async () => {
+      (useRoute as jest.Mock).mockReturnValue({ params: { source: 'grant_detail', grantTitle: 'KKV Digitalizációs Támogatás', deadline: in20days() } });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      const text = JSON.stringify(c.toJSON());
+      expect(text).toContain('Ehhez a kiíráshoz készülsz:');
+      expect(text).toContain('KKV Digitalizációs Támogatás');
+      expect(has(c, 'paywall-grant-deadline')).toBe(true);
+      expect(text).toMatch(/Beadás: \d{4}\. \d{2}\. \d{2}\. \((még \d+ nap|ma jár le)\)/);
+      // the event stays the same: the source only, no title
+      expect(trackCalls('paywall_view')).toEqual([['paywall_view', { source: 'grant_detail' }]]);
+    });
+
+    it('leaves out a deadline it does not know', async () => {
+      (useRoute as jest.Mock).mockReturnValue({ params: { source: 'grant_detail', grantTitle: 'Valami kiírás', deadline: null } });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      expect(has(c, 'paywall-grant-context')).toBe(true);
+      expect(has(c, 'paywall-grant-deadline')).toBe(false);
+    });
+
+    it('shows no box when opened from elsewhere', async () => {
+      (useRoute as jest.Mock).mockReturnValue({ params: { source: 'settings' } });
+      let c!: renderer.ReactTestRenderer;
+      await act(async () => { c = renderWithSafeArea(<PaywallScreen />); });
+      expect(has(c, 'paywall-grant-context')).toBe(false);
+    });
+  });
+
   it('a route without a source is recorded as other, not guessed', async () => {
     (useRoute as jest.Mock).mockReturnValue({ params: undefined });
     await act(async () => { renderWithSafeArea(<PaywallScreen />); });
