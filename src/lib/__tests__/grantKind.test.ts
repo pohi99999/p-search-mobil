@@ -58,4 +58,37 @@ describe('grantKindLabel', () => {
   it('J2 (decided): a grant with venture capital is mixed on the label', () => {
     expect(grantKindLabel('Vissza nem térítendő támogatás és kockázati tőke')?.detail).toBe('Vegyes: támogatás és kockázati tőke');
   });
+
+  // Ellenőr #270 H1: a repayable support with a non-repayable part and no loan is mixed, not "Támogatás".
+  it.each([
+    'Vissza nem térítendő és visszatérítendő támogatás',
+    'Visszatérítendő és vissza nem térítendő támogatás',
+    'Visszatérítendő támogatás és vissza nem térítendő támogatás',
+  ])('H1: %s -> Vegyes (támogatás és visszatérítendő támogatás)', (text) => {
+    expect(grantKindLabel(text)).toEqual({ kind: 'mixed', label: 'Vegyes', detail: 'Vegyes: támogatás és visszatérítendő támogatás' });
+  });
+
+  // Ellenőr #270 H2: "nem visszatérítendő" is the non-repayable grant, never "Visszatérítendő".
+  it.each([
+    ['Nem visszatérítendő támogatás', 'grant'],
+    ['nem visszatérítendő', 'grant'],
+    ['NEM  VISSZATÉRÍTENDŐ támogatás', 'grant'],
+    ['Nem visszatérítendő támogatás (VNT)', 'grant'],
+  ])('H2: %s -> %s', (text, kind) => {
+    expect(grantKindLabel(text)?.kind).toBe(kind);
+  });
+
+  // Ellenőr #270 (note): a repayable support with venture capital keeps both parts, as J2 does for a grant.
+  it('a repayable support with venture capital is mixed', () => {
+    expect(grantKindLabel('Visszatérítendő támogatás és kockázati tőke')).toEqual({
+      kind: 'mixed',
+      label: 'Vegyes',
+      detail: 'Vegyes: kockázati tőke és visszatérítendő támogatás',
+    });
+  });
+
+  it('a repayable support with a loan stays a loan', () => {
+    expect(grantKindLabel('Visszatérítendő támogatás és hitel')?.kind).toBe('loan');
+    expect(grantKindLabel('Kamatmentes visszatérítendő támogatás')?.kind).toBe('repayable');
+  });
 });
