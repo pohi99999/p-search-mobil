@@ -111,7 +111,7 @@ export const PaywallScreen = () => {
         </Text>
 
         <Text variant="bodyLarge" style={styles.subtitle}>
-          Készülj fel a kiválasztott pályázatra: akcióterv, dokumentum-vázlat PDF-ben, hirdetések nélkül.
+          Ingyen megtalálod a cégedhez illő kiírást. A Pro-val nem maradsz le róla, és be is tudod adni.
         </Text>
 
         {grantTitle ? (

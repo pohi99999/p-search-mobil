@@ -41,15 +41,18 @@ describe('PaywallFeatures', () => {
     });
     const items = component!.root.findAll((n) => n.props['data-testID'] === 'list-item' && typeof n.props.title === 'string');
     const titles = items.map((n) => n.props.title as string);
-    // vc23 (Lumen L7): icons instead of emoji; the search line names no limit until Péter sets the free/Pro one.
+    // vc23 (Lumen L7): icons instead of emoji; Péter's free/Pro line (17591): the plan and document lead,
+    // daily watching second, unlimited search is not the main argument; no reminder until it ships.
     expect(titles).toEqual([
-      'Copilot akcióterv és pályázati dokumentum',
-      'Bővebb AI keresés',
+      'Akcióterv és pályázati dokumentum',
+      'Napi automatikus figyelés',
+      'Korlátlan keresés és Copilot',
       'Hirdetésmentesség',
     ]);
     const text = items.map((n) => `${n.props.title} ${n.props.description}`).join(' ');
     expect(text).not.toMatch(/DOCX|Hitel|OCR/);
-    expect(text).not.toMatch(/[Kk]orlátlan|korlát nélkül|Nincs napi/);
+    expect(text).not.toMatch(/emlékeztet/i);
+    expect(text).toContain('Ingyen naponta 3 keresés és 5 Copilot-üzenet jár.');
     expect(text).not.toMatch(/\p{Extended_Pictographic}/u);
     expect(items.every((n) => typeof n.props.left === 'function')).toBe(true);
   });

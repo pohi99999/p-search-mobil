@@ -31,7 +31,8 @@ describe('screen claims', () => {
   it('the paywall says what Pro gives, without "legfejlettebb"', async () => {
     const text = await renderText(<PaywallScreen />);
     expect(text).not.toContain('legfejlettebb');
-    expect(text).toContain('Készülj fel a kiválasztott pályázatra: akcióterv, dokumentum-vázlat PDF-ben, hirdetések nélkül.');
+    // vc23 (Lumen L7): Péter's free/Pro line (Telegram 17591).
+    expect(text).toContain('Ingyen megtalálod a cégedhez illő kiírást. A Pro-val nem maradsz le róla, és be is tudod adni.');
   });
 
   it('the Copilot header says what it is for, not "Aktív és intelligens segítség"', async () => {
