@@ -177,6 +177,47 @@ describe('GrantDetailScreen (card [B])', () => {
   });
 });
 
+// vc23 (Lumen L6): the offer comes right after the summary, the long part after it, the description folded.
+describe('GrantDetailScreen order and folding (vc23 L6)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp-1' } });
+    (useActionPlan as jest.Mock).mockReturnValue({ plans: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  const LONG = 'A felhívás célja a kkv-k versenyképességének javítása eszközbeszerzéssel. '.repeat(6).trim();
+
+  it('reads: summary and reasoning, then the Pro offer, then eligibility, description and the link', async () => {
+    const { text } = await renderScreen(makeMatch());
+    const at = (s: string) => text.indexOf(s);
+    expect(at('A cég létszáma és tevékenysége illik a kiíráshoz.')).toBeGreaterThan(-1);
+    expect(at('Készülj fel a beadásra')).toBeGreaterThan(at('A cég létszáma és tevékenysége illik a kiíráshoz.'));
+    expect(at('Legalább 1 éve működő KKV.')).toBeGreaterThan(at('Készülj fel a beadásra'));
+    expect(at('Hivatalos kiírás megnyitása')).toBeGreaterThan(at('Legalább 1 éve működő KKV.'));
+  });
+
+  it('a long description is folded to a few lines until "Teljes leírás"', async () => {
+    const { tree } = await renderScreen(makeMatch({ description: LONG }));
+    const desc = () => tree.root.findAll((n) => n.props.testID === 'grant-detail-description' && n.props.numberOfLines !== undefined)[0];
+    const toggle = () => tree.root.findAll((n) => n.props.testID === 'grant-detail-description-toggle' && typeof n.props.onPress === 'function')[0];
+    expect(desc().props.numberOfLines).toBe(6);
+    expect(JSON.stringify(tree.toJSON())).toContain('Teljes leírás');
+    await act(async () => { toggle().props.onPress(); });
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-detail-description' && n.props.numberOfLines !== undefined)).toHaveLength(0);
+    expect(JSON.stringify(tree.toJSON())).toContain('Kevesebb');
+  });
+
+  it('a short description is shown whole, with no toggle', async () => {
+    const { tree } = await renderScreen(makeMatch());
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-detail-description-toggle')).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-detail-description' && n.props.numberOfLines !== undefined)).toHaveLength(0);
+  });
+});
+
 describe('isOpenableUrl', () => {
   it('opens only http(s) links from the scraped data', () => {
     expect(isOpenableUrl('https://palyazat.gov.hu')).toBe(true);
