@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { computeNextScanAt, runMatchingForProfile } from '../_shared/matching.ts';
+import { effectiveScanFrequency } from '../_shared/entitlement.ts';
 
 /**
  * The recurring per-user grant-hunting agent.
@@ -87,7 +88,7 @@ serve(async (req) => {
     // by the NOT NULL semantics of the lte filter.
     const { data: dueProfiles, error: dueError } = await admin
       .from('profiles')
-      .select('id, search_frequency, next_scan_at')
+      .select('id, search_frequency, next_scan_at, subscription_tier')
       .neq('search_frequency', 'manual')
       .lte('next_scan_at', nowIso)
       .order('next_scan_at', { ascending: true })
@@ -106,7 +107,8 @@ serve(async (req) => {
       // Re-arm the schedule FIRST. If the matching below throws or the whole
       // invocation times out, the user simply waits for the next cycle instead
       // of the scheduler retrying them on every run and starving everyone else.
-      const nextScanAt = computeNextScanAt(profile.search_frequency, new Date());
+      // 2026-11-21 (Péter GO 17591): the daily scan is Pro; a free account with 'daily' stored is re-armed weekly.
+      const nextScanAt = computeNextScanAt(effectiveScanFrequency(profile.subscription_tier, profile.search_frequency), new Date());
       const { error: rearmError } = await admin
         .from('profiles')
         .update({ last_scan_at: nowIso, next_scan_at: nextScanAt })
