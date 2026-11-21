@@ -13,14 +13,19 @@ import { MatchFeedback } from './MatchFeedback';
 // a 16 px margin. The actions keep out of that column at any scroll position, on any screen width (P2-3).
 const SEARCH_BUTTON_GUTTER = 64;
 
+/** Round 11-21 (#2): the "Új" label's background; white text on it. */
+export const NEW_BADGE_BG = '#0B3D85';
+
 interface MatchCardProps {
   item: MatchWithGrant;
   onPress: () => void;
   /** [G2]: 1-based position in the list; with it the card shows the feedback buttons. */
   rank?: number;
+  /** Round 11-21 (#2): the match came in after the user's previous visit; the card says "Új". */
+  isNew?: boolean;
 }
 
-export function MatchCard({ item, onPress, rank }: MatchCardProps) {
+export function MatchCard({ item, onPress, rank, isNew = false }: MatchCardProps) {
   // Card 378073ce: no invented ranges (placeholder 1 Ft minimum, programme budget as maximum).
   const amountLine = formatGrantAmount(item.grants?.amount_min, item.grants?.amount_max);
   // Card 2428c38f: a match the latest scan did not re-score says so, instead of showing an old
@@ -42,11 +47,27 @@ export function MatchCard({ item, onPress, rank }: MatchCardProps) {
         testID="match-card-open"
       >
         <View>
-          <GrantKindBadge grantType={item.grants?.grant_type} style={styles.kind} />
+          {hasKind || isNew ? (
+            <View style={styles.badges}>
+              {isNew && (
+                <View
+                  style={styles.newBadge}
+                  testID="match-new-badge"
+                  accessible
+                  accessibilityLabel="Új találat a legutóbbi látogatásod óta"
+                >
+                  <Text variant="labelMedium" style={styles.newBadgeText}>
+                    Új
+                  </Text>
+                </View>
+              )}
+              <GrantKindBadge grantType={item.grants?.grant_type} />
+            </View>
+          ) : null}
           <Card.Title
             title={item.grants?.title || 'Ismeretlen pályázat'}
             titleNumberOfLines={2}
-            style={hasKind ? styles.titleAfterKind : styles.title}
+            style={hasKind || isNew ? styles.titleAfterKind : styles.title}
             subtitle={stale ? `Korábbi keresés találata (egyezés akkor: ${item.match_score}%)` : `Egyezés: ${item.match_score}%`}
             // Péter's test 2026-11-07: the stale line was cut at "egyezés akk...", before the number it is there for.
             subtitleNumberOfLines={3}
@@ -117,9 +138,26 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 4,
   },
-  kind: {
+  // The kind label and the "Új" label in one row; the same place the kind label had alone.
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     marginTop: 12,
     marginLeft: 16,
+  },
+  // White on #0B3D85 (the mixed kind's text colour): 10.4:1, and above 4.5:1 under the stale card's opacity 0.75 too
+  // (MatchCard test).
+  newBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: NEW_BADGE_BG,
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   // The ripple follows the card's rounded top corners.
   openArea: {

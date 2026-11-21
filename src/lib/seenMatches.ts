@@ -1,0 +1,50 @@
+// P-Search round 11-21 (#2): the matches that came in since the user's previous visit get an "Új" label, and the list
+// says how many there are. The automatic weekly scan already runs for everyone (scheduled-grant-scan), but nothing
+// told the user that it found something. No migration: the previous visit is kept on the device, per user.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const KEY_PREFIX = '@p-search/last-seen/';
+
+export function lastSeenKey(userId: string): string {
+  return `${KEY_PREFIX}${userId}`;
+}
+
+/** The previous visit read in this app session, per user. A remount (sign out and in) keeps it, so the labels stay. */
+const sessionPrevious = new Map<string, string | null>();
+
+/**
+ * The previous visit's time (ISO), or null on the first visit on this device; the stored value moves to `now`.
+ * Once per app session per user: later calls return the same value and write nothing, so the labels do not vanish
+ * on a pull-to-refresh or when Home mounts again. A storage error counts as a first visit (nothing is marked new).
+ */
+export async function takePreviousVisit(userId: string, now: Date = new Date()): Promise<string | null> {
+  if (sessionPrevious.has(userId)) return sessionPrevious.get(userId) ?? null;
+  let previous: string | null = null;
+  try {
+    const stored = await AsyncStorage.getItem(lastSeenKey(userId));
+    previous = stored && !Number.isNaN(new Date(stored).getTime()) ? stored : null;
+  } catch {
+    previous = null;
+  }
+  sessionPrevious.set(userId, previous);
+  try {
+    await AsyncStorage.setItem(lastSeenKey(userId), now.toISOString());
+  } catch {
+    // Not fatal: the next session counts from the older visit again.
+  }
+  return previous;
+}
+
+/** Is this match newer than the previous visit? Never on a first visit (null), never for an unreadable time. */
+export function isNewSince(createdAt: string | null | undefined, previousVisit: string | null | undefined): boolean {
+  if (!createdAt || !previousVisit) return false;
+  const created = new Date(createdAt).getTime();
+  const seen = new Date(previousVisit).getTime();
+  if (Number.isNaN(created) || Number.isNaN(seen)) return false;
+  return created > seen;
+}
+
+/** Test hook: a new app session. */
+export function resetSeenMatchesForTest(): void {
+  sessionPrevious.clear();
+}

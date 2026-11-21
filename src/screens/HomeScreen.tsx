@@ -14,6 +14,9 @@ import { HomeLoadError } from '../components/HomeLoadError';
 import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
 import { splitFreshAndStale } from '../lib/matchStatus';
+import { HomeStatusHeader } from '../components/HomeStatusHeader';
+import { useHomeStatus } from '../hooks/useHomeStatus';
+import { isNewSince } from '../lib/seenMatches';
 
 /** FAB labels; the searching one must not be wider than the idle one (see the FAB below). */
 export const FAB_IDLE_LABEL = 'Új AI-keresés';
@@ -44,6 +47,10 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   // Card 4762e3d7: collapsed by default; open when there is nothing fresh, so the list is never just a header.
   const [staleOpen, setStaleOpen] = useState<boolean | null>(null);
 
+  // Round 11-21 (#2, #4): the matches since the previous visit, and how fresh the grant list is. The freshness is read
+  // again whenever the match list changes (a reload or a finished search).
+  const { previousVisit, freshness } = useHomeStatus(profile?.user_id, matches);
+
   // Card [D]: which empty state; a search running wins over the other two.
   const emptyKind: HomeEmptyStateKind = searching ? 'searching' : hasSearched ? 'none' : 'never';
   // A failed reload keeps a list already on the screen. With nothing to show, the failure is named, and the search
@@ -63,6 +70,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
     <MatchCard
       item={item}
       rank={index + 1}
+      isNew={isNewSince(item.created_at, previousVisit)}
       onPress={() => navigation.navigate('GrantDetail', { match: item, rank: index + 1 })}
     />
   );
@@ -72,6 +80,13 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
   const staleExpanded = staleOpen ?? fresh.length === 0;
   // Péter's test 2026-11-07: pinned above the list, the card took the phone's height from the matches. It scrolls away now.
   const testerProgress = showTesterProgress() ? <TesterProgress /> : null;
+  const newCount = matches.filter((m) => isNewSince(m.created_at, previousVisit)).length;
+  const listHeader = (
+    <>
+      {testerProgress}
+      <HomeStatusHeader newCount={newCount} freshness={freshness} />
+    </>
+  );
   const staleSection = stale.length === 0 ? null : (
     <View style={styles.staleSection} testID="home-stale-section">
       <Button
@@ -141,7 +156,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           data={fresh}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          ListHeaderComponent={testerProgress}
+          ListHeaderComponent={listHeader}
           ListFooterComponent={staleSection}
           contentContainerStyle={[styles.listContent, { paddingBottom: 80 + fabBottom }]}
           refreshing={loading}
