@@ -34,7 +34,7 @@ describe('search summary on the home screen', () => {
     expect(has(root, 'search-summary')).toBe(false);
   });
 
-  it('the header keeps a place for the other status lines, above the summary', async () => {
+  it('the header keeps a place for the other status lines, below the summary', async () => {
     const { Text } = require('react-native');
     let root!: renderer.ReactTestRenderer;
     await act(async () => {
@@ -46,7 +46,7 @@ describe('search summary on the home screen', () => {
     });
     const json = textOf(root);
     expect(json.indexOf('Frissítve')).toBeGreaterThan(-1);
-    expect(json.indexOf('Frissítve')).toBeLessThan(json.indexOf('40 nyitott'));
+    expect(json.indexOf('40 nyitott')).toBeLessThan(json.indexOf('Frissítve'));
   });
 
   it('the empty state names how many open grants were weighed', async () => {
