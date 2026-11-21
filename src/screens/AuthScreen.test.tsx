@@ -292,7 +292,48 @@ describe('AuthScreen', () => {
     });
 
     expect(supabase.auth.signUp).toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Sikeres regisztráció!');
+    // vc23 (Lumen L8): with a session the app moves on to the company profile; no modal stands over it.
+    expect(Alert.alert).not.toHaveBeenCalledWith('Sikeres regisztráció!');
+    expect(Alert.alert).not.toHaveBeenCalledWith('Sikeres regisztráció!', expect.anything());
+  });
+
+  // vc23 (Lumen L8): the sign-in screen says what the app does before it asks for the e-mail.
+  it('shows the three promise lines above the form, in both modes', async () => {
+    const { AUTH_PROMISE_LINES } = require('./AuthScreen');
+    let component: any;
+    act(() => {
+      component = renderer.create(<AuthScreen />);
+    });
+    const text = () => JSON.stringify(component.toJSON());
+    expect(AUTH_PROMISE_LINES).toHaveLength(3);
+    for (const line of AUTH_PROMISE_LINES) expect(text()).toContain(line.text);
+    expect(text().indexOf(AUTH_PROMISE_LINES[0].text)).toBeLessThan(text().indexOf('ceged@pelda.hu'));
+    const switchBtn = component.root.findAllByType(Button).find((b: any) => b.props.children === 'Nincs még fiókod? Regisztrálj!');
+    await act(async () => { switchBtn.props.onPress(); });
+    for (const line of AUTH_PROMISE_LINES) expect(text()).toContain(line.text);
+  });
+
+  // Ellenőr #273 (K1): the lines may only promise what the app does now, so the exact words are pinned here. A changed
+  // promise has to change this test too, on purpose (the app does not submit anything, it has no deadline reminder).
+  it('the promise lines are exactly these, and the text and icons are readable', () => {
+    const { AUTH_PROMISE_LINES } = require('./AuthScreen');
+    const { contrastRatio, textColor } = require('../test-utils/contrast');
+    expect(AUTH_PROMISE_LINES.map((l: { text: string }) => l.text)).toEqual([
+      'A cégprofilod alapján az AI kiválasztja a hozzád illő nyitott kiírásokat.',
+      'Minden találatnál látod, miért illik, mekkora az összeg és meddig adható be.',
+      'Pro: akcióterv és dokumentum-vázlat a beadáshoz.',
+    ]);
+    const joined = AUTH_PROMISE_LINES.map((l: { text: string }) => l.text).join(' ');
+    expect(joined).not.toMatch(/beadjuk|helyetted|emlékeztet|garant/i);
+    let component: any;
+    act(() => { component = renderer.create(<AuthScreen />); });
+    const promise = component.root.findAll((n: any) => n.props.testID === 'auth-promise')[0];
+    const texts = promise.findAll((n: any) => typeof n.props.children === 'string' && n.props.style && n.props.children.length > 20);
+    expect(texts.length).toBeGreaterThanOrEqual(3);
+    for (const t of texts) expect(contrastRatio(textColor(t.props.style), '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    const icons = promise.findAll((n: any) => n.props.name && n.props.color);
+    expect(icons.length).toBeGreaterThanOrEqual(3);
+    for (const i of icons) expect(contrastRatio(i.props.color, '#FFFFFF')).toBeGreaterThanOrEqual(3);
   });
 
   // Round 3 (Lumen P1, 2026-11-03): mobile field types, a visible password rule, and the legal links at sign-up.

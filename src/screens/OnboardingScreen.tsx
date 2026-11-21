@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { ProfileStrength } from '../components/ProfileStrength';
+import { companyFormNumber } from '../lib/profileCompleteness';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, HelperText, IconButton } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
@@ -249,6 +251,7 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
           <Text variant="bodySmall" style={styles.requiredNote} testID="onboarding-required-note">
             Csak a csillaggal jelölt cégnév kötelező. Minél több adatot adsz meg, annál pontosabb a találat.
           </Text>
+          <ProfileStrength form={form} />
 
           <TextInput
             label="Cégnév *"
@@ -394,11 +397,11 @@ type FieldErrors = Partial<Record<'company_name' | 'employee_count' | 'yearly_re
 
 /** Field-level validation of the company form; the numbers come in without spaces. */
 export function validateProfileForm(companyName: string, employeeCount: string, yearlyRevenue: string): FieldErrors {
-  const digitsOnly = /^\d+$/;
   const errors: FieldErrors = {};
   if (!companyName.trim()) errors.company_name = 'A cégnév megadása kötelező!';
-  if (employeeCount && !digitsOnly.test(employeeCount)) errors.employee_count = 'Csak számot írj, például 5.';
-  if (yearlyRevenue && !digitsOnly.test(yearlyRevenue)) errors.yearly_revenue = 'Csak számot írj forintban, például 50000000.';
+  // The same rule the profile bar counts by (companyFormNumber, vc23 L8).
+  if (employeeCount && companyFormNumber(employeeCount) === null) errors.employee_count = 'Csak számot írj, például 5.';
+  if (yearlyRevenue && companyFormNumber(yearlyRevenue) === null) errors.yearly_revenue = 'Csak számot írj forintban, például 50000000.';
   return errors;
 }
 

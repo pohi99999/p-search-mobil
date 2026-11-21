@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
@@ -31,6 +31,13 @@ const DECORATIVE_ICON_PROPS = {
 /** The password-reset confirmation (same text whether or not the account exists). */
 export const RESET_SENT_TITLE = 'Ellenőrizd az e-mailed';
 export const RESET_SENT_MESSAGE = 'Ha van ilyen fiók, elküldtük a jelszó-visszaállító linket. A link egy óráig érvényes.';
+
+/** vc23 (Lumen L8): the three lines under the name. Each one is something the app does now (search, card, Pro). */
+export const AUTH_PROMISE_LINES: { icon: React.ComponentProps<typeof MaterialCommunityIcons>['name']; text: string }[] = [
+  { icon: 'magnify', text: 'A cégprofilod alapján az AI kiválasztja a hozzád illő nyitott kiírásokat.' },
+  { icon: 'calendar-clock', text: 'Minden találatnál látod, miért illik, mekkora az összeg és meddig adható be.' },
+  { icon: 'file-document-edit-outline', text: 'Pro: akcióterv és dokumentum-vázlat a beadáshoz.' },
+];
 
 export function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -97,9 +104,9 @@ export function AuthScreen() {
       );
     } else if (data.session == null) {
       notify('Sikeres regisztráció!', 'Kérlek ellenőrizd az e-mail fiókodat a megerősítő linkért.');
-    } else {
-      notify('Sikeres regisztráció!');
     }
+    // vc23 (Lumen L8): with a session the app goes on to the company profile by itself; the bare
+    // "Sikeres regisztráció!" modal only stood over that form and had to be closed first.
     setLoading(false);
   }
 
@@ -136,6 +143,9 @@ export function AuthScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      {/* vc23 (Lumen L8): with the promise lines the card is taller than a 360x640 screen; centred in a plain View
+          its top was cut off (web, measured). A ScrollView keeps it centred when it fits and scrollable when not. */}
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" testID="auth-scroll">
       <Surface style={styles.surface} elevation={4}>
         <View style={styles.header}>
           <Text variant="headlineMedium" role="heading" aria-level={1} style={{ fontWeight: 'bold', color: theme.colors.primary }}>
@@ -144,6 +154,16 @@ export function AuthScreen() {
           <Text variant="titleMedium" style={{ color: theme.colors.secondary, marginTop: 8 }}>
             Pályázatkereső magyar KKV-knak
           </Text>
+        </View>
+
+        {/* vc23 (Lumen L8): what the app does, before the e-mail field. Only what it really does today. */}
+        <View style={styles.promise} testID="auth-promise">
+          {AUTH_PROMISE_LINES.map(({ icon, text }) => (
+            <View key={icon} style={styles.promiseRow}>
+              <MaterialCommunityIcons name={icon} size={20} color="#1565C0" />
+              <Text variant="bodyMedium" style={styles.promiseText}>{text}</Text>
+            </View>
+          ))}
         </View>
 
         <View style={styles.form}>
@@ -264,6 +284,7 @@ export function AuthScreen() {
           </Button>
         </View>
       </Surface>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -296,9 +317,12 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   surface: {
     // On a laptop the card filled the window (a 1192 px wide button at 1280, 2026-11-13).
@@ -308,6 +332,20 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 16,
     backgroundColor: 'white',
+  },
+  promise: {
+    marginBottom: 16,
+    gap: 8,
+  },
+  promiseRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  // #424242 on white is 10.4:1.
+  promiseText: {
+    flex: 1,
+    color: '#424242',
   },
   header: {
     alignItems: 'center',

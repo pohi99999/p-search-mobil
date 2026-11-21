@@ -247,6 +247,39 @@ describe('OnboardingScreen edit mode', () => {
     await act(async () => { component!.unmount(); });
   });
 
+  // vc23 (Lumen L8): the bar under the required note follows the form as the user types.
+  // Ellenőr #273 (second round): the bar and this screen's Save must agree on every number. The Save strips spaces
+  // (handleSave) and runs validateProfileForm; the bar counts a number only where the Save keeps it, and not 0.
+  it.each([
+    ['employee_count', 'abc'], ['employee_count', '-5'], ['employee_count', '1,5'], ['employee_count', '1.5'],
+    ['employee_count', '12'], ['employee_count', ' 12 '], ['employee_count', '0'],
+    ['yearly_revenue', 'abc'], ['yearly_revenue', '-1'], ['yearly_revenue', '50.000.000'],
+    ['yearly_revenue', '180 000 000'], ['yearly_revenue', '0'],
+  ])('the bar and the Save agree on %s %p', (field, value) => {
+    const { validateProfileForm } = require('../OnboardingScreen');
+    const { filledMatchFields } = require('../../components/ProfileStrength');
+    const stripped = value.replace(/\s/g, '');
+    const errs = validateProfileForm('Példa Kft.', field === 'employee_count' ? stripped : '', field === 'yearly_revenue' ? stripped : '');
+    const saveKeeps = !(field in errs);
+    const counted = filledMatchFields({ [field]: value }) === 1;
+    expect(counted).toBe(saveKeeps && Number(stripped) > 0);
+  });
+
+  it('the profile bar counts the matching fields as they are filled', async () => {
+    const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
+    let component: renderer.ReactTestRenderer;
+    await act(async () => { component = renderer.create(<OnboardingScreen navigation={mockNavigation} />); });
+    const text = () => JSON.stringify(component!.toJSON());
+    expect(text()).toContain('A találatot pontosító adatok: 0/4');
+    const teaor = component!.root.findAllByType(TextInput).find((node) => node.props.label === 'Főtevékenység (TEÁOR)');
+    await act(async () => { teaor!.props.onChangeText('62.01'); });
+    expect(text()).toContain('A találatot pontosító adatok: 1/4');
+    const name = component!.root.findAllByType(TextInput).find((node) => node.props.label === 'Cégnév *');
+    await act(async () => { name!.props.onChangeText('Példa Kft.'); });
+    expect(text()).toContain('A találatot pontosító adatok: 1/4');
+    await act(async () => { component!.unmount(); });
+  });
+
   it('without the edit param the form still creates a profile (insert), even when one exists', async () => {
     const mockNavigation = { replace: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn(() => true) } as unknown as NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
     (supabase.auth.getSession as jest.Mock) = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' } } } });
