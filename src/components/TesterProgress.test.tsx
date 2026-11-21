@@ -146,3 +146,18 @@ it('the tester progress bar is named with the day count', async () => {
   const bar = root.root.findByType(ProgressBar);
   expect(bar.props.accessibilityLabel).toMatch(/^Tesztelési napok: \d+ a 14-ből$/);
 });
+
+// vc23 (Lumen L1): on web Paper's ProgressBar is height: 100%, which stretched it over the card and pushed the
+// description out. The bar sits in a box with a fixed height, so the 100% resolves to the bar's own 6 px.
+it('the progress bar sits in a fixed-height box', async () => {
+  const { ProgressBar } = require('react-native-paper');
+  const { StyleSheet } = require('react-native');
+  (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(['2026-11-20']));
+  let root!: renderer.ReactTestRenderer;
+  await act(async () => { root = renderer.create(<TesterProgress />); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const [box] = root.root.findAll((n) => n.props.testID === 'tester-progress-bar-box');
+  expect(box).toBeDefined();
+  expect(StyleSheet.flatten(box.props.style).height).toBe(6);
+  expect(box.findAllByType(ProgressBar)).toHaveLength(1);
+});

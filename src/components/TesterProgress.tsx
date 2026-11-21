@@ -56,12 +56,16 @@ export const TesterProgress: React.FC = () => {
         </Text>
       </View>
 
-      <ProgressBar
-        progress={progress}
-        color={isCompleted ? "#4CAF50" : "#1976D2"}
-        style={styles.progressBar}
-        accessibilityLabel={`Tesztelési napok: ${daysCount} a ${REQUIRED_DAYS}-ből`}
-      />
+      {/* Paper's ProgressBar is height: 100% on web (webContainer), so it grew to fill the card and pushed the
+          description out of it. A fixed-height box gives the 100% a height to resolve against. */}
+      <View style={styles.progressBox} testID="tester-progress-bar-box">
+        <ProgressBar
+          progress={progress}
+          color={isCompleted ? "#4CAF50" : "#1976D2"}
+          style={styles.progressBar}
+          accessibilityLabel={`Tesztelési napok: ${daysCount} a ${REQUIRED_DAYS}-ből`}
+        />
+      </View>
 
       <Text variant="bodySmall" style={styles.description}>
         {isCompleted
@@ -97,11 +101,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#5C6BC0",
   },
+  progressBox: {
+    height: 6,
+    marginBottom: 6,
+  },
   progressBar: {
     height: 6,
     borderRadius: 3,
     backgroundColor: "#E8EAF6",
-    marginBottom: 6,
   },
   description: {
     fontSize: 11,
