@@ -15,4 +15,5 @@ export const SCREEN_TITLES: Record<keyof RootStackParamList, string> = {
   GrantDetail: 'Részletek | P-Search',
   ActionPlan: 'Akcióterv | P-Search',
   CopilotChat: 'AI pályázati Copilot | P-Search',
+  FollowedGrants: 'Saját pályázataim | P-Search',
 };

@@ -35,4 +35,10 @@ describe('GrantKindBadge', () => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(onWhite(fg, 0.75), onWhite(bg, 0.75))).toBeGreaterThanOrEqual(4.5);
   });
+
+  // Ellenőr #270 (3b): repaid like a loan, so the loan's colours, not the grant's green.
+  it('the repayable label has the loan colours', () => {
+    expect(KIND_COLORS.repayable).toEqual(KIND_COLORS.loan);
+    expect(KIND_COLORS.repayable).not.toEqual(KIND_COLORS.grant);
+  });
 });

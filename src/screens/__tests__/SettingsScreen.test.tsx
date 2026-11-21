@@ -18,6 +18,10 @@ jest.mock('../../lib/supabase', () => ({
 }));
 
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '8' }));
+// Round 11-21: the daily scan is Pro. These tests were written for the daily choice, so the account is Pro here;
+// the free account's daily row has its own tests (SettingsScreen.round2.test.tsx).
+const mockBilling = { isPro: true };
+jest.mock('../../context/BillingContext', () => ({ useBilling: () => mockBilling }));
 
 jest.mock('../../utils/logger', () => ({
   logger: {

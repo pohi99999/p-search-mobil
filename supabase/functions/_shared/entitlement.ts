@@ -5,9 +5,29 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const PRO_TIER = 'pro';
-export const FREE_DAILY_SEARCH_CAP = 20;
-/** Card [L]: free Copilot chat messages per day. A technical ceiling against abuse; the final free/Pro line is the owner's decision. */
-export const FREE_DAILY_CHAT_CAP = 20;
+/**
+ * The free/Pro line, owner decision 2026-11-21 (Péter GO 17591, synthesis of the 11-21 round): free = 3 AI searches a
+ * day, weekly automatic scan, at most 3 followed grants (client side), 5 Copilot messages a day; Pro = unlimited
+ * search, daily scan, action plan, document. Before it the free caps were 20 / 20, so "unlimited search" was no
+ * difference. Both caps are parameters of the consume_daily_* RPCs (p_cap), so no migration is needed.
+ */
+export const FREE_DAILY_SEARCH_CAP = 3;
+/** Card [L]: free Copilot chat messages per day (5 since 2026-11-21, see above). */
+export const FREE_DAILY_CHAT_CAP = 5;
+
+/** The automatic scan's cadences (profiles.search_frequency). */
+export type ScanFrequency = 'daily' | 'weekly' | 'manual';
+
+/**
+ * Pure: the cadence the scheduled scan really uses. The daily scan is Pro (2026-11-21); a free account that has
+ * 'daily' stored (chosen before the line, or written past the app) is scanned weekly. Anything unknown is weekly,
+ * the column's default; 'manual' stays manual for everyone.
+ */
+export function effectiveScanFrequency(tier: string | null | undefined, frequency: string | null | undefined): ScanFrequency {
+  if (frequency === 'manual') return 'manual';
+  if (frequency === 'daily' && isPro(tier)) return 'daily';
+  return 'weekly';
+}
 
 /** Pure: is this subscription tier Pro? Anything not exactly 'pro' is free. */
 export function isPro(tier: string | null | undefined): boolean {

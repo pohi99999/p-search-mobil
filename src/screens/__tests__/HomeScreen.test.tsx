@@ -567,6 +567,23 @@ describe('HomeScreen', () => {
 
   // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.
   // Card 4762e3d7: fresh matches first, the stale ones in a collapsed "Korábbi találatok (N)" section below.
+  // Round 11-21 (#5): the header opens the followed grants.
+  describe('round 11-21: the followed grants button', () => {
+    it('opens "Saját pályázataim"', () => {
+      (useHomeData as jest.Mock).mockReturnValue({
+        loading: false, profile: { company_name: 'T' }, matches: [], isPro: false,
+        fetchData: jest.fn(), retryLoad: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+      });
+      const navigation = { navigate: jest.fn(), replace: jest.fn() } as any;
+      let root: any;
+      act(() => { root = renderer.create(<HomeScreen navigation={navigation} />); });
+      const button = root.root.findByProps({ testID: 'home-followed-button' });
+      expect(button.props.accessibilityLabel).toBe('Saját pályázataim');
+      act(() => { button.props.onPress(); });
+      expect(navigation.navigate).toHaveBeenCalledWith('FollowedGrants');
+    });
+  });
+
   describe('stale matches section', () => {
     const fresh1 = { id: 'f1', status: 'new', match_score: 90, grants: { title: 'Friss 1' } };
     const fresh2 = { id: 'f2', status: 'viewed', match_score: 70, grants: { title: 'Friss 2' } };
@@ -631,6 +648,47 @@ describe('HomeScreen', () => {
     expect(src).not.toMatch(/TestIds/);
   });
   // Review 2026-11-03: the closed-test progress card is behind EXPO_PUBLIC_SHOW_TESTER_PROGRESS, on unless exactly "false".
+  // Round 11-21 (Ellenőr J1-J3 after #263, card dc1b408e): the tests the #263 review found missing, and J3.
+  describe('round 11-21: J3 and the missing tests', () => {
+    const base = { isPro: false, fetchData: jest.fn(), retryLoad: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn() };
+
+    // H9: the greeting is the page's level-1 heading (#264).
+    it('the greeting is a level-1 heading', () => {
+      (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false, profile: { company_name: 'Teszt Kft.' }, matches: [] });
+      let root: any;
+      act(() => { root = renderer.create(<HomeScreen navigation={{ navigate: jest.fn(), replace: jest.fn() } as any} />); });
+      const headings = root.root.findAll((n: any) => n.type === 'Text' && n.props.role === 'heading');
+      expect(headings).toHaveLength(1);
+      expect(headings[0].props['aria-level']).toBe(1);
+      expect([].concat(headings[0].props.children).join('')).toContain('Üdv, Teszt Kft.!');
+    });
+
+    // H10: the tester card stays in the error state too.
+    it.each(['profile', 'matches'] as const)('%s error: the tester card is still shown once', (loadError) => {
+      delete process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS;
+      (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false, loadError, profile: loadError === 'profile' ? null : { company_name: 'T' }, matches: [] });
+      let root: any;
+      act(() => { root = renderer.create(<HomeScreen navigation={{ navigate: jest.fn(), replace: jest.fn() } as any} />); });
+      expect(root.root.findAllByType('TesterProgress')).toHaveLength(1);
+    });
+
+    // J3: the "Korábbi találatok" toggle keeps out of the round search button's column.
+    it('the stale toggle leaves the search button column free', () => {
+      const { STALE_TOGGLE_GUTTER } = require('../HomeScreen');
+      const fresh = { id: 'f1', status: 'new', match_score: 90, created_at: '', grants: {} };
+      const stale = { id: 's1', status: 'stale', match_score: 50, created_at: '', grants: {} };
+      (useHomeData as jest.Mock).mockReturnValue({ ...base, loading: false, profile: { company_name: 'T' }, matches: [fresh, stale] });
+      let root: any;
+      act(() => { root = renderer.create(<HomeScreen navigation={{ navigate: jest.fn(), replace: jest.fn() } as any} />); });
+      let footer: any;
+      act(() => { footer = renderer.create(root.root.findByType('FlatList').props.ListFooterComponent); });
+      const toggle = footer.root.findByProps({ testID: 'home-stale-toggle' });
+      // the round button: 56 px wide, 16 px margin
+      expect(STALE_TOGGLE_GUTTER).toBeGreaterThanOrEqual(56 + 16);
+      expect(toggle.props.style.marginRight).toBe(STALE_TOGGLE_GUTTER);
+    });
+  });
+
   describe('tester progress flag', () => {
     const saved = process.env.EXPO_PUBLIC_SHOW_TESTER_PROGRESS;
     afterEach(() => {

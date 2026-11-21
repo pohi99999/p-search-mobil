@@ -26,6 +26,8 @@ export const FAB_IDLE_LABEL = 'Új AI-keresés';
 export const FAB_SEARCHING_LABEL = 'Keresés…';
 /** Card 4762e3d7: the collapsed section of the matches an earlier search found. */
 export const staleSectionLabel = (n: number) => `Korábbi találatok (${n})`;
+/** Ellenőr J3: the round search button's column, 56 px wide plus its 16 px margin. */
+export const STALE_TOGGLE_GUTTER = 72;
 
 export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp }) {
   const {
@@ -115,6 +117,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         mode="text"
         icon={staleExpanded ? 'chevron-up' : 'chevron-down'}
         contentStyle={styles.staleToggleContent}
+        style={styles.staleToggle}
         onPress={() => setStaleOpen(!staleExpanded)}
         accessibilityRole="button"
         accessibilityState={{ expanded: staleExpanded }}
@@ -139,6 +142,14 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
           Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
         <View style={styles.headerActions}>
+          {/* Round 11-21 (#5): the followed grants with their deadlines. */}
+          <IconButton
+            icon="bookmark-multiple"
+            size={22}
+            onPress={() => navigation.navigate('FollowedGrants')}
+            accessibilityLabel="Saját pályázataim"
+            testID="home-followed-button"
+          />
           <IconButton
             icon="file-document-plus"
             size={22}
@@ -260,6 +271,11 @@ const styles = StyleSheet.create({
   },
   staleSection: {
     marginTop: 8,
+  },
+  // Ellenőr J3 (after #263): the full-width toggle slid under the round search button while scrolling. It keeps out of
+  // the button's column (56 px + 16 px margin), like MatchCard's actions (SEARCH_BUTTON_GUTTER).
+  staleToggle: {
+    marginRight: STALE_TOGGLE_GUTTER,
   },
   staleToggleContent: {
     // the chevron after the label, the whole row a 48 dp touch target

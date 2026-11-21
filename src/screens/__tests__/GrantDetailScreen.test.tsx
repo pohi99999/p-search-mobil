@@ -62,6 +62,29 @@ async function renderScreen(match: MatchWithGrant, navigation = createNavigation
   return { tree: tree!, text, navigation, byTestId };
 }
 
+// Round 11-21 (#5): the follow button sits on the view, for the signed-in user, and opens the paywall at the limit.
+describe('GrantDetailScreen follow button (round 11-21)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    (useActionPlan as jest.Mock).mockReturnValue({ plans: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('is shown with the user id and the Pro state, and its paywall goes to the grant detail source', async () => {
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp-1', user_id: 'u-1' } });
+    const { tree, navigation } = await renderScreen(makeMatch());
+    const { FollowButton } = require('../../components/FollowButton');
+    const button = tree.root.findByType(FollowButton);
+    expect(button.props.userId).toBe('u-1');
+    expect(button.props.isPro).toBe(false);
+    expect(button.props.match.grant_id).toBe('g-1');
+    button.props.onOpenPaywall();
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'grant_detail' });
+  });
+});
+
 describe('GrantDetailScreen (card [B])', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -146,7 +169,12 @@ describe('GrantDetailScreen (card [B])', () => {
     const { byTestId, navigation } = await renderScreen(makeMatch());
     expect(byTestId('grant-detail-plan')).toBeUndefined();
     await act(async () => { byTestId('grant-detail-upgrade').props.onPress(); });
-    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', { source: 'grant_detail' });
+    // vc23 (Lumen L7): the paywall gets the grant's title and deadline to name them.
+    expect(navigation.navigate).toHaveBeenCalledWith('Paywall', {
+      source: 'grant_detail',
+      grantTitle: 'KKV Digitalizációs Támogatás',
+      deadline: new Date(2026, 11, 15, 12).toISOString(),
+    });
   });
 
   it('a Pro user goes to the action plan, labelled by whether one exists', async () => {
@@ -177,6 +205,47 @@ describe('GrantDetailScreen (card [B])', () => {
   });
 });
 
+// vc23 (Lumen L6): the offer comes right after the summary, the long part after it, the description folded.
+describe('GrantDetailScreen order and folding (vc23 L6)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp-1' } });
+    (useActionPlan as jest.Mock).mockReturnValue({ plans: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  const LONG = 'A felhívás célja a kkv-k versenyképességének javítása eszközbeszerzéssel. '.repeat(6).trim();
+
+  it('reads: summary and reasoning, then the Pro offer, then eligibility, description and the link', async () => {
+    const { text } = await renderScreen(makeMatch());
+    const at = (s: string) => text.indexOf(s);
+    expect(at('A cég létszáma és tevékenysége illik a kiíráshoz.')).toBeGreaterThan(-1);
+    expect(at('Készülj fel a beadásra')).toBeGreaterThan(at('A cég létszáma és tevékenysége illik a kiíráshoz.'));
+    expect(at('Legalább 1 éve működő KKV.')).toBeGreaterThan(at('Készülj fel a beadásra'));
+    expect(at('Hivatalos kiírás megnyitása')).toBeGreaterThan(at('Legalább 1 éve működő KKV.'));
+  });
+
+  it('a long description is folded to a few lines until "Teljes leírás"', async () => {
+    const { tree } = await renderScreen(makeMatch({ description: LONG }));
+    const desc = () => tree.root.findAll((n) => n.props.testID === 'grant-detail-description' && n.props.numberOfLines !== undefined)[0];
+    const toggle = () => tree.root.findAll((n) => n.props.testID === 'grant-detail-description-toggle' && typeof n.props.onPress === 'function')[0];
+    expect(desc().props.numberOfLines).toBe(6);
+    expect(JSON.stringify(tree.toJSON())).toContain('Teljes leírás');
+    await act(async () => { toggle().props.onPress(); });
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-detail-description' && n.props.numberOfLines !== undefined)).toHaveLength(0);
+    expect(JSON.stringify(tree.toJSON())).toContain('Kevesebb');
+  });
+
+  it('a short description is shown whole, with no toggle', async () => {
+    const { tree } = await renderScreen(makeMatch());
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-detail-description-toggle')).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.testID === 'grant-detail-description' && n.props.numberOfLines !== undefined)).toHaveLength(0);
+  });
+});
+
 describe('isOpenableUrl', () => {
   it('opens only http(s) links from the scraped data', () => {
     expect(isOpenableUrl('https://palyazat.gov.hu')).toBe(true);
@@ -185,5 +254,26 @@ describe('isOpenableUrl', () => {
     expect(isOpenableUrl('intent://x#Intent;end')).toBe(false);
     expect(isOpenableUrl('')).toBe(false);
     expect(isOpenableUrl(null)).toBe(false);
+  });
+});
+
+// Round 11-21 (Ellenőr after #263, D3, D4): the view's heading structure of #264 had no test.
+describe('GrantDetailScreen headings (round 11-21)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    (useBilling as jest.Mock).mockReturnValue({ isPro: false });
+    (useProfile as jest.Mock).mockReturnValue({ profile: { id: 'bp-1' } });
+    (useActionPlan as jest.Mock).mockReturnValue({ plans: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('one level-1 heading for the view, the grant title as level 2', async () => {
+    const { tree } = await renderScreen(makeMatch());
+    const headings = tree.root
+      .findAll((n) => typeof n.type === 'string' && n.props.role === 'heading')
+      .map((n) => [n.props['aria-level'], [].concat(n.props.children).join('')]);
+    expect(headings.filter(([level]) => level === 1)).toHaveLength(1);
+    expect(headings).toContainEqual([2, 'KKV Digitalizációs Támogatás']);
   });
 });

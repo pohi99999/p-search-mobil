@@ -9,7 +9,8 @@ export type RootStackParamList = {
   Auth: undefined;
   Onboarding: { edit?: boolean } | undefined;
   // [G2]: where it was opened from, for the paywall_view event.
-  Paywall: { source?: PaywallSource } | undefined;
+  // vc23 (Lumen L7): from a grant, its title and deadline, so the offer names what the user came for.
+  Paywall: { source?: PaywallSource; grantTitle?: string; deadline?: string | null } | undefined;
   Settings: undefined;
   DocumentUpload: undefined;
   ActionPlan: {
@@ -20,6 +21,8 @@ export type RootStackParamList = {
   // Card [B]: the match as the home list loaded it (grants(*) included), so the view needs no query.
   // [G2]: rank = its 1-based position in the home list, for the match_open / match_feedback events.
   GrantDetail: { match: MatchWithGrant; rank?: number };
+  // Round 11-21 (#5): the followed grants with their deadlines.
+  FollowedGrants: undefined;
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -29,4 +32,5 @@ export type CopilotChatScreenRouteProp = RouteProp<RootStackParamList, 'CopilotC
 export type ActionPlanScreenProps = NativeStackScreenProps<RootStackParamList, 'ActionPlan'>;
 export type GrantDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'GrantDetail'>;
 export type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+export type FollowedGrantsScreenProps = NativeStackScreenProps<RootStackParamList, 'FollowedGrants'>;
 export type DocumentUploadScreenProps = NativeStackScreenProps<RootStackParamList, 'DocumentUpload'>;
