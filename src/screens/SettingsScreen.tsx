@@ -105,7 +105,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [deleting, setDeleting] = useState(false);
 
   const isPro = Boolean(billing?.isPro);
-  const shownFrequency = effectiveFrequency(selectedFrequency, isPro);
+  // Ellenőr #272 H1: the billing starts as "not Pro" and turns Pro only when RevenueCat answers (and stays "not Pro"
+  // when it fails). The daily row is locked only once the billing has answered and says free; until then the stored
+  // choice shows as it is.
+  const dailyLocked = billing?.isLoading === false && !isPro;
+  const shownFrequency = dailyLocked ? effectiveFrequency(selectedFrequency, false) : selectedFrequency;
 
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
@@ -164,7 +168,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       const { error } = await supabase
         .from('profiles')
         .update({
-          search_frequency: shownFrequency,
+          // Ellenőr #272 H1: what the user chose (or what was stored), never a silent downgrade of a stored 'daily': a
+          // Pro account whose billing did not answer would lose its daily scan. The server runs a free 'daily' weekly
+          // anyway (effectiveScanFrequency); the next scan time follows the cadence shown.
+          search_frequency: selectedFrequency,
           next_scan_at: computedNextScanAt,
         })
         .eq('id', session.user.id);
@@ -284,7 +291,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               {frequencyOptions.map((option) => {
                 const checked = shownFrequency === option.value;
                 // Round 11-21: for a free account the daily row names the Pro and opens the paywall, it does not select.
-                const proLocked = option.value === 'daily' && !isPro;
+                const proLocked = option.value === 'daily' && dailyLocked;
                 const title = proLocked ? DAILY_PRO_LABEL : option.label;
                 const description = proLocked ? DAILY_PRO_DESCRIPTION : option.description;
                 return (
