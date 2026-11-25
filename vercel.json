@@ -1,5 +1,5 @@
 {
-  "buildCommand": "EXPO_PUBLIC_WEB_BUILD=$VERCEL_GIT_COMMIT_SHA npx expo export -p web",
+  "buildCommand": "EXPO_PUBLIC_WEB_BUILD=$VERCEL_GIT_COMMIT_SHA npx expo export -p web --clear",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
