@@ -13,7 +13,7 @@ import {
 } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
-import { formatNextScan } from '../lib/scheduleLabel';
+import { formatNextScan, formatScheduleTime } from '../lib/scheduleLabel';
 import { getErrorMessage } from '../utils/error';
 import { getAppVersionLabel } from '../lib/appVersion';
 import { useBilling } from '../context/BillingContext';
@@ -73,7 +73,7 @@ const isSearchFrequency = (value: string | null): value is SearchFrequency =>
 
 const formatScheduleDate = (value: string | null, fallback: string) => {
   if (!value) return fallback;
-  return new Date(value).toLocaleString('hu-HU');
+  return formatScheduleTime(value);
 };
 
 const computeNextScanAt = (frequency: SearchFrequency) => {
@@ -326,6 +326,19 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           </Card.Content>
         </Card>
 
+        {/* Round 6 (Lumen P2-3): Mentés sits right under the choice it saves; it was under the read-only status block,
+            a screen away from the radios on a phone. */}
+        <Button
+          mode="contained"
+          onPress={handleSave}
+          loading={saving}
+          disabled={saving || loadFailed}
+          style={styles.saveButton}
+          accessibilityLabel="Keresési beállítások mentése"
+        >
+          Mentés
+        </Button>
+
         <Surface style={styles.infoSurface} elevation={1}>
           <Text variant="titleMedium" style={styles.infoTitle}>
             Keresési állapot
@@ -360,17 +373,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             </>
           )}
         </Surface>
-
-        <Button
-          mode="contained"
-          onPress={handleSave}
-          loading={saving}
-          disabled={saving || loadFailed}
-          style={styles.saveButton}
-          accessibilityLabel="Keresési beállítások mentése"
-        >
-          Mentés
-        </Button>
 
         <Card style={styles.card} mode="elevated">
           <List.Item
