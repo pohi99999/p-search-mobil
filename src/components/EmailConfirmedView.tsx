@@ -103,13 +103,13 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
     textAlign: 'center',
-    // #1A237E on white is 16.1:1 (the detail and settings headings).
+    // #1A237E on white is 13.24:1 (the detail and settings headings).
     color: '#1A237E',
     marginBottom: 8,
   },
   lead: {
     textAlign: 'center',
-    // #424242 on white is 10.4:1.
+    // #424242 on white is 10.05:1.
     color: '#424242',
     marginBottom: 24,
   },
