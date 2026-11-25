@@ -66,8 +66,13 @@ export interface MatchRunSummary {
   skippedLowScore: number;
 }
 
-/** Matches scoring below this are not worth showing to the user. */
-export const MIN_MATCH_SCORE = 40;
+/**
+ * Matches scoring below this are not worth showing to the user. P-Search round 6 (Péter 18328, Marveen 9167, live
+ * 2026-11-25): 40 -> 50. Of 29 live matches 8 were below 50, no company is left with an empty list at 50 (nor at 55
+ * or 60), and the little feedback there is does not argue for a stricter cut. src/lib/matchVisibility.ts keeps the
+ * same value for matches already stored (a parity test pins the two).
+ */
+export const MIN_MATCH_SCORE = 50;
 
 /** Upper bound on grants sent to the model in one scoring request. */
 const MAX_CANDIDATES = 12;
