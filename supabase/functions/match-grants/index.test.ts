@@ -210,3 +210,20 @@ Deno.test("the schedule read fails: the search still succeeds, only last_scan_at
   assertEquals(Object.keys(calls.stamps[0].patch), ["last_scan_at"]);
   assertEquals(calls.refunds, 0);
 });
+
+// Ellenőr 9205 (note on #279): the boundary and the "manual with a slot" case had no test; both mutants passed.
+Deno.test("rearmedNextScanAt: a slot due exactly now is due (the scheduler selects next_scan_at <= now too)", () => {
+  assertEquals(
+    rearmedNextScanAt({ search_frequency: "weekly", subscription_tier: "free", next_scan_at: NOW.toISOString() }, NOW),
+    new Date(NOW.getTime() + 7 * DAY).toISOString(),
+  );
+  // one millisecond later is still ahead: left alone
+  assertEquals(
+    rearmedNextScanAt({ search_frequency: "weekly", next_scan_at: new Date(NOW.getTime() + 1).toISOString() }, NOW),
+    null,
+  );
+});
+
+Deno.test("rearmedNextScanAt: a manual account is never re-armed, even if a due slot was left in the row", () => {
+  assertEquals(rearmedNextScanAt({ search_frequency: "manual", subscription_tier: "pro", next_scan_at: "2000-01-01T00:00:00.000Z" }, NOW), null);
+});
