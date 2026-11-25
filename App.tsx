@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { appTheme } from './src/config/theme';
 import { Session } from '@supabase/supabase-js';
 import mobileAds from 'react-native-google-mobile-ads';
 import * as Sentry from '@sentry/react-native';
@@ -38,14 +39,8 @@ if (SENTRY_DSN) {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const theme = {
-  ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: '#1976D2', // Profi kék árnyalat
-    secondary: '#424242',
-  },
-};
+// The full colour scheme lives in src/config/theme.ts (round 6: no MD3 default purple, the brand blue AA as text).
+const theme = appTheme;
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);

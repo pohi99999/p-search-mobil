@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types/navigation';
 import { logger } from '../../utils/logger';
 import { metasOutsideWhitelist, trackCalls } from '../../test-utils/events';
+import { notify } from '../../lib/notify';
 
 // Mock dependencies globally for all tests in this file
 // Edge-to-edge insets (card bc8e4135): tests set mockInsets.bottom to measure the layout.
@@ -38,6 +39,7 @@ jest.mock('../../context/ProfileContext', () => ({
 }));
 
 
+jest.mock('../../lib/notify', () => ({ notify: jest.fn() }));
 jest.mock('../../utils/logger', () => ({
   logger: {
     warn: jest.fn(),
@@ -226,6 +228,9 @@ describe('OnboardingScreen edit mode', () => {
     expect(mockProfileContext.refreshProfile).toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
     expect(mockNavigation.replace).not.toHaveBeenCalled();
+    // Round 6 item 8: the save is confirmed, after going back (so closing the note cannot leave the user on the form).
+    expect(notify).toHaveBeenCalledWith('A cégprofil mentve', 'A következő AI-keresés már az új adatokkal fut.');
+    expect((mockNavigation.goBack as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan((notify as jest.Mock).mock.invocationCallOrder[0]);
     // Card [G2]: an edit is profile_updated, with yes/no flags only (no company data in the event).
     expect(trackCalls('profile_updated')).toEqual([['profile_updated', { has_goals: true, has_industry: true, has_revenue: true, has_employees: true, has_tax_number: true }]]);
     expect(trackCalls('onboarding_done')).toEqual([]);
@@ -299,6 +304,8 @@ describe('OnboardingScreen edit mode', () => {
     // Card [G2]: a new profile is onboarding_done, never profile_updated, and carries no company name.
     expect(trackCalls('onboarding_done')).toHaveLength(1);
     expect(trackCalls('profile_updated')).toEqual([]);
+    // a first profile goes Home and starts the search; it gets no "mentve" note (round 6 item 8 is the edit only)
+    expect(notify).not.toHaveBeenCalled();
     expect(Object.keys(trackCalls('onboarding_done')[0][1]!).sort()).toEqual(['has_employees', 'has_goals', 'has_industry', 'has_revenue', 'has_tax_number']);
     expect(JSON.stringify(trackCalls('onboarding_done'))).not.toContain('Új Kft');
     expect(metasOutsideWhitelist()).toEqual([]);

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Button, Surface, Snackbar, ActivityIndicator, Banner, IconButton } from 'react-native-paper';
+import { Text, Button, Surface, Snackbar, ActivityIndicator, IconButton } from 'react-native-paper';
 import { useProfile } from '../context/ProfileContext';
 import { useActionPlan } from '../hooks/useActionPlan';
 import { ActionTask, ActionTaskStatus } from '../types/database';
@@ -26,7 +26,6 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
   const [generating, setGenerating] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
 
   const { showAdIfAvailable } = useInterstitialAd();
   // An empty company profile: ask for the key fields before the plan is generated (card 431a496e).
@@ -132,19 +131,6 @@ export function ActionPlanScreen({ route, navigation }: ActionPlanScreenProps) {
           </Button>
         </View>
       ) : null}
-
-      <Banner
-        visible={ocrConfidence === 'low'}
-        actions={[
-          {
-            label: 'Újra fotózom',
-            onPress: () => setOcrConfidence(null),
-          },
-        ]}
-        icon="alert"
-      >
-        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
-      </Banner>
 
       {error && (
         <Surface style={styles.errorBanner} elevation={1}>

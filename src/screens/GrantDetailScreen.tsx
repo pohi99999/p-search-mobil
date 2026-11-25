@@ -301,10 +301,14 @@ const styles = StyleSheet.create({
   kind: {
     marginBottom: 8,
   },
+  // Round 6 (Lumen P2-7): titleLarge (22/28) made a long title seven lines at 390 px, most of the first screen.
+  // 18/24 keeps it the heading of the page and gives the deadline and the amount back their place.
   title: {
     fontWeight: 'bold',
     color: '#1A237E',
     marginBottom: 4,
+    fontSize: 18,
+    lineHeight: 24,
   },
   matchText: {
     color: '#424242',
