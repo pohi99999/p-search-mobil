@@ -3,7 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import { AuthScreen, FIELD_ERRORS, PASSWORD_MIN_LENGTH, RESET_SENT_MESSAGE, RESET_SENT_TITLE, fieldErrors } from './AuthScreen';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../lib/legalLinks';
 import { supabase } from '../lib/supabase';
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform, TextInput as RNTextInput } from 'react-native';
 import { contrastRatio, textColor } from '../test-utils/contrast';
 import { Button, HelperText, TextInput } from 'react-native-paper';
 
@@ -87,6 +87,68 @@ describe('AuthScreen', () => {
     expect(fieldError(component, 'auth-password-error')).toBe(FIELD_ERRORS.passwordShort);
     expect(component.root.findByProps({ testID: 'auth-password' }).props.error).toBe(true);
     expect(fieldError(component, 'auth-email-error')).toBeNull();
+  });
+
+  // Round 6 follow-up (Ellenőr 9246 remark 1): the first wrong field gets the focus, and no jest test said so (a mutant
+  // that focused the password field instead of the e-mail field stayed green). Jest's react-native mock of TextInput
+  // has ONE focus jest.fn shared by all its instances, so which field was focused is read from mock.contexts (the
+  // `this` of each call).
+  describe('the focus goes to the first wrong field', () => {
+    const mountForFocus = () => {
+      let component: any;
+      act(() => {
+        component = renderer.create(<AuthScreen />);
+      });
+      const [email, password] = component.root.findAllByType(RNTextInput).map((n: any) => n.instance);
+      const focused = (): string[] => (email.focus as jest.Mock).mock.contexts.map((ctx: unknown) => (ctx === email ? 'email' : ctx === password ? 'password' : 'other'));
+      const press = async (label: string) => {
+        const btn = component.root.findAllByType(Button).find((b: any) => b.props.children === label);
+        await act(async () => { await btn.props.onPress(); });
+      };
+      const type = (i: number, value: string) => act(() => { component.root.findAllByType(TextInput)[i].props.onChangeText(value); });
+      return { component, focused, press, type, email, password };
+    };
+
+    it('the mock tells the two fields apart (the instances differ, and the focus is one shared mock)', () => {
+      const { component, email, password } = mountForFocus();
+      expect(email).not.toBe(password);
+      expect(email.focus).toBe(password.focus);
+      expect(jest.isMockFunction(email.focus)).toBe(true);
+      act(() => component.unmount());
+    });
+
+    it('both wrong: the e-mail field, once, not the password field', async () => {
+      const { component, focused, press } = mountForFocus();
+      await press('Bejelentkezés');
+      expect(focused()).toEqual(['email']);
+      act(() => component.unmount());
+    });
+
+    it('only the password wrong: the password field', async () => {
+      const { component, focused, press, type } = mountForFocus();
+      type(0, 'teszt@pelda.test');
+      type(1, 'rov');
+      await press('Bejelentkezés');
+      expect(focused()).toEqual(['password']);
+      act(() => component.unmount());
+    });
+
+    it('both right: no focus is moved', async () => {
+      const { component, focused, press, type } = mountForFocus();
+      type(0, 'teszt@pelda.test');
+      type(1, 'tesztjelszo1');
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValueOnce({ error: null });
+      await press('Bejelentkezés');
+      expect(focused()).toEqual([]);
+      act(() => component.unmount());
+    });
+
+    it('"Elfelejtett jelszó" without an address: the e-mail field', async () => {
+      const { component, focused, press } = mountForFocus();
+      await press('Elfelejtett jelszó?');
+      expect(focused()).toEqual(['email']);
+      act(() => component.unmount());
+    });
   });
 
   describe('field errors (round 6, P1-4)', () => {
