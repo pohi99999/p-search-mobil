@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Card, IconButton, Text, TouchableRipple } from 'react-native-paper';
+import { Button, Card, Icon, IconButton, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBilling } from '../context/BillingContext';
 import { useProfile } from '../context/ProfileContext';
@@ -15,6 +15,8 @@ import type { FollowedGrantsScreenProps } from '../types/navigation';
 export const FOLLOWED_TITLE = 'Saját pályázataim';
 export const FOLLOWED_EMPTY =
   'Még nem követsz pályázatot. Egy pályázat részleteinél a „Követem” gombbal veheted fel, és itt látod, mennyi idő van a beadásig.';
+/** Round 6 (P2-4): the way on from the empty list. */
+export const FOLLOWED_EMPTY_ACTION = 'Vissza a találatokhoz';
 export const followedCountLine = (n: number, isPro: boolean) =>
   isPro ? `${n} követett pályázat` : `${n} / ${FREE_FOLLOW_LIMIT} követett pályázat (ingyenes fiók)`;
 export const CLOSED_AT_SOURCE = 'A kiírás lezárult a forrásnál';
@@ -116,10 +118,27 @@ export function FollowedGrantsScreen({ navigation }: FollowedGrantsScreenProps) 
         </Text>
       </View>
       {loaded && items.length === 0 ? (
+        // Round 6 (Lumen P2-4): the empty list had only a line of text, and no way on but the back arrow.
         <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Icon source="bookmark-outline" size={40} color="#1A237E" />
+          </View>
           <Text variant="bodyLarge" style={styles.emptyText} testID="followed-empty">
             {FOLLOWED_EMPTY}
           </Text>
+          <Button
+            mode="outlined"
+            icon="magnify"
+            // #1565C0: 5.2:1 on this #f5f5f5 page; the theme's #1976D2 was 4.22:1 here. It is the theme's primary
+            // once the round 6 theme PR is in.
+            textColor="#1565C0"
+            onPress={() => navigation.navigate('Home')}
+            style={styles.emptyButton}
+            contentStyle={styles.emptyButtonContent}
+            testID="followed-empty-home"
+          >
+            {FOLLOWED_EMPTY_ACTION}
+          </Button>
         </View>
       ) : (
         <FlatList
@@ -143,7 +162,8 @@ export function FollowedGrantsScreen({ navigation }: FollowedGrantsScreenProps) 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 8, backgroundColor: 'white', elevation: 2, marginBottom: 8 },
-  headerTitle: { flex: 1 },
+  // Round 6 (Lumen P2-4): the same heading as the detail and the settings screens (navy, bold; 16.1:1 on white).
+  headerTitle: { flex: 1, fontWeight: 'bold', color: '#1A237E' },
   card: { marginHorizontal: 16, marginVertical: 6, backgroundColor: 'white' },
   row: { flexDirection: 'row', alignItems: 'center' },
   open: { flex: 1, padding: 16, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 },
@@ -151,8 +171,11 @@ const styles = StyleSheet.create({
   deadline: { fontWeight: 'bold' },
   // #555555 on #f5f5f5: 6.8:1.
   count: { color: '#555555', marginHorizontal: 16, marginBottom: 4 },
-  empty: { flex: 1, padding: 24, justifyContent: 'center' },
-  emptyText: { textAlign: 'center', color: '#424242' },
+  empty: { flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' },
+  emptyIcon: { marginBottom: 12 },
+  emptyText: { textAlign: 'center', color: '#424242', maxWidth: 420 },
+  emptyButton: { marginTop: 20 },
+  emptyButtonContent: { minHeight: 44 },
 });
 
 // The deadline colours of MatchCard ([A]).
