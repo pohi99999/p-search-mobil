@@ -16,6 +16,8 @@ jest.mock('../../context/BillingContext', () => ({ useBilling: jest.fn() }));
 jest.mock('../../context/ProfileContext', () => ({ useProfile: jest.fn() }));
 jest.mock('../../hooks/useActionPlan', () => ({ useActionPlan: jest.fn() }));
 jest.mock('../../utils/logger', () => ({ logger: { error: jest.fn() } }));
+// Round 6: FollowButton's list lives on the server now (followedGrants -> supabase); no real client in this test.
+jest.mock('../../lib/supabase', () => ({ supabase: {} }));
 
 // Card [B]: the grant itself (deadline, official link, eligibility) on a free view, the Pro offer below it.
 const NOW = new Date(2026, 9, 25, 10, 0, 0);

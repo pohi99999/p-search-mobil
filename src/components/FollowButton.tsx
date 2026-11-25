@@ -49,7 +49,7 @@ export function FollowButton({ match, userId, isPro, onOpenPaywall, style }: Fol
         ]);
       }
     } catch {
-      notify('Nem sikerült menteni', 'A követést nem tudtuk elmenteni ezen az eszközön. Próbáld újra.');
+      notify('Nem sikerült menteni', 'A követést nem tudtuk elmenteni. Ellenőrizd az internetkapcsolatot, és próbáld újra.');
     } finally {
       setBusy(false);
     }

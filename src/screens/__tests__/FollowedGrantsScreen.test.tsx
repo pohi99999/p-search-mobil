@@ -3,7 +3,8 @@ import renderer, { act } from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FollowedGrantsScreen, FOLLOWED_EMPTY, CLOSED_AT_SOURCE, followedCountLine } from '../FollowedGrantsScreen';
-import { followGrant, loadFollowed, resetFollowedForTest } from '../../lib/followedGrants';
+import { followGrant, loadFollowed, resetFollowedForTest, setFollowRemoteForTest } from '../../lib/followedGrants';
+import { createMemoryFollowRemote } from '../../test-utils/followRemote';
 import { useBilling } from '../../context/BillingContext';
 import { useProfile } from '../../context/ProfileContext';
 import { supabase } from '../../lib/supabase';
@@ -48,6 +49,7 @@ describe('FollowedGrantsScreen (round 11-21 #5)', () => {
     jest.setSystemTime(NOW);
     jest.clearAllMocks();
     resetFollowedForTest();
+    setFollowRemoteForTest(createMemoryFollowRemote().remote);
     await AsyncStorage.clear();
     mockRows = [];
     (supabase.from as jest.Mock).mockImplementation(grantsRead);
