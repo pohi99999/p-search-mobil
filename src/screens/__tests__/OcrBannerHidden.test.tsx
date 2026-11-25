@@ -99,7 +99,7 @@ const uploadNavigation = () =>
 const renderUpload = () =>
   withSafeArea(<DocumentUploadScreen navigation={uploadNavigation()} route={{ key: 'u', name: 'DocumentUpload' }} />);
 
-async function uploadWithConfidence(confidence: 'high' | 'low') {
+async function uploadWithConfidence(confidence: 'high' | 'medium' | 'low') {
   (supabase.functions.invoke as jest.Mock).mockResolvedValue({
     data: {
       success: true,
@@ -168,8 +168,9 @@ describe('the low-confidence OCR banner is not in the tree while hidden', () => 
     expect(tree).not.toContain(BANNER_ACTION);
   });
 
-  it('upload screen: no banner after a high-confidence upload', async () => {
-    const component = await uploadWithConfidence('high');
+  // Ellenőr 9237 (note): only 'low' shows the banner; a 'medium' extraction is accepted without one.
+  it.each(['high', 'medium'] as const)('upload screen: no banner after a %s-confidence upload', async (confidence) => {
+    const component = await uploadWithConfidence(confidence);
     expect(JSON.stringify(component.toJSON())).not.toContain(BANNER_TEXT);
   });
 
