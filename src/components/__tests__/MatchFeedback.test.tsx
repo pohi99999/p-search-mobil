@@ -76,3 +76,33 @@ it('an answer given on one (the detail view) shows on the other (the card still 
   await act(async () => { other = renderer.create(<MatchFeedback matchId="m-2" grantId="g-2" score={65} rank={5} initial={null} />); });
   expect(btn(other!, 'feedback-not-relevant-m-2').props.accessibilityState.selected).toBe(false);
 });
+
+// Round 6 (Lumen P2-1): the quiet variant (the card) drops the border; the detail view keeps the outlined pair.
+describe('the quiet variant (round 6, P2-1)', () => {
+  const mount = async (quiet: boolean, initial: 'useful' | 'not_relevant' | null = null) => {
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<MatchFeedback matchId="m-1" grantId="g-1" score={65} rank={4} initial={initial} quiet={quiet} />);
+    });
+    const mode = (id: string) => tree.root.findAll((n) => n.props.testID === id && typeof n.props.onPress === 'function')[0].props.mode;
+    return { tree, mode };
+  };
+
+  it('quiet: text buttons; a chosen answer stays filled', async () => {
+    const idle = await mount(true);
+    expect(idle.mode('feedback-useful-m-1')).toBe('text');
+    expect(idle.mode('feedback-not-relevant-m-1')).toBe('text');
+    act(() => idle.tree.unmount());
+    const chosen = await mount(true, 'useful');
+    expect(chosen.mode('feedback-useful-m-1')).toBe('contained');
+    expect(chosen.mode('feedback-not-relevant-m-1')).toBe('text');
+    act(() => chosen.tree.unmount());
+  });
+
+  it('not quiet (the detail view): the outlined pair as before', async () => {
+    const { tree, mode } = await mount(false);
+    expect(mode('feedback-useful-m-1')).toBe('outlined');
+    expect(mode('feedback-not-relevant-m-1')).toBe('outlined');
+    act(() => tree.unmount());
+  });
+});

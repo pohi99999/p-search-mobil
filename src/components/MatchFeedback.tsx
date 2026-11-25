@@ -16,9 +16,15 @@ interface Props {
   initial?: Value | null;
   /** Placement of the whole block (the card puts it in its actions row, the detail view under the reasoning). */
   style?: StyleProp<ViewStyle>;
+  /**
+   * Round 6 (Lumen P2-1): on the card the "Részletek" button is the main action, so the two answers lose their
+   * border (text buttons, icon and label kept) and become 44 px tall targets. A chosen answer stays filled. The
+   * detail view keeps the outlined pair: there they are the only action.
+   */
+  quiet?: boolean;
 }
 
-export function MatchFeedback({ matchId, grantId, score, rank, initial = null, style }: Props) {
+export function MatchFeedback({ matchId, grantId, score, rank, initial = null, style, quiet = false }: Props) {
   // The answer given in this session wins over the one loaded with the list, so the card and the detail view agree.
   const stored = useSyncExternalStore(subscribeMatchFeedback, () => getMatchFeedback(matchId));
   const value: Value | null = stored !== undefined ? stored : initial;
@@ -44,12 +50,15 @@ export function MatchFeedback({ matchId, grantId, score, rank, initial = null, s
     }
   };
 
+  const idle = quiet ? 'text' : 'outlined';
+  const contentStyle = quiet ? styles.quietContent : undefined;
   return (
     <View style={[styles.wrap, style]}>
       <View style={styles.row}>
         <Button
           compact
-          mode={value === 'useful' ? 'contained' : 'outlined'}
+          mode={value === 'useful' ? 'contained' : idle}
+          contentStyle={contentStyle}
           // Chosen: our blue with white text (4.60:1); not chosen: Paper's outlined (primary text on white).
           buttonColor={value === 'useful' ? SELECTED_BG : undefined}
           textColor={value === 'useful' ? '#FFFFFF' : undefined}
@@ -64,7 +73,8 @@ export function MatchFeedback({ matchId, grantId, score, rank, initial = null, s
         </Button>
         <Button
           compact
-          mode={value === 'not_relevant' ? 'contained' : 'outlined'}
+          mode={value === 'not_relevant' ? 'contained' : idle}
+          contentStyle={contentStyle}
           // Chosen: our blue with white text (4.60:1); not chosen: Paper's outlined (primary text on white).
           buttonColor={value === 'not_relevant' ? SELECTED_BG : undefined}
           textColor={value === 'not_relevant' ? '#FFFFFF' : undefined}
@@ -93,6 +103,7 @@ const styles = StyleSheet.create({
   wrap: { marginTop: 8 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   button: { borderRadius: 8 },
+  quietContent: { minHeight: 44 },
   // #B3261E on white is 6.54:1 (Paper's error colour).
   error: { color: '#B3261E', marginTop: 4 },
 });
