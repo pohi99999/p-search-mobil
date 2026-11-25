@@ -54,14 +54,21 @@ jest.mock('../../utils/logger', () => ({
 const BANNER_TEXT = 'A dokumentum minősége nem megfelelő';
 const BANNER_ACTION = 'Újra fotózom';
 
-const withSafeArea = (children: React.ReactNode) =>
-  renderer.create(
+// Every tree is unmounted at the end of its test: a mounted Paper tree keeps animating and re-rendering, and on a
+// single-core CI (--runInBand) that ran after the environment was torn down (Ellenőr 9177 on #276).
+const mounted: renderer.ReactTestRenderer[] = [];
+
+const withSafeArea = (children: React.ReactNode) => {
+  const tree = renderer.create(
     <SafeAreaProvider
       initialMetrics={{ frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}
     >
       {children}
     </SafeAreaProvider>
   );
+  mounted.push(tree);
+  return tree;
+};
 
 const uploadNavigation = () =>
   ({
@@ -105,6 +112,12 @@ async function uploadWithConfidence(confidence: 'high' | 'low') {
 }
 
 describe('the low-confidence OCR banner is not in the tree while hidden', () => {
+  afterEach(async () => {
+    await act(async () => {
+      while (mounted.length) mounted.pop()!.unmount();
+    });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     (useProfile as jest.Mock).mockReturnValue({
