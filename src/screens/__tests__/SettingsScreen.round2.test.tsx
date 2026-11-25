@@ -236,16 +236,41 @@ describe('SettingsScreen navigation rows are named buttons', () => {
   const host = (c: renderer.ReactTestRenderer, id: string) =>
     c.root.findAll((n) => n.props.testID === id && typeof n.type === 'string')[0];
 
+  // The visible title and description as rendered inside the row (the icon glyphs are left out).
+  const visible = (node: renderer.ReactTestInstance) =>
+    node
+      .findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string')
+      .map((n) => n.props.children as string)
+      .filter((t) => /\p{L}{3,}/u.test(t));
+
+  // Ellenőr 9158 (note 2): the label is checked whole, against what the row shows, not only its first words.
   it.each([
-    ['settings-pro-entry', /^P-Search Pro: ./],
-    ['settings-profile-edit', /^Cégprofil szerkesztése: ./],
-    ['settings-privacy-entry', /^Adatvédelmi tájékoztató: ./],
-  ])('%s', async (id, label) => {
+    ['settings-pro-entry', ''],
+    ['settings-profile-edit', ''],
+    ['settings-privacy-entry', ' Megnyitás a böngészőben.'],
+  ])('%s: a button named "title: description" as the row shows them', async (id, suffix) => {
     const c = await render();
     const node = host(c, id);
     expect(node).toBeDefined();
     expect(node.props.accessibilityRole).toBe('button');
-    expect(node.props.accessibilityLabel).toMatch(label);
+    const [title, description] = visible(node);
+    expect(node.props.accessibilityLabel).toBe(`${title}: ${description}${suffix}`);
+  });
+
+  it('the Pro row\'s name follows the billing state', async () => {
+    const was = mockBilling.isPro;
+    try {
+      for (const isPro of [false, true]) {
+        mockBilling.isPro = isPro;
+        const c = await render();
+        const node = host(c, 'settings-pro-entry');
+        const [title, description] = visible(node);
+        expect(description).toBe(isPro ? 'Aktív Pro előfizetés. Csomagok és visszaállítás.' : 'Copilot akcióterv, reklámmentes használat, korlátlan keresés.');
+        expect(node.props.accessibilityLabel).toBe(`${title}: ${description}`);
+      }
+    } finally {
+      mockBilling.isPro = was;
+    }
   });
 });
 

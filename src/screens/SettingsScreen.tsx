@@ -382,7 +382,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               Linking.openURL(PRIVACY_POLICY_URL).catch((err) => logger.error('Az adatvédelmi tájékoztató nem nyílt meg:', err));
             }}
             accessibilityRole="button"
-            accessibilityLabel="Adatvédelmi tájékoztató: megnyitás a böngészőben."
+            accessibilityLabel="Adatvédelmi tájékoztató: Milyen adatot kezelünk, miért, és milyen jogaid vannak. Megnyitás a böngészőben."
             testID="settings-privacy-entry"
           />
         </Card>
