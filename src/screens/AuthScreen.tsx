@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, ScrollView } from 'react-native';
-import { TextInput, Button, Text, Surface, useTheme } from 'react-native-paper';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, ScrollView, type TextInput as RNTextInput } from 'react-native';
+import { TextInput, Button, Text, Surface, HelperText, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../lib/legalLinks';
@@ -28,6 +28,25 @@ const DECORATIVE_ICON_PROPS = {
   'aria-hidden': true,
 } as const;
 
+/**
+ * Round 6 (Lumen P1-4): what is wrong with a field is said under that field, in red, not in a dialog that stood
+ * over the form and hid the field it was about. The messages, by field.
+ */
+export const FIELD_ERRORS = {
+  emailMissing: 'Add meg az e-mail címed.',
+  emailInvalid: 'Kérlek, valós e-mail címet adj meg.',
+  passwordMissing: 'Add meg a jelszavad.',
+  passwordShort: `A jelszónak legalább ${PASSWORD_MIN_LENGTH} karakter hosszúnak kell lennie.`,
+  resetNeedsEmail: 'Add meg a fiókod e-mail címét, és utána kérd a jelszó-visszaállítást.',
+} as const;
+
+/** The first problem of each field, or null. Sign-in and sign-up check the same. */
+export function fieldErrors(email: string, password: string): { email: string | null; password: string | null } {
+  const emailError = !email ? FIELD_ERRORS.emailMissing : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? FIELD_ERRORS.emailInvalid : null;
+  const passwordError = !password ? FIELD_ERRORS.passwordMissing : password.length < PASSWORD_MIN_LENGTH ? FIELD_ERRORS.passwordShort : null;
+  return { email: emailError, password: passwordError };
+}
+
 /** The password-reset confirmation (same text whether or not the account exists). */
 export const RESET_SENT_TITLE = 'Ellenőrizd az e-mailed';
 export const RESET_SENT_MESSAGE = 'Ha van ilyen fiók, elküldtük a jelszó-visszaállító linket. A link egy óráig érvényes.';
@@ -47,28 +66,22 @@ export function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   // Web only: react-native-web's Alert.alert shows nothing, so the reset confirmation is shown on the screen.
   const [resetNotice, setResetNotice] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const emailRef = useRef<RNTextInput>(null);
+  const passwordRef = useRef<RNTextInput>(null);
   const theme = useTheme();
 
+  const isValidEmail = (email: string) => fieldErrors(email, 'x'.repeat(PASSWORD_MIN_LENGTH)).email === null;
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
+  /** Marks the wrong fields and puts the focus on the first one; true when both are fine. */
   const validateInputs = () => {
-    if (!email || !password) {
-      notify('Érvénytelen adat', 'Kérlek, töltsd ki az összes mezőt.');
-      return false;
-    }
-    if (!isValidEmail(email)) {
-      notify('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
-      return false;
-    }
-    if (password.length < PASSWORD_MIN_LENGTH) {
-      notify('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
-      return false;
-    }
-    return true;
+    const errors = fieldErrors(email, password);
+    setEmailError(errors.email);
+    setPasswordError(errors.password);
+    if (errors.email) emailRef.current?.focus();
+    else if (errors.password) passwordRef.current?.focus();
+    return !errors.email && !errors.password;
   };
 
   async function signInWithEmail() {
@@ -115,7 +128,8 @@ export function AuthScreen() {
 
   async function sendPasswordReset() {
     if (!email || !isValidEmail(email)) {
-      notify('Érvénytelen adat', 'Add meg a fiókod e-mail címét, és utána kérd a jelszó-visszaállítást.');
+      setEmailError(FIELD_ERRORS.resetNeedsEmail);
+      emailRef.current?.focus();
       return;
     }
     setResetNotice(false);
@@ -170,8 +184,15 @@ export function AuthScreen() {
           <TextInput
             label="E-mail cím"
             left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="email" {...props} />} {...DECORATIVE_ICON_PROPS} testID="auth-email-icon" />}
-            onChangeText={(text) => setEmail(text)}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (emailError) setEmailError(null);
+            }}
             value={email}
+            ref={emailRef}
+            error={!!emailError}
+            aria-invalid={!!emailError}
+            aria-describedby={emailError ? 'auth-email-error' : undefined}
             placeholder="ceged@pelda.hu"
             autoCapitalize={'none'}
             // Round 3 (Lumen P1): the e-mail keyboard and the password manager's autofill on phones.
@@ -183,11 +204,23 @@ export function AuthScreen() {
             style={styles.input}
             testID="auth-email"
           />
+          {emailError ? (
+            <HelperText type="error" visible nativeID="auth-email-error" id="auth-email-error" role="alert" accessibilityLiveRegion="polite" style={styles.fieldError} testID="auth-email-error">
+              {emailError}
+            </HelperText>
+          ) : null}
           <TextInput
             label="Jelszó"
             left={<TextInput.Icon icon={(props) => <MaterialCommunityIcons name="lock" {...props} />} {...DECORATIVE_ICON_PROPS} testID="auth-password-icon" />}
-            onChangeText={(text) => setPassword(text)}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (passwordError) setPasswordError(null);
+            }}
             value={password}
+            ref={passwordRef}
+            error={!!passwordError}
+            aria-invalid={!!passwordError}
+            aria-describedby={passwordError ? 'auth-password-error' : undefined}
             secureTextEntry={!showPassword}
             placeholder="Jelszó"
             autoCapitalize={'none'}
@@ -207,7 +240,13 @@ export function AuthScreen() {
             style={styles.input}
             testID="auth-password"
           />
-          {!isLogin && (
+          {passwordError ? (
+            <HelperText type="error" visible nativeID="auth-password-error" id="auth-password-error" role="alert" accessibilityLiveRegion="polite" style={styles.fieldError} testID="auth-password-error">
+              {passwordError}
+            </HelperText>
+          ) : null}
+          {/* The rule before typing; once the password is wrong, its error line says the same, so the rule steps aside. */}
+          {!isLogin && !passwordError && (
             <Text variant="bodySmall" style={styles.hint} testID="auth-password-rule">
               {`Legalább ${PASSWORD_MIN_LENGTH} karakter.`}
             </Text>
@@ -276,7 +315,11 @@ export function AuthScreen() {
 
           <Button
             mode="text"
-            onPress={() => setIsLogin(!isLogin)}
+            onPress={() => {
+              setIsLogin(!isLogin);
+              setEmailError(null);
+              setPasswordError(null);
+            }}
             style={styles.switchButton}
             contentStyle={styles.textButtonContent}
           >
@@ -297,6 +340,11 @@ const styles = StyleSheet.create({
   hint: {
     marginTop: -8,
     color: '#616161',
+  },
+  // Under its field, in the form's 16 px gap. Paper's error red #B3261E on white is 6.5:1.
+  fieldError: {
+    marginTop: -12,
+    paddingHorizontal: 4,
   },
   consent: {
     color: '#424242',

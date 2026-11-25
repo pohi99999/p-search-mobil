@@ -2,7 +2,7 @@ import { RootStackNavigationProp } from "../types/navigation";
 import React, { useEffect, useState } from 'react';
 import { PurchasesPackage } from 'react-native-purchases';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { Text, Button, ActivityIndicator, IconButton, Banner, Snackbar, Icon } from 'react-native-paper';
+import { Text, Button, ActivityIndicator, IconButton, Snackbar, Icon } from 'react-native-paper';
 import { useBilling } from '../context/BillingContext';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../types/navigation';
@@ -42,7 +42,6 @@ export const PaywallScreen = () => {
     if (!isPro) track('paywall_view', { source: source ?? 'other' });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recorded once per opening, not on every isPro change
   }, []);
-  const [ocrConfidence, setOcrConfidence] = useState<'high' | 'medium' | 'low' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // P-Search kör 2 (Kenshin P1-2): purchase_done only for a purchase that went through; a cancel shows nothing,
@@ -129,19 +128,6 @@ export const PaywallScreen = () => {
         ) : null}
 
         <PaywallFeatures />
-
-        <Banner
-          visible={ocrConfidence === 'low'}
-          actions={[
-            {
-              label: 'Újra fotózom',
-              onPress: () => setOcrConfidence(null),
-            },
-          ]}
-          icon="alert"
-        >
-          A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
-        </Banner>
 
         {isLoading && !purchasing ? (
           <ActivityIndicator size="large" color="#1A237E" style={styles.loader} />

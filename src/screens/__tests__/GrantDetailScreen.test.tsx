@@ -123,6 +123,15 @@ describe('GrantDetailScreen (card [B])', () => {
     expect(tree.root.findAll((n) => n.props.testID === 'grant-kind-badge')).toHaveLength(0);
   });
 
+  it('round 6 (P2-7): the grant title is an 18/24 navy heading, not titleLarge\'s 22/28', async () => {
+    const { tree } = await renderScreen(makeMatch());
+    const h2 = tree.root.findAll((n) => typeof n.type === 'string' && n.props.role === 'heading' && n.props['aria-level'] === 2)[0];
+    const style = Object.assign({}, ...[h2.props.style].flat(Infinity).filter(Boolean));
+    expect(style.fontSize).toBe(18);
+    expect(style.lineHeight).toBe(24);
+    expect(style.color).toBe('#1A237E');
+  });
+
   it('the header does not call a loan a grant', async () => {
     const { text } = await renderScreen(makeMatch({ grant_type: 'hitel', title: 'Hitel' }));
     expect(text).not.toContain('Pályázat részletei');

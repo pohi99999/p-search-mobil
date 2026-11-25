@@ -207,18 +207,21 @@ export function DocumentUploadScreen({ navigation }: DocumentUploadScreenProps) 
         </Text>
       </View>
 
-      <Banner
-        visible={lowConfidenceVisible}
-        actions={[
-          {
-            label: 'Újra fotózom',
-            onPress: () => setLowConfidenceVisible(false),
-          },
-        ]}
-        icon="alert"
-      >
-        A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
-      </Banner>
+      {/* Mounted only while shown: a hidden Paper Banner keeps its text and action in the accessibility tree. */}
+      {lowConfidenceVisible ? (
+        <Banner
+          visible
+          actions={[
+            {
+              label: 'Újra fotózom',
+              onPress: () => setLowConfidenceVisible(false),
+            },
+          ]}
+          icon="alert"
+        >
+          A dokumentum minősége nem megfelelő. Kérjük, tölts fel egy tisztább, olvashatóbb mérleget vagy főkönyvet!
+        </Banner>
+      ) : null}
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Card style={styles.card} mode="elevated">

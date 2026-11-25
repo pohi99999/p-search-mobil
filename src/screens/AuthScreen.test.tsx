@@ -1,11 +1,11 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { AuthScreen, PASSWORD_MIN_LENGTH, RESET_SENT_MESSAGE, RESET_SENT_TITLE } from './AuthScreen';
+import { AuthScreen, FIELD_ERRORS, PASSWORD_MIN_LENGTH, RESET_SENT_MESSAGE, RESET_SENT_TITLE, fieldErrors } from './AuthScreen';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../lib/legalLinks';
 import { supabase } from '../lib/supabase';
 import { Alert, Linking, Platform } from 'react-native';
 import { contrastRatio, textColor } from '../test-utils/contrast';
-import { Button, TextInput } from 'react-native-paper';
+import { Button, HelperText, TextInput } from 'react-native-paper';
 
 jest.mock('../lib/supabase', () => ({
   supabase: {
@@ -18,6 +18,12 @@ jest.mock('../lib/supabase', () => ({
 }));
 
 jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+/** The text of a field's error line, or null when it is not shown. */
+function fieldError(component, testID: string): string | null {
+  const found = component.root.findAll((n) => n.type === HelperText && n.props.testID === testID);
+  return found.length ? String(found[0].props.children) : null;
+}
 
 describe('AuthScreen', () => {
   beforeEach(() => {
@@ -51,7 +57,11 @@ describe('AuthScreen', () => {
     });
 
     expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'Kérlek, valós e-mail címet adj meg.');
+    // Round 6 (P1-4): under the field, not in a dialog.
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(fieldError(component, 'auth-email-error')).toBe(FIELD_ERRORS.emailInvalid);
+    expect(component.root.findByProps({ testID: 'auth-email' }).props.error).toBe(true);
+    expect(fieldError(component, 'auth-password-error')).toBeNull();
   });
 
   it('prevents sign in with short password', async () => {
@@ -73,7 +83,85 @@ describe('AuthScreen', () => {
     });
 
     expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Érvénytelen adat', 'A jelszónak legalább 8 karakter hosszúnak kell lennie.');
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(fieldError(component, 'auth-password-error')).toBe(FIELD_ERRORS.passwordShort);
+    expect(component.root.findByProps({ testID: 'auth-password' }).props.error).toBe(true);
+    expect(fieldError(component, 'auth-email-error')).toBeNull();
+  });
+
+  describe('field errors (round 6, P1-4)', () => {
+    const press = async (component, label: string) => {
+      const btn = component.root.findAllByType(Button).find((b) => b.props.children === label);
+      await act(async () => {
+        await btn.props.onPress();
+      });
+    };
+
+    it('both fields empty: each says what is missing, no dialog, no request', async () => {
+      let component;
+      act(() => {
+        component = renderer.create(<AuthScreen />);
+      });
+      await press(component, 'Bejelentkezés');
+      expect(fieldError(component, 'auth-email-error')).toBe(FIELD_ERRORS.emailMissing);
+      expect(fieldError(component, 'auth-password-error')).toBe(FIELD_ERRORS.passwordMissing);
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
+    });
+
+    it('sign-up checks the same, and the error names the field for assistive technology', async () => {
+      let component;
+      act(() => {
+        component = renderer.create(<AuthScreen />);
+      });
+      await press(component, 'Nincs még fiókod? Regisztrálj!');
+      const inputs = component.root.findAllByType(TextInput);
+      act(() => {
+        inputs[0].props.onChangeText('rossz-cim');
+        inputs[1].props.onChangeText('rov');
+      });
+      await press(component, 'Regisztráció');
+      expect(supabase.auth.signUp).not.toHaveBeenCalled();
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(fieldError(component, 'auth-email-error')).toBe(FIELD_ERRORS.emailInvalid);
+      expect(fieldError(component, 'auth-password-error')).toBe(FIELD_ERRORS.passwordShort);
+      const email = component.root.findByProps({ testID: 'auth-email' });
+      expect(email.props['aria-invalid']).toBe(true);
+      expect(email.props['aria-describedby']).toBe('auth-email-error');
+      // The rule under the password steps aside while its error says the same.
+      expect(component.root.findAll((n) => n.props.testID === 'auth-password-rule' && typeof n.type !== 'string')).toHaveLength(0);
+    });
+
+    it('typing in a field clears its own error only', async () => {
+      let component;
+      act(() => {
+        component = renderer.create(<AuthScreen />);
+      });
+      await press(component, 'Bejelentkezés');
+      act(() => {
+        component.root.findAllByType(TextInput)[0].props.onChangeText('a');
+      });
+      expect(fieldError(component, 'auth-email-error')).toBeNull();
+      expect(fieldError(component, 'auth-password-error')).toBe(FIELD_ERRORS.passwordMissing);
+    });
+
+    it('switching between sign-in and sign-up clears the errors', async () => {
+      let component;
+      act(() => {
+        component = renderer.create(<AuthScreen />);
+      });
+      await press(component, 'Bejelentkezés');
+      await press(component, 'Nincs még fiókod? Regisztrálj!');
+      expect(fieldError(component, 'auth-email-error')).toBeNull();
+      expect(fieldError(component, 'auth-password-error')).toBeNull();
+    });
+
+    it('fieldErrors: the first problem of each field', () => {
+      expect(fieldErrors('', '')).toEqual({ email: FIELD_ERRORS.emailMissing, password: FIELD_ERRORS.passwordMissing });
+      expect(fieldErrors('a@b', 'x'.repeat(PASSWORD_MIN_LENGTH))).toEqual({ email: FIELD_ERRORS.emailInvalid, password: null });
+      expect(fieldErrors('a@b.hu', 'x'.repeat(PASSWORD_MIN_LENGTH - 1))).toEqual({ email: null, password: FIELD_ERRORS.passwordShort });
+      expect(fieldErrors('a@b.hu', 'x'.repeat(PASSWORD_MIN_LENGTH))).toEqual({ email: null, password: null });
+    });
   });
 
   it('handles signUp error correctly', async () => {
@@ -224,9 +312,11 @@ describe('AuthScreen', () => {
     const forgot = () => component.root.findAllByType(Button).find(b => b.props.children === 'Elfelejtett jelszó?');
     expect(forgot()).toBeDefined();
 
-    // empty e-mail: no request
+    // empty e-mail: no request, and the e-mail field says why (round 6: under the field, no dialog)
     await act(async () => { await forgot().props.onPress(); });
     expect(supabase.auth.resetPasswordForEmail).not.toHaveBeenCalled();
+    expect(fieldError(component, 'auth-email-error')).toBe(FIELD_ERRORS.resetNeedsEmail);
+    expect(Alert.alert).not.toHaveBeenCalled();
 
     const textInputs = component.root.findAllByType(TextInput);
     act(() => { textInputs[0].props.onChangeText('user@example.com'); });

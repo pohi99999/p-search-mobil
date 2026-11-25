@@ -4,8 +4,6 @@ import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/env';
 
-
-
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => {
     return SecureStore.getItemAsync(key);
@@ -18,21 +16,65 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-class InMemoryWebStorage {
-  private storage = new Map<string, string>();
+type WebBacking = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-  async getItem(key: string): Promise<string | null> {
-    return this.storage.get(key) || null;
-  }
-  async setItem(key: string, value: string): Promise<void> {
-    this.storage.set(key, value);
-  }
-  async removeItem(key: string): Promise<void> {
-    this.storage.delete(key);
-  }
+/**
+ * The web session store. P-Search round 6 (Péter, Telegram 18328 via Marveen 9160): the web version is a product
+ * and a reload must not sign the user out. Until now the session lived only in memory (0c754ba, to keep the JWT off
+ * disk), so every reload went back to the sign-in screen. It now lives in sessionStorage: it survives a reload in the
+ * same tab and is gone when the tab is closed, so the token is still not kept on disk across browser restarts
+ * (localStorage would be). If the browser refuses storage (some private modes throw), it falls back to memory, the
+ * old behaviour, instead of breaking sign-in.
+ */
+export function createWebAuthStorage(getBacking: () => WebBacking | undefined) {
+  // Within one page load, memory holds the freshest value of every write and removal; the tab storage only carries a
+  // value over to the next load. So a write the storage refuses (quota, some private modes: setItem throws while
+  // getItem works, Ellenőr 9168) is still read back in this page, a refreshed token is never hidden behind a stale
+  // stored one, and a sign-out whose storage removal fails does not bring the old session back.
+  const memory = new Map<string, string>();
+  const removed = new Set<string>();
+  const backing = (): WebBacking | undefined => {
+    try {
+      return getBacking();
+    } catch {
+      return undefined;
+    }
+  };
+  return {
+    async getItem(key: string): Promise<string | null> {
+      if (memory.has(key)) return memory.get(key) as string;
+      if (removed.has(key)) return null;
+      try {
+        return backing()?.getItem(key) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    async setItem(key: string, value: string): Promise<void> {
+      memory.set(key, value);
+      removed.delete(key);
+      try {
+        backing()?.setItem(key, value);
+      } catch {
+        // kept in memory for this page only; the next load starts signed out (the old in-memory behaviour)
+      }
+    },
+    async removeItem(key: string): Promise<void> {
+      memory.delete(key);
+      removed.add(key);
+      try {
+        backing()?.removeItem(key);
+      } catch {
+        // the removal is remembered for this page
+      }
+    },
+  };
 }
 
-const storage = Platform.OS === 'web' ? new InMemoryWebStorage() : ExpoSecureStoreAdapter;
+const storage =
+  Platform.OS === 'web'
+    ? createWebAuthStorage(() => (typeof window !== 'undefined' ? window.sessionStorage : undefined))
+    : ExpoSecureStoreAdapter;
 
 const rawSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

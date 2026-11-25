@@ -2,7 +2,7 @@
 // clients: who may search, the free daily cap, the refund when the run fails after the cap was consumed, and the
 // last_scan_at stamp on success.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { handler, type Deps } from "./index.ts";
+import { handler, rearmedNextScanAt, type Deps } from "./index.ts";
 import { GeminiUnavailableError } from "../_shared/gemini.ts";
 
 type World = {
@@ -12,6 +12,8 @@ type World = {
   capError?: boolean;
   geminiKey?: string | null;
   run?: () => Promise<{ candidates: number; scored: number; inserted: number; skippedLowScore: number }>;
+  schedule?: { search_frequency?: string | null; subscription_tier?: string | null; next_scan_at?: string | null } | null;
+  scheduleError?: boolean;
 };
 
 function setup(w: World) {
@@ -31,6 +33,12 @@ function setup(w: World) {
     rpc: (_n: string, _a: unknown) =>
       Promise.resolve(w.capError ? { data: null, error: { message: "db down" } } : { data: [w.cap ?? { allowed: true }], error: null }),
     from: (_t: string) => ({
+      select: (_cols: string) => ({
+        eq: (_c: string, _id: string) => ({
+          maybeSingle: () =>
+            Promise.resolve(w.scheduleError ? { data: null, error: { message: "db down" } } : { data: w.schedule ?? null, error: null }),
+        }),
+      }),
       update: (patch: Record<string, unknown>) => ({
         eq: (_c: string, id: string) => { calls.stamps.push({ patch, id }); return Promise.resolve({ error: null }); },
       }),
@@ -151,4 +159,71 @@ Deno.test("a raw Google error from the run never reaches the client", async () =
   const text = await (await handler(req({ business_profile_id: "bp-1" }), deps)).text();
   assertEquals(text.includes("GoogleGenerativeAI"), false);
   assertEquals(JSON.parse(text).error, "Nem sikerült lefuttatni a pályázatkeresést.");
+});
+
+// P-Search round 6 (Kenshin, 2026-11-25): a new account's slot is due from signup, so the first manual search was
+// followed by an automatic one within the hour. A due slot is re-armed by a successful manual run; one still ahead is not.
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = new Date("2026-11-25T11:16:00.000Z");
+
+Deno.test("rearmedNextScanAt: a due weekly slot moves to now + 7 days", () => {
+  assertEquals(
+    rearmedNextScanAt({ search_frequency: "weekly", subscription_tier: "free", next_scan_at: "2026-11-25T11:13:00.000Z" }, NOW),
+    new Date(NOW.getTime() + 7 * DAY).toISOString(),
+  );
+});
+
+Deno.test("rearmedNextScanAt: a free account with 'daily' stored is re-armed weekly, a Pro one daily", () => {
+  const due = "2026-11-25T11:00:00.000Z";
+  assertEquals(rearmedNextScanAt({ search_frequency: "daily", subscription_tier: "free", next_scan_at: due }, NOW), new Date(NOW.getTime() + 7 * DAY).toISOString());
+  assertEquals(rearmedNextScanAt({ search_frequency: "daily", subscription_tier: "pro", next_scan_at: due }, NOW), new Date(NOW.getTime() + DAY).toISOString());
+});
+
+Deno.test("rearmedNextScanAt: a slot still ahead, a manual account (null), no row or a bad date is left alone", () => {
+  assertEquals(rearmedNextScanAt({ search_frequency: "weekly", next_scan_at: "2026-11-30T00:00:00.000Z" }, NOW), null);
+  assertEquals(rearmedNextScanAt({ search_frequency: "manual", next_scan_at: null }, NOW), null);
+  assertEquals(rearmedNextScanAt(null, NOW), null);
+  assertEquals(rearmedNextScanAt({ search_frequency: "weekly", next_scan_at: "nem datum" }, NOW), null);
+});
+
+Deno.test("success with a due slot: next_scan_at is re-armed together with last_scan_at", async () => {
+  const { deps, calls } = setup({ ...ok, schedule: { search_frequency: "weekly", subscription_tier: "free", next_scan_at: "2000-01-01T00:00:00.000Z" } });
+  const before = Date.now();
+  assertEquals((await handler(req({ business_profile_id: "bp-1" }), deps)).status, 200);
+  assertEquals(calls.stamps.length, 1);
+  assertEquals(Object.keys(calls.stamps[0].patch).sort(), ["last_scan_at", "next_scan_at"]);
+  const next = new Date(calls.stamps[0].patch.next_scan_at as string).getTime();
+  const last = new Date(calls.stamps[0].patch.last_scan_at as string).getTime();
+  assertEquals(next - last, 7 * DAY);
+  assertEquals(last >= before, true);
+});
+
+Deno.test("success with a slot still ahead: only last_scan_at is stamped", async () => {
+  const { deps, calls } = setup({ ...ok, schedule: { search_frequency: "weekly", subscription_tier: "free", next_scan_at: "2999-01-01T00:00:00.000Z" } });
+  assertEquals((await handler(req({ business_profile_id: "bp-1" }), deps)).status, 200);
+  assertEquals(Object.keys(calls.stamps[0].patch), ["last_scan_at"]);
+});
+
+Deno.test("the schedule read fails: the search still succeeds, only last_scan_at is stamped", async () => {
+  const { deps, calls } = setup({ ...ok, scheduleError: true, schedule: { search_frequency: "weekly", next_scan_at: "2000-01-01T00:00:00.000Z" } });
+  assertEquals((await handler(req({ business_profile_id: "bp-1" }), deps)).status, 200);
+  assertEquals(Object.keys(calls.stamps[0].patch), ["last_scan_at"]);
+  assertEquals(calls.refunds, 0);
+});
+
+// Ellenőr 9205 (note on #279): the boundary and the "manual with a slot" case had no test; both mutants passed.
+Deno.test("rearmedNextScanAt: a slot due exactly now is due (the scheduler selects next_scan_at <= now too)", () => {
+  assertEquals(
+    rearmedNextScanAt({ search_frequency: "weekly", subscription_tier: "free", next_scan_at: NOW.toISOString() }, NOW),
+    new Date(NOW.getTime() + 7 * DAY).toISOString(),
+  );
+  // one millisecond later is still ahead: left alone
+  assertEquals(
+    rearmedNextScanAt({ search_frequency: "weekly", next_scan_at: new Date(NOW.getTime() + 1).toISOString() }, NOW),
+    null,
+  );
+});
+
+Deno.test("rearmedNextScanAt: a manual account is never re-armed, even if a due slot was left in the row", () => {
+  assertEquals(rearmedNextScanAt({ search_frequency: "manual", subscription_tier: "pro", next_scan_at: "2000-01-01T00:00:00.000Z" }, NOW), null);
 });

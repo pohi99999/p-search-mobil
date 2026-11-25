@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, AnimatedFAB, MD3Colors, Button } from 'react-native-paper';
+import { Text, AnimatedFAB, Button } from 'react-native-paper';
+import { BRAND_BLUE } from '../config/brand';
 
 import { AdBanner } from '../components/AdBanner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,7 +81,7 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
       <>
         {announcer}
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={MD3Colors.primary50} />
+          <ActivityIndicator size="large" color={BRAND_BLUE} />
           <Text style={styles.loadingText}>Adataid betöltése...</Text>
         </View>
       </>
@@ -266,6 +267,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     margin: 16,
     right: 0,
-    backgroundColor: '#1976D2',
+    backgroundColor: BRAND_BLUE,
   },
 });
