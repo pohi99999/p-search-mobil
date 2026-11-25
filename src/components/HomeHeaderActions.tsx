@@ -19,7 +19,7 @@ export type HomeHeaderAction = {
   testID: string;
 };
 
-/** #424242 on white is 10.4:1; the icon the same colour. */
+/** #424242 on white is 10.05:1; the icon the same colour. */
 const INK = '#424242';
 
 export function HomeHeaderActions({ actions }: { actions: HomeHeaderAction[] }) {
