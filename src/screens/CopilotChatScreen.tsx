@@ -7,6 +7,7 @@ import { splitBold } from '../lib/inlineBold';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { BRAND_BLUE } from '../config/brand';
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CopilotChat'>;
@@ -117,7 +118,7 @@ export function CopilotChatScreen({ route, navigation }: Props) {
           isTyping ? (
             <View style={styles.typingContainer}>
               <Surface style={styles.typingBubble} elevation={1}>
-                <ActivityIndicator size="small" color="#1976D2" style={styles.typingIndicator} />
+                <ActivityIndicator size="small" color={BRAND_BLUE} style={styles.typingIndicator} />
                 <Text style={styles.typingText}>Az asszisztens gépel...</Text>
               </Surface>
             </View>

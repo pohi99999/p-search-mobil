@@ -4,6 +4,7 @@ import { contrastRatio } from '../../test-utils/contrast';
 import { HomeScreen, FAB_IDLE_LABEL, FAB_SEARCHING_LABEL } from '../HomeScreen';
 import { useHomeData } from '../../hooks/useHomeData';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BRAND_BLUE } from '../../config/brand';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -298,6 +299,8 @@ describe('HomeScreen', () => {
   });
 
   // Card [I]: the FAB label was the MD3 default #21005D on #1976D2, 3.73:1.
+  // Round 6 follow-up (Ellenőr 9241 remark 1): the button's fill is BRAND_BLUE, and a test now says so; before, the
+  // fill could go back to the old blue with every test green.
   it('the search button label meets WCAG AA on the button blue', () => {
     (useHomeData as jest.Mock).mockReturnValue({
       loading: false,
@@ -310,7 +313,9 @@ describe('HomeScreen', () => {
     });
     const root = renderScreen();
     const fab = root.root.findByProps({ testID: 'new-search-fab' });
-    expect(contrastRatio(fab.props.color, '#1976D2')).toBeGreaterThanOrEqual(4.5);
+    const fill = Object.assign({}, ...[fab.props.style].flat(Infinity).filter(Boolean)).backgroundColor;
+    expect(fill).toBe(BRAND_BLUE);
+    expect(contrastRatio(fab.props.color, fill)).toBeGreaterThanOrEqual(4.5);
   });
 
   // Péter 10518: while searching, the FAB label stayed greyed out (Paper's disabled colours) and overflowed on web.
@@ -330,7 +335,7 @@ describe('HomeScreen', () => {
     const root = renderScreen();
     const fab = root.root.findByProps({ testID: 'new-search-fab' });
     expect(fab.props.disabled).toBeFalsy();
-    expect(contrastRatio(fab.props.color, '#1976D2')).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(fab.props.color, BRAND_BLUE)).toBeGreaterThanOrEqual(4.5);
     expect(fab.props.accessibilityState).toEqual({ busy: searching, disabled: searching });
     act(() => { fab.props.onPress(); });
     expect(handleNewSearch).toHaveBeenCalledTimes(searching ? 0 : 1);

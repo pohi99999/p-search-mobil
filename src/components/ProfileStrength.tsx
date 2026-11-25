@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ProgressBar, Text } from 'react-native-paper';
 import { PROFILE_FIELDS, companyFormNumber, type ProfileFieldKey } from '../lib/profileCompleteness';
+import { BRAND_BLUE } from '../config/brand';
 
 /**
  * How many of the fields the matching reads (matching.ts buildProfileText) hold a value this form's Save keeps.
@@ -35,7 +36,7 @@ export function ProfileStrength({ form }: { form: Partial<Record<ProfileFieldKey
       <View style={styles.barBox}>
         <ProgressBar
           progress={filled / total}
-          color={filled === total ? '#2E7D32' : '#1976D2'}
+          color={filled === total ? '#2E7D32' : BRAND_BLUE}
           style={styles.bar}
           accessibilityLabel={`A találatot pontosító adatok: ${filled} a ${total}-ből`}
         />
