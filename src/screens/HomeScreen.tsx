@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
-import { Text, AnimatedFAB, IconButton, Button } from 'react-native-paper';
+import { Text, AnimatedFAB, Button } from 'react-native-paper';
 import { BRAND_BLUE } from '../config/brand';
 
 import { AdBanner } from '../components/AdBanner';
@@ -19,6 +19,7 @@ import { missingProfileFields } from '../lib/profileCompleteness';
 import { MatchCard } from '../components/MatchCard';
 import { splitFreshAndStale } from '../lib/matchStatus';
 import { HomeStatusHeader } from '../components/HomeStatusHeader';
+import { HomeHeaderActions } from '../components/HomeHeaderActions';
 import { useHomeStatus } from '../hooks/useHomeStatus';
 import { isNewMatch } from '../lib/seenMatches';
 
@@ -142,30 +143,14 @@ export function HomeScreen({ navigation }: { navigation: RootStackNavigationProp
         <Text role="heading" aria-level={1} variant="titleMedium" style={styles.headerTitle}>
           Üdv, {profile?.company_name || 'Partnerünk'}! {isPro && '⭐ PRO'}
         </Text>
-        <View style={styles.headerActions}>
-          {/* Round 11-21 (#5): the followed grants with their deadlines. */}
-          <IconButton
-            icon="bookmark-multiple"
-            size={22}
-            onPress={() => navigation.navigate('FollowedGrants')}
-            accessibilityLabel="Saját pályázataim"
-            testID="home-followed-button"
-          />
-          <IconButton
-            icon="file-document-plus"
-            size={22}
-            onPress={() => navigation.navigate('DocumentUpload')}
-            accessibilityLabel="Pénzügyi dokumentum feltöltése"
-            testID="home-document-upload-button"
-          />
-          <IconButton
-            icon="cog"
-            size={22}
-            onPress={() => navigation.navigate('Settings')}
-            accessibilityLabel="Beállítások megnyitása"
-            testID="home-settings-button"
-          />
-        </View>
+        {/* Round 6 (P1-3): labelled, 48 px tall, under the greeting. Round 11-21 (#5): the followed grants. */}
+        <HomeHeaderActions
+          actions={[
+            { icon: 'bookmark-multiple', label: 'Saját pályázataim', accessibilityLabel: 'Saját pályázataim', onPress: () => navigation.navigate('FollowedGrants'), testID: 'home-followed-button' },
+            { icon: 'file-document-plus', label: 'Dokumentumok', accessibilityLabel: 'Pénzügyi dokumentumok feltöltése', onPress: () => navigation.navigate('DocumentUpload'), testID: 'home-document-upload-button' },
+            { icon: 'cog', label: 'Beállítások', accessibilityLabel: 'Beállítások megnyitása', onPress: () => navigation.navigate('Settings'), testID: 'home-settings-button' },
+          ]}
+        />
       </View>
       
       {failedKind ? (
@@ -252,21 +237,16 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
   },
+  // Round 6 (P1-3): the greeting on its own line, the labelled actions under it.
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
     backgroundColor: 'white',
     elevation: 2,
     marginBottom: 8,
   },
-  headerTitle: {
-    flex: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  headerTitle: {},
   listContent: {
     paddingBottom: 80,
   },
