@@ -90,6 +90,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   // (version footer) slide behind the system bar (Péter's screenshot, 1786).
   const insets = useSafeAreaInsets();
   const billing = useBilling();
+  const proDescription = billing?.isPro
+    ? 'Aktív Pro előfizetés. Csomagok és visszaállítás.'
+    : 'Copilot akcióterv, reklámmentes használat, korlátlan keresés.';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<SearchFrequency>('weekly');
@@ -252,14 +255,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               Pro-gated action plan error (owner test 2026-09-25). */}
           <List.Item
             title="P-Search Pro"
-            description={
-              billing?.isPro
-                ? 'Aktív Pro előfizetés. Csomagok és visszaállítás.'
-                : 'Copilot akcióterv, reklámmentes használat, korlátlan keresés.'
-            }
+            description={proDescription}
             left={(props) => <List.Icon {...props} icon="star" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => navigation.navigate('Paywall', { source: 'settings' })}
+            accessibilityRole="button"
+            accessibilityLabel={`P-Search Pro: ${proDescription}`}
             testID="settings-pro-entry"
           />
         </Card>
@@ -272,6 +273,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             left={(props) => <List.Icon {...props} icon="office-building-outline" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => navigation.navigate('Onboarding', { edit: true })}
+            accessibilityRole="button"
+            accessibilityLabel="Cégprofil szerkesztése: Cégnév, adószám, TEÁOR, létszám, árbevétel, célok."
             testID="settings-profile-edit"
           />
         </Card>
@@ -361,7 +364,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             onPress={() => {
               Linking.openURL(PRIVACY_POLICY_URL).catch((err) => logger.error('Az adatvédelmi tájékoztató nem nyílt meg:', err));
             }}
-            accessibilityLabel="Adatvédelmi tájékoztató megnyitása"
+            accessibilityRole="button"
+            accessibilityLabel="Adatvédelmi tájékoztató: megnyitás a böngészőben."
             testID="settings-privacy-entry"
           />
         </Card>
