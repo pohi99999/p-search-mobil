@@ -11,6 +11,7 @@ import { FREE_FOLLOW_LIMIT, sortByDeadline, unfollowGrant, type FollowedGrant } 
 import { supabase } from '../lib/supabase';
 import { logger } from '../utils/logger';
 import type { FollowedGrantsScreenProps } from '../types/navigation';
+import { BRAND_BLUE } from '../config/brand';
 
 export const FOLLOWED_TITLE = 'Saját pályázataim';
 export const FOLLOWED_EMPTY =
@@ -129,9 +130,8 @@ export function FollowedGrantsScreen({ navigation }: FollowedGrantsScreenProps) 
           <Button
             mode="outlined"
             icon="magnify"
-            // #1565C0: 5.2:1 on this #f5f5f5 page; the theme's #1976D2 was 4.22:1 here. It is the theme's primary
-            // once the round 6 theme PR is in.
-            textColor="#1565C0"
+            // BRAND_BLUE: 5.27:1 on this #f5f5f5 page (the old #1976D2 was 4.22:1 here).
+            textColor={BRAND_BLUE}
             onPress={() => navigation.navigate('Home')}
             style={styles.emptyButton}
             contentStyle={styles.emptyButtonContent}
@@ -162,7 +162,7 @@ export function FollowedGrantsScreen({ navigation }: FollowedGrantsScreenProps) 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 8, backgroundColor: 'white', elevation: 2, marginBottom: 8 },
-  // Round 6 (Lumen P2-4): the same heading as the detail and the settings screens (navy, bold; 16.1:1 on white).
+  // Round 6 (Lumen P2-4): the same heading as the detail and the settings screens (navy, bold; #1A237E is 13.24:1 on white).
   headerTitle: { flex: 1, fontWeight: 'bold', color: '#1A237E' },
   card: { marginHorizontal: 16, marginVertical: 6, backgroundColor: 'white' },
   row: { flexDirection: 'row', alignItems: 'center' },

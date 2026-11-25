@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { List, Checkbox, Button, Text } from 'react-native-paper';
 import { ActionTask, ActionTaskStatus } from '../../types/database';
+import { BRAND_BLUE } from '../../config/brand';
 
 export const TaskItem = memo(({ task, onStatusChange }: { task: ActionTask, onStatusChange: (task: ActionTask, currentStatus: ActionTaskStatus) => void }) => {
   return (
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
   },
   inProgressButton: {
-    backgroundColor: '#1976D2',
+    backgroundColor: BRAND_BLUE,
     borderWidth: 0,
   },
   doneButton: {

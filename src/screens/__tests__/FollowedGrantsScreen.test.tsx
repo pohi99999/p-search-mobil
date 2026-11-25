@@ -7,6 +7,7 @@ import { followGrant, loadFollowed, resetFollowedForTest } from '../../lib/follo
 import { useBilling } from '../../context/BillingContext';
 import { useProfile } from '../../context/ProfileContext';
 import { supabase } from '../../lib/supabase';
+import { BRAND_BLUE } from '../../config/brand';
 
 jest.mock('../../context/BillingContext', () => ({ useBilling: jest.fn() }));
 jest.mock('../../context/ProfileContext', () => ({ useProfile: jest.fn() }));
@@ -109,9 +110,9 @@ describe('FollowedGrantsScreen (round 11-21 #5)', () => {
     expect(btn).toBeDefined();
     act(() => btn.props.onPress());
     expect(navigation.navigate).toHaveBeenCalledWith('Home');
-    // AA on the page grey (#f5f5f5): #1565C0 is 5.2:1, the theme's old #1976D2 was 4.22:1 (measured in the browser).
+    // AA on the page grey (#f5f5f5): BRAND_BLUE is 5.27:1, the old #1976D2 was 4.22:1 (measured in the browser).
     const button = tree.root.findAll((n) => n.props.testID === 'followed-empty-home' && n.props.textColor !== undefined)[0];
-    expect(button.props.textColor).toBe('#1565C0');
+    expect(button.props.textColor).toBe(BRAND_BLUE);
   });
 
   it('round 6 (P2-4): the heading looks like the detail and the settings headings (navy, bold)', async () => {

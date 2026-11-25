@@ -9,6 +9,7 @@ import { errorCode, track } from '../../services/events';
 import { TaskItem } from './TaskItem';
 import { useProfileGate } from '../../hooks/useProfileGate';
 import { notify } from '../../lib/notify';
+import { BRAND_BLUE } from '../../config/brand';
 
 interface ActionPlanCardProps {
   plan: ActionPlan;
@@ -54,7 +55,7 @@ export function ActionPlanCard({
           </View>
           <ProgressBar
             progress={progress}
-            color={progress === 1 ? '#4CAF50' : '#1976D2'}
+            color={progress === 1 ? '#4CAF50' : BRAND_BLUE}
             style={styles.progressBar}
             accessibilityLabel={`Felkészültség: ${completedTasks} kész a ${totalTasks} feladatból`}
           />
