@@ -402,3 +402,41 @@ describe('round 11-21: the "Új" label', () => {
     expect(contrastRatio(onWhite('#FFFFFF', 0.75), onWhite(NEW_BADGE_BG, 0.75))).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+// Round 6 (Lumen P2-1): "Részletek" is the main action of a fresh card; the two answers are quiet text buttons.
+describe('the card actions (round 6, P2-1)', () => {
+  const card = (status: string) => ({ id: 'm1', grant_id: 'g', business_id: 'b', match_score: 70, match_reasoning: 'Indoklás', status, created_at: '', grants: { id: 'g', title: 'Cím', provider: 'X', description: '', amount_min: null, amount_max: null, grant_type: null } }) as any;
+  const mountCard = async (status: string) => {
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => { tree = renderer.create(<MatchCard item={card(status)} onPress={() => {}} rank={1} />); });
+    return tree;
+  };
+  const byLabel = (tree: renderer.ReactTestRenderer, label: string) => tree.root.findAll((n) => n.props.accessibilityLabel === label && typeof n.type !== 'string' && n.props.mode !== undefined)[0];
+  const heightOf = (node: any) => {
+    const { StyleSheet } = require('react-native');
+    return StyleSheet.flatten(node.props.contentStyle)?.minHeight;
+  };
+
+  it('a fresh card: Részletek is filled, the answers are text buttons, all three 44 px tall', async () => {
+    const tree = await mountCard('new');
+    expect(byLabel(tree, 'Részletek: Cím').props.mode).toBe('contained');
+    expect(byLabel(tree, 'Hasznos találat').props.mode).toBe('text');
+    expect(byLabel(tree, 'Nem releváns találat').props.mode).toBe('text');
+    for (const l of ['Részletek: Cím', 'Hasznos találat', 'Nem releváns találat']) expect(heightOf(byLabel(tree, l))).toBeGreaterThanOrEqual(44);
+    act(() => tree.unmount());
+  });
+
+  it('a stale card keeps the outlined Részletek (white on the faded blue would be under AA)', async () => {
+    const tree = await mountCard('stale');
+    expect(byLabel(tree, 'Részletek: Cím').props.mode).toBe('outlined');
+    act(() => tree.unmount());
+  });
+
+  it('the answers keep their icon and visible label', async () => {
+    const tree = await mountCard('new');
+    expect(byLabel(tree, 'Hasznos találat').props.icon).toBe('thumb-up-outline');
+    expect(byLabel(tree, 'Hasznos találat').props.children).toBe('Hasznos');
+    expect(byLabel(tree, 'Nem releváns találat').props.children).toBe('Nem releváns');
+    act(() => tree.unmount());
+  });
+});

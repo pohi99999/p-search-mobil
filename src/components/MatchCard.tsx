@@ -107,15 +107,20 @@ export function MatchCard({ item, onPress, rank, isNew = false }: MatchCardProps
             rank={rank}
             initial={item.feedback ?? null}
             style={styles.feedback}
+            quiet
           />
         )}
         {/* Card [J]: every card's button read "Részletek"; the label names the grant. Round 2 (Lumen P2-6): the
             visible word comes first, so voice control finds the button by what it shows. */}
+        {/* Round 6 (Lumen P2-1): the main action of a fresh card is filled; a stale card (opacity 0.75, an older
+            search) keeps the outline, where white text on the faded blue would be under AA. */}
         <Button
-          mode="outlined"
+          mode={stale ? 'outlined' : 'contained'}
           onPress={onPress}
           accessibilityLabel={`Részletek: ${item.grants?.title || 'Ismeretlen pályázat'}`}
           style={styles.details}
+          contentStyle={styles.detailsContent}
+          testID="match-card-details"
         >
           Részletek
         </Button>
@@ -194,6 +199,10 @@ const styles = StyleSheet.create({
   },
   details: {
     marginLeft: 'auto',
+  },
+  // 44 px tall target (round 6, P2-1).
+  detailsContent: {
+    minHeight: 44,
   },
 });
 
