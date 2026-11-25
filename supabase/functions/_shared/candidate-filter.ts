@@ -8,6 +8,8 @@
 export interface CandidateFields {
   title?: string | null;
   eligibility_criteria?: string | null;
+  amount_min?: number | null;
+  amount_max?: number | null;
 }
 
 /** Beneficiaries inside the state budget: a public body, not a company. */
@@ -18,7 +20,18 @@ const PUBLIC_BENEFICIARY_RE = /államháztartáson\s+belül|költségvetési\s+s
 // combined frames, HVSZ and intermediaries' costs, a 1 Ft minimum), 11 rows.
 const TECHNICAL_TITLE_RE = /technikai\s+(?:felhívás|segítségnyújtás|felhasználás)|\bHVSZ\b|közvetítő\w*\s+költségtérítés/i;
 
-export type CandidateVerdict = { keep: true } | { keep: false; reason: 'public_only' | 'technical_frame' };
+/**
+ * Membership and qualification calls: no money is paid. P-Search round 6 (Péter 18328, measured by Marveen 9167 on
+ * the live open grants of 2026-11-25): of 56 open grants only 2 had no amount at all, and both are of this kind
+ * ("Kiberbiztonsági kompetenciaközösségi tagsági jogviszony létesítése", "Klaszter minősítés"), though labelled VNT.
+ * The title must say so AND there must be no amount: a missing amount alone may be a data gap.
+ * src/lib/matchVisibility.ts keeps the same pattern for matches already stored (a parity test pins the two).
+ */
+export const NON_FINANCIAL_TITLE_RE = /tagság|tagsági|minősítés|jogviszony/i;
+
+export type CandidateVerdict =
+  | { keep: true }
+  | { keep: false; reason: 'public_only' | 'technical_frame' | 'not_financial' };
 
 /**
  * keep unless every listed beneficiary is a public body inside the state budget, or the title names a
@@ -27,6 +40,9 @@ export type CandidateVerdict = { keep: true } | { keep: false; reason: 'public_o
  */
 export function candidateVerdict(g: CandidateFields): CandidateVerdict {
   if (TECHNICAL_TITLE_RE.test(String(g.title ?? ''))) return { keep: false, reason: 'technical_frame' };
+  if (g.amount_min == null && g.amount_max == null && NON_FINANCIAL_TITLE_RE.test(String(g.title ?? ''))) {
+    return { keep: false, reason: 'not_financial' };
+  }
   const items = String(g.eligibility_criteria ?? '').split(',').map((x) => x.trim()).filter(Boolean);
   if (items.length && items.every((x) => PUBLIC_BENEFICIARY_RE.test(x))) return { keep: false, reason: 'public_only' };
   return { keep: true };
