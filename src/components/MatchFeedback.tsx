@@ -4,6 +4,7 @@ import { Button, Text } from 'react-native-paper';
 import { scoreBand, setMatchFeedback, type MatchFeedback as Value } from '../services/events';
 import { logger } from '../utils/logger';
 import { getMatchFeedback, setStoredMatchFeedback, subscribeMatchFeedback } from '../lib/matchFeedbackStore';
+import { BRAND_BLUE } from '../config/brand';
 
 // Card [G2]: the "Hasznos / Nem releváns" answer on a match, for the relevance metric of the closed test (Irisz M3-M5).
 // Pressing the chosen answer again clears it. The look is a first version; Lumen owns the final design.
@@ -87,7 +88,7 @@ export function MatchFeedback({ matchId, grantId, score, rank, initial = null, s
   );
 }
 
-const SELECTED_BG = '#1976D2';
+const SELECTED_BG = BRAND_BLUE;
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 8 },
