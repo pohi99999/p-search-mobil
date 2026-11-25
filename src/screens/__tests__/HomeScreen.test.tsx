@@ -13,6 +13,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('react-native', () => {
   return {
     View: 'View',
+    Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
     FlatList: 'FlatList',
     StyleSheet: {
@@ -71,6 +72,8 @@ jest.mock('react-native-paper', () => {
         MD3Colors: { primary50: '#000000' }
     }
 });
+
+jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: 'MaterialCommunityIcons' }));
 
 jest.mock('react-native-purchases', () => {
     return {
