@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { DocumentUploadScreen } from '../DocumentUploadScreen';
 import { PaywallScreen } from '../PaywallScreen';
+import { ActionPlanScreen } from '../ActionPlanScreen';
 import { supabase } from '../../lib/supabase';
 import { useProfile } from '../../context/ProfileContext';
 import { useBilling } from '../../context/BillingContext';
@@ -32,6 +33,24 @@ jest.mock('../../context/ProfileContext', () => ({
 
 jest.mock('../../context/BillingContext', () => ({
   useBilling: jest.fn(),
+}));
+
+jest.mock('expo-print', () => ({ printToFileAsync: jest.fn() }));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn() }));
+// The Action Plan screen's own data and ad hooks (the screen is measured for its banner only).
+jest.mock('../../hooks/useActionPlan', () => ({
+  useActionPlan: () => ({
+    plans: [],
+    tasks: [],
+    loading: false,
+    error: null,
+    refetch: jest.fn(),
+    updateTaskStatus: jest.fn(),
+    generatePlanForMatch: jest.fn(),
+  }),
+}));
+jest.mock('../../hooks/useInterstitialAd', () => ({
+  useInterstitialAd: () => ({ showAdIfAvailable: (cb: () => void) => cb() }),
 }));
 
 jest.mock('@react-navigation/native', () => ({
@@ -165,6 +184,27 @@ describe('the low-confidence OCR banner is not in the tree while hidden', () => 
       action!.props.onPress();
     });
     expect(JSON.stringify(component.toJSON())).not.toContain(BANNER_TEXT);
+  });
+
+  // Ellenőr 9183 (note): the PR claims three screens, the tests covered two; the Action Plan screen had no test.
+  it('action plan: never renders the OCR banner', async () => {
+    (useProfile as jest.Mock).mockReturnValue({
+      profile: { id: 'business-profile-1', company_name: 'Teszt Kft.' },
+      loading: false,
+      refreshProfile: jest.fn(),
+    });
+    let component: renderer.ReactTestRenderer;
+    await act(async () => {
+      component = withSafeArea(
+        <ActionPlanScreen
+          navigation={{ goBack: jest.fn(), navigate: jest.fn() } as any}
+          route={{ key: 'ap', name: 'ActionPlan', params: { matchId: null } } as any}
+        />
+      );
+    });
+    const tree = JSON.stringify(component!.toJSON());
+    expect(tree).not.toContain(BANNER_TEXT);
+    expect(tree).not.toContain(BANNER_ACTION);
   });
 
   it('paywall: never renders the OCR banner', async () => {
