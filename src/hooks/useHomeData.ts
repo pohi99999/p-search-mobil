@@ -9,6 +9,7 @@ import { RootStackNavigationProp } from '../types/navigation';
 import { clearStoredChatHistory } from './useCopilotChat';
 
 import { hasSearchedBefore, isOpenGrant, sortFreshFirst, STALE_MATCH_STATUS, withoutExpired } from '../lib/matchStatus';
+import { withoutWeakMatches } from '../lib/matchVisibility';
 import { errorCode, track } from '../services/events';
 import { notify } from '../lib/notify';
 import { searchSummaryText, type SearchRunResult } from '../lib/searchSummary';
@@ -181,7 +182,8 @@ function useHomeDataFetch(navigation: RootStackNavigationProp) {
         } else if (matchesData) {
           const rows = matchesData as unknown as MatchWithGrant[];
           // Card [C]: without the plan list nothing is hidden, so a failed lookup never drops a started plan.
-          setMatches(sortFreshFirst(planMatchIds ? withoutExpired(rows, planMatchIds) : rows));
+          // Round 6 (Péter 18328): weak (< 50) and non-financial matches are hidden the same way, plans kept.
+          setMatches(sortFreshFirst(planMatchIds ? withoutWeakMatches(withoutExpired(rows, planMatchIds), planMatchIds) : rows));
         }
       } else {
         navigation.replace('Onboarding');

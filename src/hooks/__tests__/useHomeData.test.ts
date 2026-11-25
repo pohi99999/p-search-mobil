@@ -305,6 +305,39 @@ describe('useHomeData', () => {
     });
   });
 
+  // Round 6 (Péter 18328, Marveen 9167): weak (< 50) and non-financial stored matches are hidden until the next search.
+  describe('weak and non-financial matches (round 6)', () => {
+    const future = { deadline: '2999-01-01T00:00:00Z', amount_min: 1_000_000, amount_max: null };
+    const rows = [
+      { id: 'strong', status: 'new', match_score: 70, grants: { ...future, title: 'Eszközbeszerzés' } },
+      { id: 'weak', status: 'new', match_score: 45, grants: { ...future, title: 'Hitelprogram' } },
+      { id: 'weak-with-plan', status: 'new', match_score: 42, grants: { ...future, title: 'Digitalizáció' } },
+      {
+        id: 'membership',
+        status: 'new',
+        match_score: 80,
+        grants: { deadline: '2999-01-01T00:00:00Z', title: 'Klaszter minősítés', amount_min: null, amount_max: null },
+      },
+    ];
+
+    it('hides a weak and a non-financial match, keeps the weak one with an action plan', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, null, rows, null, {
+        data: [{ match_id: 'weak-with-plan' }],
+        error: null,
+      });
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.matches.map((m: any) => m.id).sort()).toEqual(['strong', 'weak-with-plan']);
+    });
+
+    it('a failed action plan lookup hides nothing here either', async () => {
+      setupSupabaseMocks(null, mockBusinessProfile, mockUserProfile, null, rows, null, { data: null, error: { message: 'boom' } });
+      const { result } = renderHook(() => useHomeData(mockNavigation));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.matches).toHaveLength(4);
+    });
+  });
+
   describe('fetchData', () => {
     it('handles missing session', async () => {
       (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null } });

@@ -59,3 +59,20 @@ Deno.test("collectCandidateGrants: public-only and technical rows never take a p
   assertEquals(ids.length, 12, "the 12 places are all filled with SME grants");
   assertEquals(ids.every((id) => id.startsWith("sme")), true);
 });
+
+// P-Search round 6 (Péter 18328, Marveen 9167): membership and qualification calls pay no money.
+Deno.test("a membership or qualification call with no amount is left out (the two live rows of 2026-11-25)", () => {
+  for (const title of ["Kiberbiztonsági kompetenciaközösségi tagsági jogviszony létesítése", "Klaszter minősítés"]) {
+    assertEquals(candidateVerdict({ title, amount_min: null, amount_max: null }), { keep: false, reason: "not_financial" }, title);
+  }
+});
+
+Deno.test("the non-financial rule needs BOTH the title and the missing amount", () => {
+  // an amount is given: a real grant, even if its title mentions a qualification
+  assertEquals(candidateVerdict({ title: "Minősítési rendszer fejlesztése KKV-knak", amount_min: 5_000_000, amount_max: null }), { keep: true });
+  assertEquals(candidateVerdict({ title: "Klaszter minősítés", amount_min: null, amount_max: 10_000_000 }), { keep: true });
+  // no amount, but an ordinary title: may be a data gap, kept
+  assertEquals(candidateVerdict({ title: "Eszközbeszerzés támogatása mikrovállalkozásoknak", amount_min: null, amount_max: null }), { keep: true });
+  // both amounts given
+  assertEquals(candidateVerdict({ title: "Klaszter minősítés", amount_min: 1_000_000, amount_max: 2_000_000 }), { keep: true });
+});

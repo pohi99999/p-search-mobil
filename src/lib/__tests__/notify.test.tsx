@@ -3,9 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import renderer, { act } from 'react-test-renderer';
 import { Alert, Platform } from 'react-native';
-import { Button, Provider as PaperProvider } from 'react-native-paper';
+import { Button, Modal, Provider as PaperProvider } from 'react-native-paper';
 import { notify, resetNoticesForTest, subscribeNotices } from '../notify';
-import { WebNotifier } from '../../components/WebNotifier';
+import { NOTICE_BACKDROP_LABEL, WebNotifier } from '../../components/WebNotifier';
 import { AuthScreen } from '../../screens/AuthScreen';
 
 jest.mock('../supabase', () => ({
@@ -93,6 +93,26 @@ describe('notify', () => {
     act(() => c.unmount());
   });
 
+  it('web: the backdrop is named in Hungarian, not Paper\'s "Close modal" (round 6, Kenshin 9154)', () => {
+    Platform.OS = 'web';
+    let c!: renderer.ReactTestRenderer;
+    act(() => {
+      c = renderer.create(
+        <PaperProvider>
+          <WebNotifier />
+        </PaperProvider>,
+      );
+    });
+    act(() => notify('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.'));
+    const modal = c.root.findAllByType(Modal)[0];
+    expect(modal.props.overlayAccessibilityLabel).toBe(NOTICE_BACKDROP_LABEL);
+    expect(NOTICE_BACKDROP_LABEL).toBe('Értesítés bezárása');
+    const labels = c.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => n.props.accessibilityLabel);
+    expect(labels).toContain('Értesítés bezárása');
+    expect(labels).not.toContain('Close modal');
+    act(() => c.unmount());
+  });
+
   it('web: an empty sign-in shows its message on the screen (it was silent before)', async () => {
     Platform.OS = 'web';
     let c!: renderer.ReactTestRenderer;
@@ -106,7 +126,10 @@ describe('notify', () => {
     });
     const login = c.root.findAllByType(Button).find((b) => text(b.props.children) === 'Bejelentkezés')!;
     await act(async () => { await login.props.onPress(); });
-    expect(shown(c)).toEqual({ title: 'Érvénytelen adat', message: 'Kérlek, töltsd ki az összes mezőt.' });
+    // Round 6 (P1-4): on the screen, under each field; no dialog stands over the form any more.
+    const errors = c.root.findAll((n) => typeof n.type !== 'string' && /^auth-(email|password)-error$/.test(n.props.testID ?? '')).map((n) => text(n.props.children));
+    expect([...new Set(errors)]).toEqual(['Add meg az e-mail címed.', 'Add meg a jelszavad.']);
+    expect(shown(c)).toEqual({ title: null, message: null });
     act(() => c.unmount());
   });
 

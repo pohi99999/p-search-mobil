@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { Surface, Text, ProgressBar } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logger } from "../utils/logger";
+import { BRAND_BLUE } from '../config/brand';
 
 const STORAGE_KEY = "@beta_testing_days";
 const REQUIRED_DAYS = 14;
@@ -61,7 +62,7 @@ export const TesterProgress: React.FC = () => {
       <View style={styles.progressBox} testID="tester-progress-bar-box">
         <ProgressBar
           progress={progress}
-          color={isCompleted ? "#4CAF50" : "#1976D2"}
+          color={isCompleted ? "#4CAF50" : BRAND_BLUE}
           style={styles.progressBar}
           accessibilityLabel={`Tesztelési napok: ${daysCount} a ${REQUIRED_DAYS}-ből`}
         />

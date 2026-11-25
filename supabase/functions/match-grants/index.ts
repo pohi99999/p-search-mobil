@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { runMatchingForProfile, type MatchRunSummary } from '../_shared/matching.ts';
-import { FREE_DAILY_SEARCH_CAP } from '../_shared/entitlement.ts';
+import { computeNextScanAt, runMatchingForProfile, type MatchRunSummary } from '../_shared/matching.ts';
+import { FREE_DAILY_SEARCH_CAP, effectiveScanFrequency } from '../_shared/entitlement.ts';
 import { refundDailySearch } from '../_shared/daily-search-refund.ts';
 import { GeminiUnavailableError, geminiUnavailableResponse } from '../_shared/gemini.ts';
 
@@ -26,6 +26,23 @@ export interface Deps {
   env: (name: string) => string | undefined;
   runMatching: (client: SupabaseClient, businessProfileId: string, geminiApiKey: string) => Promise<MatchRunSummary>;
   refund: (client: SupabaseClient, userId: string) => Promise<unknown>;
+}
+
+/**
+ * Pure. P-Search round 6 (Kenshin, measured 2026-11-25 with the internal test account): the signup trigger stores
+ * next_scan_at = the signup moment, so a new account's first manual search was followed by a second, automatic one
+ * at the next hourly scheduled run (twice the Gemini cost, the same results). When the user's slot is already due,
+ * a successful manual run re-arms it from now with the cadence the scheduler itself would use. A slot still ahead
+ * (or 'manual', stored as null) is left alone, so a manual run never moves an upcoming scan.
+ */
+export function rearmedNextScanAt(
+  schedule: { search_frequency?: string | null; subscription_tier?: string | null; next_scan_at?: string | null } | null,
+  now: Date,
+): string | null {
+  if (!schedule?.next_scan_at) return null;
+  const due = new Date(schedule.next_scan_at);
+  if (Number.isNaN(due.getTime()) || due.getTime() > now.getTime()) return null;
+  return computeNextScanAt(effectiveScanFrequency(schedule.subscription_tier, schedule.search_frequency), now);
 }
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || '*';
@@ -140,11 +157,22 @@ export async function handler(req: Request, deps: Deps): Promise<Response> {
       return json({ error: 'Nem sikerült lefuttatni a pályázatkeresést.', search_refunded: refunded !== null }, 500);
     }
 
-    // Record that a scan happened so the Settings screen can show it, without
-    // touching next_scan_at: a manual run should not shift the user's cadence.
+    // Record that a scan happened so the Settings screen can show it. A manual run does not shift a slot that is
+    // still ahead; a slot that is already due is re-armed, as the scheduled scan would (see rearmedNextScanAt).
+    const now = new Date();
+    const { data: schedule, error: scheduleError } = await adminClient
+      .from('profiles')
+      .select('search_frequency, subscription_tier, next_scan_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (scheduleError) {
+      console.warn('Nem sikerült beolvasni az ütemezést:', scheduleError.message);
+    }
+    // On a read error data is null, so nothing is re-armed and only last_scan_at is stamped.
+    const rearmed = rearmedNextScanAt(schedule, now);
     const { error: stampError } = await adminClient
       .from('profiles')
-      .update({ last_scan_at: new Date().toISOString() })
+      .update(rearmed ? { last_scan_at: now.toISOString(), next_scan_at: rearmed } : { last_scan_at: now.toISOString() })
       .eq('id', user.id);
 
     if (stampError) {

@@ -2,7 +2,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { FollowedGrantsScreen, FOLLOWED_EMPTY, CLOSED_AT_SOURCE, followedCountLine } from '../FollowedGrantsScreen';
+import { FollowedGrantsScreen, FOLLOWED_EMPTY, FOLLOWED_EMPTY_ACTION, CLOSED_AT_SOURCE, followedCountLine } from '../FollowedGrantsScreen';
 import { followGrant, loadFollowed, resetFollowedForTest, setFollowRemoteForTest } from '../../lib/followedGrants';
 import { createMemoryFollowRemote } from '../../test-utils/followRemote';
 import { useBilling } from '../../context/BillingContext';
@@ -102,6 +102,26 @@ describe('FollowedGrantsScreen (round 11-21 #5)', () => {
     await act(async () => {});
     expect(await loadFollowed('u1')).toEqual([]);
     expect(strings(tree)).toContain(FOLLOWED_EMPTY);
+  });
+
+  it('round 6 (P2-4): the empty list has a way on to the matches', async () => {
+    const tree = await render();
+    expect(strings(tree)).toContain(FOLLOWED_EMPTY_ACTION);
+    const btn = byTestId(tree, 'followed-empty-home')[0];
+    expect(btn).toBeDefined();
+    act(() => btn.props.onPress());
+    expect(navigation.navigate).toHaveBeenCalledWith('Home');
+    // AA on the page grey (#f5f5f5): #1565C0 is 5.2:1, the theme's old #1976D2 was 4.22:1 (measured in the browser).
+    const button = tree.root.findAll((n) => n.props.testID === 'followed-empty-home' && n.props.textColor !== undefined)[0];
+    expect(button.props.textColor).toBe('#1565C0');
+  });
+
+  it('round 6 (P2-4): the heading looks like the detail and the settings headings (navy, bold)', async () => {
+    const tree = await render();
+    const h = tree.root.findAll((n) => typeof n.type === 'string' && n.props.role === 'heading')[0];
+    const style = Object.assign({}, ...[h.props.style].flat(Infinity).filter(Boolean));
+    expect(style.fontWeight).toBe('bold');
+    expect(style.color).toBe('#1A237E');
   });
 
   it('the screen is a level-1 heading "Saját pályázataim"', async () => {

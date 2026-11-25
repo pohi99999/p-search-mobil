@@ -228,3 +228,23 @@ describe('SettingsScreen daily scan for a free account', () => {
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ search_frequency: 'weekly' }));
   });
 });
+
+// Round 6 (Kenshin, measured on the live web app 2026-11-25): the Pro, profile-edit and privacy rows reached the
+// accessibility tree as "generic", so a screen reader did not say they can be tapped. The host view must carry the
+// button role and a name that starts with the visible title, like the sign-out row.
+describe('SettingsScreen navigation rows are named buttons', () => {
+  const host = (c: renderer.ReactTestRenderer, id: string) =>
+    c.root.findAll((n) => n.props.testID === id && typeof n.type === 'string')[0];
+
+  it.each([
+    ['settings-pro-entry', /^P-Search Pro: ./],
+    ['settings-profile-edit', /^Cégprofil szerkesztése: ./],
+    ['settings-privacy-entry', /^Adatvédelmi tájékoztató: ./],
+  ])('%s', async (id, label) => {
+    const c = await render();
+    const node = host(c, id);
+    expect(node).toBeDefined();
+    expect(node.props.accessibilityRole).toBe('button');
+    expect(node.props.accessibilityLabel).toMatch(label);
+  });
+});
