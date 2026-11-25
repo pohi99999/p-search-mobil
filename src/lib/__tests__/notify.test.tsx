@@ -5,7 +5,7 @@ import renderer, { act } from 'react-test-renderer';
 import { Alert, Platform } from 'react-native';
 import { Button, Modal, Provider as PaperProvider } from 'react-native-paper';
 import { notify, resetNoticesForTest, subscribeNotices } from '../notify';
-import { NOTICE_BACKDROP_LABEL, WebNotifier } from '../../components/WebNotifier';
+import { NOTICE_BACKDROP_LABEL, NOTICE_MESSAGE_ID, NOTICE_TITLE_ID, WebNotifier } from '../../components/WebNotifier';
 import { AuthScreen } from '../../screens/AuthScreen';
 
 jest.mock('../supabase', () => ({
@@ -110,6 +110,79 @@ describe('notify', () => {
     const labels = c.root.findAll((n) => typeof n.props.accessibilityLabel === 'string').map((n) => n.props.accessibilityLabel);
     expect(labels).toContain('Értesítés bezárása');
     expect(labels).not.toContain('Close modal');
+    act(() => c.unmount());
+  });
+
+  it('web: the notice is a modal dialog, named by its title and described by its message (round 6 follow-up)', () => {
+    Platform.OS = 'web';
+    let c!: renderer.ReactTestRenderer;
+    act(() => {
+      c = renderer.create(
+        <PaperProvider>
+          <WebNotifier />
+        </PaperProvider>,
+      );
+    });
+    const dialog = () => c.root.findAll((n) => n.props.testID === 'web-notice-dialog')[0];
+    const withId = (id: string) => c.root.findAll((n) => n.props.nativeID === id && typeof n.type !== 'string')[0];
+    act(() => notify('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.'));
+    expect(dialog().props.role).toBe('dialog');
+    expect(dialog().props['aria-modal']).toBe(true);
+    expect(dialog().props['aria-labelledby']).toBe(NOTICE_TITLE_ID);
+    expect(dialog().props['aria-describedby']).toBe(NOTICE_MESSAGE_ID);
+    // The ids the dialog points at are on the title and on the message, not on anything else.
+    expect(text(withId(NOTICE_TITLE_ID).props.children)).toBe('Hiba bejelentkezéskor');
+    expect(text(withId(NOTICE_MESSAGE_ID).props.children)).toBe('Érvénytelen e-mail cím vagy jelszó.');
+    act(() => c.unmount());
+  });
+
+  it('web: Esc closes the notice, other keys do not, and the listener goes away with it', () => {
+    Platform.OS = 'web';
+    const handlers: ((e: { key: string }) => void)[] = [];
+    const removed: unknown[] = [];
+    (global as any).document = {
+      addEventListener: jest.fn((type: string, h: (e: { key: string }) => void) => { if (type === 'keydown') handlers.push(h); }),
+      removeEventListener: jest.fn((type: string, h: unknown) => { if (type === 'keydown') removed.push(h); }),
+    };
+    try {
+      let c!: renderer.ReactTestRenderer;
+      act(() => {
+        c = renderer.create(
+          <PaperProvider>
+            <WebNotifier />
+          </PaperProvider>,
+        );
+      });
+      const shownNow = () => shown(c).title;
+      act(() => notify('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.'));
+      expect(shownNow()).toBe('Hiba bejelentkezéskor');
+      expect(handlers).toHaveLength(1);
+      act(() => handlers[0]({ key: 'Enter' }));
+      expect(shownNow()).toBe('Hiba bejelentkezéskor');
+      act(() => handlers[0]({ key: 'Escape' }));
+      expect(shownNow()).toBeNull();
+      expect(removed).toContain(handlers[0]);
+      act(() => c.unmount());
+    } finally {
+      delete (global as any).document;
+    }
+  });
+
+  it('web: a notice with a title only is a dialog without a description', () => {
+    Platform.OS = 'web';
+    let c!: renderer.ReactTestRenderer;
+    act(() => {
+      c = renderer.create(
+        <PaperProvider>
+          <WebNotifier />
+        </PaperProvider>,
+      );
+    });
+    act(() => notify('Csak cím'));
+    const dialog = c.root.findAll((n) => n.props.testID === 'web-notice-dialog')[0];
+    expect(dialog.props.role).toBe('dialog');
+    expect(dialog.props['aria-labelledby']).toBe(NOTICE_TITLE_ID);
+    expect(dialog.props['aria-describedby']).toBeUndefined();
     act(() => c.unmount());
   });
 
