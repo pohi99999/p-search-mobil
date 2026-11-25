@@ -94,6 +94,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
     ? 'Aktív Pro előfizetés. Csomagok és visszaállítás.'
     : 'Copilot akcióterv, reklámmentes használat, korlátlan keresés.';
   const [loading, setLoading] = useState(true);
+  // Round 6 item 9: the schedule could not be read; the block says so and Mentés waits, so no default is saved over it.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<SearchFrequency>('weekly');
   const [lastScanAt, setLastScanAt] = useState<string | null>(null);
@@ -143,8 +145,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       setSelectedFrequency(isSearchFrequency(fetchedFrequency) ? fetchedFrequency : 'weekly');
       setLastScanAt(profileSchedule?.last_scan_at ?? null);
       setNextScanAt(profileSchedule?.next_scan_at ?? null);
+      setLoadFailed(false);
     } catch (err: unknown) {
       logger.error('SettingsScreen betöltési hiba:', getErrorMessage(err));
+      setLoadFailed(true);
       showSnackbar('Nem sikerült betölteni a beállításokat. Kérjük, próbáld újra később.');
     } finally {
       setLoading(false);
@@ -326,29 +330,42 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Text variant="titleMedium" style={styles.infoTitle}>
             Keresési állapot
           </Text>
-          <View style={styles.infoRow}>
-            <Text variant="bodyMedium" style={styles.infoLabel}>
-              Utolsó keresés
-            </Text>
-            <Text variant="bodyMedium" style={styles.infoValue}>
-              {formatScheduleDate(lastScanAt, 'Még nem futott')}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text variant="bodyMedium" style={styles.infoLabel}>
-              Következő keresés
-            </Text>
-            <Text variant="bodyMedium" style={styles.infoValue}>
-              {formatNextScan(nextScanAt)}
-            </Text>
-          </View>
+          {loadFailed ? (
+            <>
+              <Text variant="bodyMedium" style={styles.infoValue}>
+                Nem sikerült betölteni a keresési beállításokat.
+              </Text>
+              <Button mode="outlined" onPress={() => void loadSettings()} testID="settings-schedule-retry">
+                Újra
+              </Button>
+            </>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <Text variant="bodyMedium" style={styles.infoLabel}>
+                  Utolsó keresés
+                </Text>
+                <Text variant="bodyMedium" style={styles.infoValue}>
+                  {formatScheduleDate(lastScanAt, 'Még nem futott')}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text variant="bodyMedium" style={styles.infoLabel}>
+                  Következő keresés
+                </Text>
+                <Text variant="bodyMedium" style={styles.infoValue}>
+                  {formatNextScan(nextScanAt)}
+                </Text>
+              </View>
+            </>
+          )}
         </Surface>
 
         <Button
           mode="contained"
           onPress={handleSave}
           loading={saving}
-          disabled={saving}
+          disabled={saving || loadFailed}
           style={styles.saveButton}
           accessibilityLabel="Keresési beállítások mentése"
         >

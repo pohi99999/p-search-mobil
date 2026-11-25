@@ -248,3 +248,56 @@ describe('SettingsScreen navigation rows are named buttons', () => {
     expect(node.props.accessibilityLabel).toMatch(label);
   });
 });
+
+// Round 6 item 9 (Kenshin, measured on a stub 2026-11-25): when the schedule could not be read, the screen showed
+// "Még nem futott / Nincs ütemezve" under a default "Hetente", and Mentés stayed active, so a save would have
+// overwritten the stored cadence with the default. Now the block says it failed, offers a retry, and Mentés waits.
+describe('SettingsScreen when the schedule cannot be read', () => {
+  const textOf = (c: renderer.ReactTestRenderer) =>
+    c.root
+      .findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string')
+      .map((n) => n.props.children as string)
+      .join(' | ');
+  const saveButton = (c: renderer.ReactTestRenderer) =>
+    c.root.findAll((n) => n.props.accessibilityLabel === 'Keresési beállítások mentése' && typeof n.type !== 'string')[0];
+
+  const readFails = () =>
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }),
+      update: jest.fn(),
+    });
+
+  it('says it failed instead of showing defaults, and Mentés is disabled', async () => {
+    readFails();
+    const c = await render();
+    const text = textOf(c);
+    expect(text).toContain('Nem sikerült betölteni a keresési beállításokat.');
+    expect(text).not.toContain('Még nem futott');
+    expect(text).not.toContain('Nincs ütemezve');
+    expect(saveButton(c).props.disabled).toBe(true);
+    expect(byTestID(c, 'settings-schedule-retry').length).toBeGreaterThan(0);
+  });
+
+  it('a retry that reads the schedule shows it and enables Mentés', async () => {
+    readFails();
+    const c = await render();
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { search_frequency: 'manual', last_scan_at: null, next_scan_at: null }, error: null }),
+      update: jest.fn(),
+    });
+    await act(async () => {
+      byTestID(c, 'settings-schedule-retry')[0].props.onPress();
+      await Promise.resolve();
+    });
+    const text = textOf(c);
+    expect(text).not.toContain('Nem sikerült betölteni a keresési beállításokat.');
+    expect(text).toContain('Még nem futott');
+    expect(saveButton(c).props.disabled).toBe(false);
+    expect(byTestID(c, 'frequency-manual')[0].props.accessibilityState.checked).toBe(true);
+    expect(byTestID(c, 'settings-schedule-retry')).toHaveLength(0);
+  });
+});
