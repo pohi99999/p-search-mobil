@@ -8,6 +8,7 @@ import { STALE_MATCH_STATUS } from '../lib/matchStatus';
 import { formatDeadline } from '../lib/deadline';
 import { GrantKindBadge } from './GrantKindBadge';
 import { MatchFeedback } from './MatchFeedback';
+import { BRAND_BLUE } from '../config/brand';
 
 // The round search button floats over the list's right edge: 56 px wide with a 16 px margin, and the card itself has
 // a 16 px margin. The actions keep out of that column at any scroll position, on any screen width (P2-3).
@@ -88,7 +89,7 @@ export function MatchCard({ item, onPress, rank, isNew = false }: MatchCardProps
               {item.match_reasoning || item.grants?.description}
             </Text>
             {amountLine && (
-              <Text variant="labelLarge" style={{ marginTop: 8, color: '#1976D2' }}>
+              <Text variant="labelLarge" style={{ marginTop: 8, color: BRAND_BLUE }}>
                 Összeg: {amountLine}
               </Text>
             )}
