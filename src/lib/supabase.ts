@@ -27,7 +27,12 @@ type WebBacking = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
  * old behaviour, instead of breaking sign-in.
  */
 export function createWebAuthStorage(getBacking: () => WebBacking | undefined) {
+  // Within one page load, memory holds the freshest value of every write and removal; the tab storage only carries a
+  // value over to the next load. So a write the storage refuses (quota, some private modes: setItem throws while
+  // getItem works, Ellenőr 9168) is still read back in this page, a refreshed token is never hidden behind a stale
+  // stored one, and a sign-out whose storage removal fails does not bring the old session back.
   const memory = new Map<string, string>();
+  const removed = new Set<string>();
   const backing = (): WebBacking | undefined => {
     try {
       return getBacking();
@@ -37,32 +42,30 @@ export function createWebAuthStorage(getBacking: () => WebBacking | undefined) {
   };
   return {
     async getItem(key: string): Promise<string | null> {
+      if (memory.has(key)) return memory.get(key) as string;
+      if (removed.has(key)) return null;
       try {
-        const store = backing();
-        if (store) return store.getItem(key);
+        return backing()?.getItem(key) ?? null;
       } catch {
-        // fall through to memory
+        return null;
       }
-      return memory.get(key) ?? null;
     },
     async setItem(key: string, value: string): Promise<void> {
-      try {
-        const store = backing();
-        if (store) {
-          store.setItem(key, value);
-          return;
-        }
-      } catch {
-        // fall through to memory
-      }
       memory.set(key, value);
+      removed.delete(key);
+      try {
+        backing()?.setItem(key, value);
+      } catch {
+        // kept in memory for this page only; the next load starts signed out (the old in-memory behaviour)
+      }
     },
     async removeItem(key: string): Promise<void> {
       memory.delete(key);
+      removed.add(key);
       try {
         backing()?.removeItem(key);
       } catch {
-        // nothing stored there
+        // the removal is remembered for this page
       }
     },
   };

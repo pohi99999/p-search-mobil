@@ -72,3 +72,27 @@ describe('createWebAuthStorage', () => {
     }
   });
 });
+
+// Ellenőr 9168 on #280: partial failures (only some methods throw). The page's own writes and removals win.
+describe('createWebAuthStorage with a partly failing storage', () => {
+  it('a sign-out whose storage removal throws does not bring the old session back in this page', async () => {
+    const tab = new FakeStorage();
+    tab.setItem(KEY, 'old-session');
+    const store = createWebAuthStorage(() => ({
+      getItem: (k: string) => tab.getItem(k),
+      setItem: (k: string, v: string) => tab.setItem(k, v),
+      removeItem: () => {
+        throw new Error('SecurityError');
+      },
+    }));
+    expect(await store.getItem(KEY)).toBe('old-session');
+    await store.removeItem(KEY);
+    expect(await store.getItem(KEY)).toBeNull();
+  });
+
+  it('a value from the previous page load is read when this page has not written it', async () => {
+    const tab = new FakeStorage();
+    tab.setItem(KEY, 'from-last-load');
+    expect(await createWebAuthStorage(() => tab).getItem(KEY)).toBe('from-last-load');
+  });
+});
