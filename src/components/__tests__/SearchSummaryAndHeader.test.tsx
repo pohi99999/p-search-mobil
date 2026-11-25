@@ -37,7 +37,7 @@ describe('search summary on the home screen', () => {
       root = create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 6, candidatesConsidered: 60 }} />);
     });
     expect(has(root, 'search-summary')).toBe(true);
-    expect(textOf(root)).toContain('60 nyitott kiírást néztünk át, 6 illik a cégedhez.');
+    expect(textOf(root)).toContain('A cégprofilodhoz legközelebb álló 60 kiírást értékeltük, 6 illik a cégedhez.');
   });
 
   // Ellenőr #268: with a list on screen, a search that found nothing gave no answer at all.
@@ -47,7 +47,7 @@ describe('search summary on the home screen', () => {
       root = create(<HomeListHeader showTester={false} lastSearch={{ matchesFound: 0, candidatesConsidered: 54 }} />);
     });
     expect(has(root, 'search-summary')).toBe(true);
-    expect(textOf(root)).toContain('54 nyitott kiírást néztünk át, most egyik sem illik a cégedhez.');
+    expect(textOf(root)).toContain('A cégprofilodhoz legközelebb álló 54 kiírást értékeltük, most egyik sem illik a cégedhez.');
   });
 
   it('the tester card is in the header when asked for, and only then', async () => {
@@ -89,7 +89,7 @@ describe('search summary on the home screen', () => {
         <HomeEmptyState kind="none" onSearch={jest.fn()} onEditProfile={jest.fn()} lastSearch={{ matchesFound: 0, candidatesConsidered: 52 }} />,
       );
     });
-    expect(textOf(root)).toContain('52 nyitott kiírást néztünk át.');
+    expect(textOf(root)).toContain('A cégprofilodhoz legközelebb álló 52 kiírást értékeltük.');
     await act(async () => {
       root.update(<HomeEmptyState kind="none" onSearch={jest.fn()} onEditProfile={jest.fn()} lastSearch={null} />);
     });
@@ -118,7 +118,7 @@ describe('SearchAnnouncer', () => {
     expect(textOf(root)).not.toContain('néztünk át');
     await act(async () => { root.update(<SearchAnnouncer result={{ matchesFound: 6, candidatesConsidered: 60 }} />); });
     expect(region().props['aria-live']).toBe('polite');
-    expect(textOf(root)).toContain('60 nyitott kiírást néztünk át, 6 illik a cégedhez.');
+    expect(textOf(root)).toContain('A cégprofilodhoz legközelebb álló 60 kiírást értékeltük, 6 illik a cégedhez.');
   });
 
   it('on a phone it renders nothing (announceForAccessibility speaks there)', async () => {

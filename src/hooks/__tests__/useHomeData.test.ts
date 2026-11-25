@@ -682,7 +682,7 @@ describe('useHomeData', () => {
     const { result } = renderHook(() => useHomeData(mockNavigation));
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => { await result.current.handleNewSearch(); });
-    expect(announce).toHaveBeenCalledWith('54 nyitott kiírást néztünk át, most egyik sem illik a cégedhez.');
+    expect(announce).toHaveBeenCalledWith('A cégprofilodhoz legközelebb álló 54 kiírást értékeltük, most egyik sem illik a cégedhez.');
     announce.mockRestore();
   });
 });

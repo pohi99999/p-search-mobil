@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, Button, Surface } from 'react-native-paper';
-import type { SearchRunResult } from '../lib/searchSummary';
+import { lookedText, type SearchRunResult } from '../lib/searchSummary';
 
 // Card [D] (review 2026-10-25): the empty home always showed a spinner and "Keresés folyamatban...", also when
 // nothing ran and after a search that found nothing. Three states now; texts: Stratéga (szovegek-stratega.md).
@@ -67,7 +67,7 @@ export function HomeEmptyState({ kind, profileIncomplete = false, onSearch, onEd
       </Text>
       {lastSearch && lastSearch.candidatesConsidered > 0 ? (
         <Text variant="bodyMedium" style={styles.looked} testID="empty-none-looked">
-          {`${lastSearch.candidatesConsidered} nyitott kiírást néztünk át.`}
+          {`${lookedText(lastSearch.candidatesConsidered)}.`}
         </Text>
       ) : null}
       <Text variant="bodyMedium" style={styles.body}>
