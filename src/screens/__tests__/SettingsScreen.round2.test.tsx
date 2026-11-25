@@ -236,15 +236,93 @@ describe('SettingsScreen navigation rows are named buttons', () => {
   const host = (c: renderer.ReactTestRenderer, id: string) =>
     c.root.findAll((n) => n.props.testID === id && typeof n.type === 'string')[0];
 
+  // The visible title and description as rendered inside the row (the icon glyphs are left out).
+  const visible = (node: renderer.ReactTestInstance) =>
+    node
+      .findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string')
+      .map((n) => n.props.children as string)
+      .filter((t) => /\p{L}{3,}/u.test(t));
+
+  // Ellenőr 9158 (note 2): the label is checked whole, against what the row shows, not only its first words.
   it.each([
-    ['settings-pro-entry', /^P-Search Pro: ./],
-    ['settings-profile-edit', /^Cégprofil szerkesztése: ./],
-    ['settings-privacy-entry', /^Adatvédelmi tájékoztató: ./],
-  ])('%s', async (id, label) => {
+    ['settings-pro-entry', ''],
+    ['settings-profile-edit', ''],
+    ['settings-privacy-entry', ' Megnyitás a böngészőben.'],
+  ])('%s: a button named "title: description" as the row shows them', async (id, suffix) => {
     const c = await render();
     const node = host(c, id);
     expect(node).toBeDefined();
     expect(node.props.accessibilityRole).toBe('button');
-    expect(node.props.accessibilityLabel).toMatch(label);
+    const [title, description] = visible(node);
+    expect(node.props.accessibilityLabel).toBe(`${title}: ${description}${suffix}`);
+  });
+
+  it('the Pro row\'s name follows the billing state', async () => {
+    const was = mockBilling.isPro;
+    try {
+      for (const isPro of [false, true]) {
+        mockBilling.isPro = isPro;
+        const c = await render();
+        const node = host(c, 'settings-pro-entry');
+        const [title, description] = visible(node);
+        expect(description).toBe(isPro ? 'Aktív Pro előfizetés. Csomagok és visszaállítás.' : 'Copilot akcióterv, reklámmentes használat, korlátlan keresés.');
+        expect(node.props.accessibilityLabel).toBe(`${title}: ${description}`);
+      }
+    } finally {
+      mockBilling.isPro = was;
+    }
+  });
+});
+
+// Round 6 item 9 (Kenshin, measured on a stub 2026-11-25): when the schedule could not be read, the screen showed
+// "Még nem futott / Nincs ütemezve" under a default "Hetente", and Mentés stayed active, so a save would have
+// overwritten the stored cadence with the default. Now the block says it failed, offers a retry, and Mentés waits.
+describe('SettingsScreen when the schedule cannot be read', () => {
+  const textOf = (c: renderer.ReactTestRenderer) =>
+    c.root
+      .findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string')
+      .map((n) => n.props.children as string)
+      .join(' | ');
+  const saveButton = (c: renderer.ReactTestRenderer) =>
+    c.root.findAll((n) => n.props.accessibilityLabel === 'Keresési beállítások mentése' && typeof n.type !== 'string')[0];
+
+  const readFails = () =>
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }),
+      update: jest.fn(),
+    });
+
+  it('says it failed instead of showing defaults, and Mentés is disabled', async () => {
+    readFails();
+    const c = await render();
+    const text = textOf(c);
+    expect(text).toContain('Nem sikerült betölteni a keresési beállításokat.');
+    expect(text).not.toContain('Még nem futott');
+    expect(text).not.toContain('Nincs ütemezve');
+    expect(saveButton(c).props.disabled).toBe(true);
+    expect(byTestID(c, 'settings-schedule-retry').length).toBeGreaterThan(0);
+  });
+
+  it('a retry that reads the schedule shows it and enables Mentés', async () => {
+    readFails();
+    const c = await render();
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { search_frequency: 'manual', last_scan_at: null, next_scan_at: null }, error: null }),
+      update: jest.fn(),
+    });
+    await act(async () => {
+      byTestID(c, 'settings-schedule-retry')[0].props.onPress();
+      await Promise.resolve();
+    });
+    const text = textOf(c);
+    expect(text).not.toContain('Nem sikerült betölteni a keresési beállításokat.');
+    expect(text).toContain('Még nem futott');
+    expect(saveButton(c).props.disabled).toBe(false);
+    expect(byTestID(c, 'frequency-manual')[0].props.accessibilityState.checked).toBe(true);
+    expect(byTestID(c, 'settings-schedule-retry')).toHaveLength(0);
   });
 });
