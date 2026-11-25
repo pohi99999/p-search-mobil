@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { EmailConfirmationGate } from './src/components/EmailConfirmationGate';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { appTheme } from './src/config/theme';
@@ -71,6 +72,7 @@ export default function App() {
     <BillingProvider>
       <ProfileProvider>
         <PaperProvider theme={theme}>
+        <EmailConfirmationGate>
         <NavigationContainer>
           <WebFrame>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -92,6 +94,7 @@ export default function App() {
           </Stack.Navigator>
           </WebFrame>
         </NavigationContainer>
+        </EmailConfirmationGate>
         <WebNotifier />
         </PaperProvider>
       </ProfileProvider>
