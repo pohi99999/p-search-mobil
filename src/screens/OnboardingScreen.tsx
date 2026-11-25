@@ -15,6 +15,7 @@ import type { BusinessProfile } from '../types/database';
 import { getErrorMessage } from '../utils/error';
 import { logger } from '../utils/logger';
 import { profileFlags, track } from '../services/events';
+import { notify } from '../lib/notify';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
@@ -175,6 +176,9 @@ export function OnboardingScreen({ navigation, route }: { navigation: Onboarding
         track('profile_updated', profileFlags(values));
         await refreshProfile();
         if (navigation.canGoBack()) navigation.goBack(); else navigation.replace('Home');
+        // Round 6 (live 2026-11-25, item 8): the save went back without a word. The note is shown after leaving,
+        // so however it is closed, nobody is left on the form.
+        notify('A cégprofil mentve', 'A következő AI-keresés már az új adatokkal fut.');
         return;
       }
 
