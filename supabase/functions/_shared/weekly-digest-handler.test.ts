@@ -209,6 +209,8 @@ Deno.test("unsubscribe with another user's token, a broken token, a non-uuid, th
     ["not-a-uuid", await unsubscribeToken(USECRET, "not-a-uuid"), {}],
     [U1, await unsubscribeToken(SECRET, U1), {}],
     [U1, await unsubscribeToken(USECRET, U1), { DIGEST_UNSUBSCRIBE_SECRET: undefined }],
+    // no fallback to the scheduler secret when the links' own key is missing
+    [U1, await unsubscribeToken(SECRET, U1), { DIGEST_UNSUBSCRIBE_SECRET: undefined, SCHEDULER_SECRET: SECRET }],
   ];
   for (const [u, t, env] of cases) {
     const d = unsubDeps(env);
