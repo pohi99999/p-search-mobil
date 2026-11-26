@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { MatchCard } from '../MatchCard';
+import { MatchCard, STALE_CARD_BG } from '../MatchCard';
 import { MatchWithGrant } from '../../hooks/useHomeData';
 
 describe('MatchCard', () => {
@@ -344,24 +344,32 @@ describe('round 2: the details button name and the stale subtitle contrast', () 
     expect(labels).toContain('Részletek: GINOP Plusz');
   });
 
-  it('the stale subtitle stays at least 4.5:1 on white, with the card opacity counted in', async () => {
-    const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: '', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi pályázat', provider: 'X', description: '', amount_min: null, amount_max: null } } as any;
-    let tree: renderer.ReactTestRenderer;
+  // Round 6 follow-up (Ellenőr 9293): the stale card faded its text with opacity 0.75; four of eight colours fell under
+  // AA. Now nothing on the card fades, the card has its own background, and every text colour is AA on it.
+  it.each([
+    ['expired', -3],
+    ['soon', 5],
+    ['normal', 40],
+  ])('a stale card (%s deadline): no opacity anywhere, and its texts are AA on its background', async (_tone, days) => {
+    const deadline = new Date(Date.now() + (days as number) * 864e5).toISOString().slice(0, 10);
+    const item = { id: 'm1', business_id: 'b', grant_id: 'g', match_score: 50, match_reasoning: 'Régi indoklás', status: 'stale', created_at: '', grants: { id: 'g', title: 'Régi pályázat', provider: 'Kiíró', description: '', amount_min: 1000000, amount_max: 5000000, deadline } } as any;
+    let tree!: renderer.ReactTestRenderer;
     await act(async () => { tree = renderer.create(<MatchCard item={item} onPress={() => {}} />); });
-    const node = tree!.root.findAll((n) => typeof n.type === 'string' && typeof n.props.children === 'string' && n.props.children.startsWith('Korábbi keresés találata'))[0];
-    let opacity = 1;
-    // host elements only: a composite passes the same style down, and would count it more than once
-    for (let p: any = node; p; p = p.parent) {
-      if (typeof p.type !== 'string') continue;
-      const o = StyleSheet.flatten(p.props?.style)?.opacity;
-      if (typeof o === 'number') opacity *= o;
-    }
-    const fg = textColor(node.props.style);
-    // the colour as it lands on the white card under the opacity
-    const ch = (i: number) => Math.round(parseInt(fg.slice(1 + i * 2, 3 + i * 2), 16) * opacity + 255 * (1 - opacity));
-    const blended = '#' + [0, 1, 2].map((i) => ch(i).toString(16).padStart(2, '0')).join('');
-    expect(opacity).toBeLessThan(1);
-    expect(contrastRatio(blended, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    // host elements only: a composite passes the same style down
+    const hosts = tree.root.findAll((n) => typeof n.type === 'string');
+    const opacities = hosts.map((n) => StyleSheet.flatten(n.props?.style)?.opacity).filter((o) => typeof o === 'number' && o < 1);
+    expect(opacities).toEqual([]);
+    const card = tree.root.findAll((n) => typeof n.type !== 'string' && StyleSheet.flatten(n.props?.style)?.backgroundColor === STALE_CARD_BG);
+    expect(card.length).toBeGreaterThan(0);
+    const colours = hosts
+      .filter((n) => typeof n.props.children === 'string' || (Array.isArray(n.props.children) && n.props.children.every((c: unknown) => typeof c === 'string')))
+      .map((n) => ({ text: [n.props.children].flat().join(''), color: textColor(n.props.style) }))
+      .filter((x) => /^#[0-9a-f]{6}$/i.test(x.color));
+    // the deadline, the provider, the stale line and the amount are all among them
+    expect(colours.map((x) => x.text).join(' | ')).toMatch(/Korábbi keresés találata/);
+    expect(colours.some((x) => x.text.startsWith('Összeg'))).toBe(true);
+    for (const x of colours) expect([x.text, contrastRatio(x.color, STALE_CARD_BG) >= 4.5]).toEqual([x.text, true]);
+    act(() => tree.unmount());
   });
 });
 
@@ -395,11 +403,8 @@ describe('round 11-21: the "Új" label', () => {
     expect(title.props.style.paddingTop).toBe(4);
   });
 
-  it('white on the label stays at least 4.5:1, under the stale opacity too', () => {
-    const onWhite = (hex: string, opacity: number) =>
-      '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * opacity + 255 * (1 - opacity)).toString(16).padStart(2, '0')).join('');
+  it('white on the label stays at least 4.5:1 (the stale card no longer fades it)', () => {
     expect(contrastRatio('#FFFFFF', NEW_BADGE_BG)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(onWhite('#FFFFFF', 0.75), onWhite(NEW_BADGE_BG, 0.75))).toBeGreaterThanOrEqual(4.5);
   });
 });
 
