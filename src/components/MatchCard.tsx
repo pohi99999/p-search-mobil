@@ -26,6 +26,14 @@ interface MatchCardProps {
   isNew?: boolean;
 }
 
+/**
+ * The stale card's own background (round 6 follow-up, Ellenőr 9293). The card used to fade with opacity 0.75, and every
+ * text on it faded too: four of its eight text colours fell under AA (the "soon" deadline 3.28:1, the amount and the
+ * buttons' blue 3.56:1). Now the card keeps full colours on this cool grey, and every text colour on it is at least
+ * 4.79:1 (MatchCard test). The text says it is an older result ("Korábbi keresés találata"), the outline marks the card.
+ */
+export const STALE_CARD_BG = '#F4F6F9';
+
 export function MatchCard({ item, onPress, rank, isNew = false }: MatchCardProps) {
   // Card 378073ce: no invented ranges (placeholder 1 Ft minimum, programme budget as maximum).
   const amountLine = formatGrantAmount(item.grants?.amount_min, item.grants?.amount_max);
@@ -112,8 +120,8 @@ export function MatchCard({ item, onPress, rank, isNew = false }: MatchCardProps
         )}
         {/* Card [J]: every card's button read "Részletek"; the label names the grant. Round 2 (Lumen P2-6): the
             visible word comes first, so voice control finds the button by what it shows. */}
-        {/* Round 6 (Lumen P2-1): the main action of a fresh card is filled; a stale card (opacity 0.75, an older
-            search) keeps the outline, where white text on the faded blue would be under AA. */}
+        {/* Round 6 (Lumen P2-1): the main action of a fresh card is filled; a stale card (an older search) keeps the
+            outline, so the fresh results lead. */}
         <Button
           mode={stale ? 'outlined' : 'contained'}
           onPress={onPress}
@@ -152,8 +160,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginLeft: 16,
   },
-  // White on #0B3D85 (the mixed kind's text colour): 10.4:1, and above 4.5:1 under the stale card's opacity 0.75 too
-  // (MatchCard test).
+  // White on NEW_BADGE_BG: at least 4.5:1 (MatchCard test). The stale card no longer fades, so no opacity to count in.
   newBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
@@ -174,10 +181,13 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 8,
   },
+  // No opacity (it faded the text under AA); a cool grey and a thin outline mark the older result.
   staleCard: {
-    opacity: 0.75,
+    backgroundColor: STALE_CARD_BG,
+    borderWidth: 1,
+    borderColor: '#C3C7CE',
   },
-  // Round 2 (Lumen P2-7): #9E9E9E was 2.67:1, and the stale card adds opacity 0.75; #424242 stays about 4.8:1 under it.
+  // Round 2 (Lumen P2-7): #9E9E9E was 2.67:1. #424242 on STALE_CARD_BG is 9.28:1.
   staleSubtitle: {
     color: '#424242',
   },
