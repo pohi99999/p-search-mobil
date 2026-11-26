@@ -2,10 +2,12 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FollowButton, FOLLOW_LABEL, FOLLOWING_LABEL, FOLLOW_LIMIT_TITLE, FOLLOW_LIMIT_MESSAGE } from '../FollowButton';
-import { followGrant, loadFollowed, resetFollowedForTest } from '../../lib/followedGrants';
+import { followGrant, loadFollowed, resetFollowedForTest, setFollowRemoteForTest } from '../../lib/followedGrants';
+import { createMemoryFollowRemote } from '../../test-utils/followRemote';
 import { notify } from '../../lib/notify';
 
 jest.mock('../../lib/notify', () => ({ notify: jest.fn() }));
+jest.mock('../../lib/supabase', () => ({ supabase: {} }));
 
 const match = (n: number) =>
   ({ id: `m${n}`, business_id: 'b', grant_id: `g${n}`, match_score: 80, match_reasoning: '', status: 'new', created_at: '', grants: { id: `g${n}`, title: `Pályázat ${n}` } }) as any;
@@ -29,6 +31,7 @@ const render = async (props: Partial<React.ComponentProps<typeof FollowButton>> 
 describe('FollowButton (round 11-21 #5)', () => {
   beforeEach(async () => {
     resetFollowedForTest();
+    setFollowRemoteForTest(createMemoryFollowRemote().remote);
     await AsyncStorage.clear();
     jest.clearAllMocks();
   });
@@ -65,6 +68,8 @@ describe('FollowButton (round 11-21 #5)', () => {
   });
 
   it('a Pro account follows past 3', async () => {
+    // the server has u1 as Pro (no limit in the insert trigger)
+    setFollowRemoteForTest(createMemoryFollowRemote({ pro: ['u1'] }).remote);
     for (const n of [2, 3, 4]) await followGrant('u1', match(n), true);
     const { press } = await render({ isPro: true });
     await press();
