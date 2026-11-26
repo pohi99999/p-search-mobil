@@ -5,6 +5,7 @@ import { HomeScreen, FAB_IDLE_LABEL, FAB_SEARCHING_LABEL } from '../HomeScreen';
 import { useHomeData } from '../../hooks/useHomeData';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BRAND_BLUE } from '../../config/brand';
+import { HomeHeaderActions } from '../../components/HomeHeaderActions';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -576,6 +577,42 @@ describe('HomeScreen', () => {
   // Owner decision 2026-10-04 (Telegram 6053): no test ad unit may ship from the Home screen.
   // Card 4762e3d7: fresh matches first, the stale ones in a collapsed "Korábbi találatok (N)" section below.
   // Round 11-21 (#5): the header opens the followed grants.
+  // Round 6 follow-up (Ellenőr 9290): the component test ran on its own fixture, so the HomeScreen's real labels, and
+  // the header being HomeHeaderActions at all, were not guarded (the old icon-only header passed every test).
+  describe('the labelled header (round 6 follow-up)', () => {
+    const mountHome = () => {
+      (useHomeData as jest.Mock).mockReturnValue({
+        loading: false, profile: { company_name: 'T' }, matches: [], isPro: false,
+        fetchData: jest.fn(), retryLoad: jest.fn(), signOut: jest.fn(), handleNewSearch: jest.fn(),
+      });
+      const navigation = { navigate: jest.fn(), replace: jest.fn() } as any;
+      let root: any;
+      act(() => { root = renderer.create(<HomeScreen navigation={navigation} />); });
+      return { root, navigation };
+    };
+    const flat = (n: any): string => (typeof n === 'string' ? n : Array.isArray(n) ? n.map(flat).join('') : n?.props ? flat(n.props.children) : '');
+    const EXPECTED = [
+      { testID: 'home-followed-button', label: 'Saját pályázataim', name: 'Saját pályázataim', route: 'FollowedGrants' },
+      { testID: 'home-document-upload-button', label: 'Dokumentumok', name: 'Pénzügyi dokumentumok feltöltése', route: 'DocumentUpload' },
+      { testID: 'home-settings-button', label: 'Beállítások', name: 'Beállítások megnyitása', route: 'Settings' },
+    ];
+
+    it('the header is the labelled row, with these labels, names and screens', () => {
+      const { root, navigation } = mountHome();
+      expect(root.root.findAllByType(HomeHeaderActions)).toHaveLength(1);
+      for (const e of EXPECTED) {
+        const node = root.root.findAll((n: any) => n.props.testID === e.testID && typeof n.props.onPress === 'function')[0];
+        expect(node).toBeDefined();
+        expect(node.props.accessibilityLabel).toBe(e.name);
+        expect(flat(node.props.children).trim()).toBe(e.label);
+        // WCAG 2.5.3: the visible label is inside the name
+        expect(e.name.toLowerCase()).toContain(e.label.toLowerCase());
+        act(() => { node.props.onPress(); });
+        expect(navigation.navigate).toHaveBeenLastCalledWith(e.route);
+      }
+    });
+  });
+
   describe('round 11-21: the followed grants button', () => {
     it('opens "Saját pályázataim"', () => {
       (useHomeData as jest.Mock).mockReturnValue({

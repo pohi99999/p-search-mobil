@@ -101,9 +101,10 @@ describe('app theme', () => {
 
     it('App.tsx gives the Paper provider the app theme, not the MD3 default', () => {
       const app = stripComments(fs.readFileSync(path.join(root, '..', 'App.tsx'), 'utf8'));
-      expect(app).toMatch(/import \{ appTheme \} from '\.\/src\/config\/theme';/);
-      expect(app).toMatch(/const theme = appTheme;/);
-      expect(app).toMatch(/<PaperProvider theme=\{theme\}>/);
+      // Whitespace and quotes may change (Ellenőr 9299 remark 2: a reformatted file gave a false alarm).
+      expect(app).toMatch(/import\s*\{\s*appTheme\s*\}\s*from\s*['"]\.\/src\/config\/theme['"]/);
+      expect(app).toMatch(/const\s+theme\s*=\s*appTheme\b/);
+      expect(app).toMatch(/<PaperProvider\s+theme=\{\s*theme\s*\}\s*>/);
       expect(app).not.toMatch(/MD3LightTheme/);
     });
 
@@ -111,7 +112,9 @@ describe('app theme', () => {
     // is not on it must not bring the old blue back.
     const STILL_TO_CONVERT = ['screens/SettingsScreen.tsx', 'screens/DocumentUploadScreen.tsx', 'screens/ActionPlanScreen.tsx'];
     it('the old blue #1976D2 is not hard-coded outside the files still to be converted', () => {
-      const offenders = sources.filter((s) => /#1976D2/i.test(s.code) && !STILL_TO_CONVERT.includes(s.file)).map((s) => s.file);
+      // The hex form and the rgb()/rgba() form (Ellenőr 9299 remark 1: rgb(25, 118, 210) got through).
+      const OLD_BLUE = /#1976D2|rgba?\(\s*25\s*,\s*118\s*,\s*210\b/i;
+      const offenders = sources.filter((s) => OLD_BLUE.test(s.code) && !STILL_TO_CONVERT.includes(s.file)).map((s) => s.file);
       expect(offenders).toEqual([]);
     });
 
