@@ -9,6 +9,7 @@ import { isSendSlot, isoWeekKey, sentThisWeek, unsubscribeToken, verifyUnsubscri
 
 const SECRET = "CANARY-SCHED-SECRET-7f3a91";
 const RESEND = "CANARY-RESEND-KEY-c20d44";
+const USECRET = "CANARY-UNSUB-SECRET-5e19b2"; // DIGEST_UNSUBSCRIBE_SECRET, the links' own key
 const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"; // the test account
 const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"; // real user
 const C = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"; // real user
@@ -120,7 +121,7 @@ function world(over: { env?: Record<string, string | undefined>; now?: Date; rec
   const sent: any[] = [], marked: string[] = [], logs: string[] = [];
   const calls = { list: 0, email: 0, company: 0 };
   const env: Record<string, string | undefined> = {
-    SCHEDULER_SECRET: SECRET, DIGEST_ENABLED: "true", DIGEST_ALLOWLIST: A, RESEND_API_KEY: RESEND, SUPABASE_URL: "https://x.supabase.co", ...(over.env ?? {}),
+    SCHEDULER_SECRET: SECRET, DIGEST_UNSUBSCRIBE_SECRET: USECRET, DIGEST_ENABLED: "true", DIGEST_ALLOWLIST: A, RESEND_API_KEY: RESEND, SUPABASE_URL: "https://x.supabase.co", ...(over.env ?? {}),
   };
   const deps = {
     env: (n: string) => env[n],
@@ -260,6 +261,10 @@ Deno.test("no database or mail work before the bearer is checked (401/405/503), 
   const noKey = world({ env: { RESEND_API_KEY: undefined } });
   assert.equal((await handleWeeklyDigest(post({}), noKey.deps)).status, 503);
   assert.equal(noKey.calls.list, 0);
+  // no e-mail without a working unsubscribe link: the links' own key is required
+  const noUnsub = world({ env: { DIGEST_UNSUBSCRIBE_SECRET: undefined } });
+  assert.equal((await handleWeeklyDigest(post({}), noUnsub.deps)).status, 503);
+  assert.equal(noUnsub.calls.list + noUnsub.sent.length, 0);
 });
 
 Deno.test("secrets: the scheduler secret and the Resend key are in no log line, no response body, no e-mail field", async () => {
@@ -277,6 +282,7 @@ Deno.test("secrets: the scheduler secret and the Resend key are in no log line, 
   assert.ok(w.sent.length === 3 && w.logs.length >= 3, "the scenario really sent and logged");
   assert.equal(hay.includes(SECRET), false, "scheduler secret leaked");
   assert.equal(hay.includes(RESEND), false, "resend key leaked");
+  assert.equal(hay.includes(USECRET), false, "unsubscribe secret leaked");
 });
 
 Deno.test("each e-mail: its own unsubscribe link (valid for its user, invalid for the others), matching header, HTML-escaped company, no CR/LF in headers", async () => {
@@ -291,8 +297,9 @@ Deno.test("each e-mail: its own unsubscribe link (valid for its user, invalid fo
     assert.equal(u.searchParams.get("u"), me);
     const tok = u.searchParams.get("t")!;
     assert.equal(tok.length, 43);
-    assert.equal(await verifyUnsubscribeToken(SECRET, me, tok), true);
-    for (const other of [A, B, C].filter((x) => x !== me)) assert.equal(await verifyUnsubscribeToken(SECRET, other, tok), false, "a token must not work for another user");
+    assert.equal(await verifyUnsubscribeToken(USECRET, me, tok), true);
+    assert.equal(await verifyUnsubscribeToken(SECRET, me, tok), false, "the scheduler secret is not the links' key");
+    for (const other of [A, B, C].filter((x) => x !== me)) assert.equal(await verifyUnsubscribeToken(USECRET, other, tok), false, "a token must not work for another user");
     assert.equal(e.headers["List-Unsubscribe"], `<${m[1]}>`);
     assert.equal(e.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
     for (const [k, v] of Object.entries(e.headers)) assert.equal(/[\r\n]/.test(k + v), false);
@@ -305,41 +312,96 @@ Deno.test("each e-mail: its own unsubscribe link (valid for its user, invalid fo
 });
 
 // --- the unsubscribe handler ---------------------------------------------------------------------------------------
-function unsub(secret: string | undefined | null = SECRET) {
+// A GET never changes anything (a mail scanner opens links); the confirm page's POST (confirm=page) and the mail
+// client's RFC 8058 one-click POST do. The key is DIGEST_UNSUBSCRIBE_SECRET.
+const FN = "https://x.supabase.co/functions/v1/digest-unsubscribe";
+function unsub(secret: string | undefined | null = USECRET, extra: Record<string, string> = {}) {
   const outs: string[] = [];
-  return { outs, deps: { env: (n: string) => (n === "SCHEDULER_SECRET" ? (secret ?? undefined) : undefined), optOut: (u: string) => { outs.push(u); return Promise.resolve(); }, log: () => {} } };
+  const env: Record<string, string | undefined> = { DIGEST_UNSUBSCRIBE_SECRET: secret ?? undefined, SCHEDULER_SECRET: SECRET, SUPABASE_URL: "https://x.supabase.co", ...extra };
+  return { outs, deps: { env: (n: string) => env[n], optOut: (u: string) => { outs.push(u); return Promise.resolve(); }, log: () => {} } };
 }
-const link = (u: string, t: string, method = "GET") => new Request(`https://x/functions/v1/digest-unsubscribe?u=${encodeURIComponent(u)}&t=${encodeURIComponent(t)}`, { method });
+type Kind = "GET" | "PAGE" | "ONECLICK" | "PUT" | "DELETE";
+const link = (u: string, t: string, kind: Kind = "GET") => {
+  const url = `${FN}?u=${encodeURIComponent(u)}&t=${encodeURIComponent(t)}`;
+  if (kind === "PAGE") return new Request(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "confirm=page" });
+  if (kind === "ONECLICK") return new Request(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" });
+  return new Request(url, { method: kind });
+};
+const PAGE = "https://p-search-mobil.vercel.app/leiratkozas";
 
-Deno.test("unsubscribe: the right token opens, every wrong variant changes nothing (GET and POST)", async () => {
-  const tA = await unsubscribeToken(SECRET, A), tB = await unsubscribeToken(SECRET, B);
+Deno.test("unsubscribe: a valid GET only redirects to the confirm page (fragment, nothing changed); the two POSTs opt out", async () => {
+  const tA = await unsubscribeToken(USECRET, A);
+  const g = unsub();
+  const r = await handleUnsubscribe(link(A, tA), g.deps);
+  assert.equal(r.status, 302);
+  assert.deepEqual(g.outs, [], "a GET (a scanner opening the link) must not unsubscribe");
+  const loc = r.headers.get("Location")!;
+  assert.ok(loc.startsWith(`${PAGE}#a=`), loc);
+  assert.equal(loc.slice(0, loc.indexOf("#")).includes("?"), false, "the id and token are only in the fragment, never in the query");
+  const action = decodeURIComponent(loc.slice(loc.indexOf("#a=") + 3));
+  assert.equal(action, `${FN}?u=${A}&t=${tA}`);
+  assert.match(action, /^https:\/\/[a-z0-9-]+\.supabase\.co\/functions\/v1\/digest-unsubscribe\?u=[0-9a-fA-F-]{36}&t=[A-Za-z0-9_-]{43}$/, "the page's ACTION_RE accepts it");
+
+  const p = unsub();
+  const rp = await handleUnsubscribe(link(A, tA, "PAGE"), p.deps);
+  assert.equal(rp.status, 303);
+  assert.equal(rp.headers.get("Location"), `${PAGE}?ok=1`);
+  assert.deepEqual(p.outs, [A]);
+
+  const o = unsub();
+  const ro = await handleUnsubscribe(link(A, tA, "ONECLICK"), o.deps);
+  assert.equal(ro.status, 200);
+  assert.deepEqual(o.outs, [A]);
+});
+
+Deno.test("unsubscribe: every wrong variant changes nothing (GET, the page's POST, the one-click POST)", async () => {
+  const tA = await unsubscribeToken(USECRET, A), tB = await unsubscribeToken(USECRET, B);
   const flip = (t: string) => t.slice(0, -1) + (t.endsWith("A") ? "B" : "A");
   const wrong: [string, string][] = [
     [A, tB], [B, tA], [A, flip(tA)], [A, tA.slice(0, -1)], [A, tA + "A"], [A, ""], [A, tA.toLowerCase() === tA ? tA.toUpperCase() : tA.toLowerCase()],
     [A.toUpperCase(), tA], ["not-a-uuid", tA], ["", tA], [`${A} `, tA], [`${A}\n`, tA], [A, ` ${tA}`], [A, await unsubscribeToken("another-secret", A)],
+    [A, await unsubscribeToken(SECRET, A)], // made with the scheduler secret: not the links' key
   ];
-  for (const method of ["GET", "POST"]) {
-    const ok = unsub();
-    const r = await handleUnsubscribe(link(A, tA, method), ok.deps);
-    assert.deepEqual(ok.outs, [A], method);
-    assert.equal(method === "GET" ? r.headers.get("Location")!.endsWith("/leiratkozas?ok=1") && r.status === 302 : r.status === 200, true);
+  for (const kind of ["GET", "PAGE", "ONECLICK"] as Kind[]) {
     for (const [u, t] of wrong) {
       const s = unsub();
-      const rr = await handleUnsubscribe(link(u, t, method), s.deps);
-      assert.deepEqual(s.outs, [], `${method} u=${JSON.stringify(u)} t=${JSON.stringify(t)} must not opt out`);
-      assert.equal(method === "GET" ? rr.headers.get("Location")!.endsWith("ok=0") : rr.status === 400, true);
+      const rr = await handleUnsubscribe(link(u, t, kind), s.deps);
+      assert.deepEqual(s.outs, [], `${kind} u=${JSON.stringify(u)} t=${JSON.stringify(t)} must not opt out`);
+      if (kind === "GET") assert.equal(rr.headers.get("Location"), `${PAGE}?ok=0`);
+      if (kind === "PAGE") assert.deepEqual([rr.status, rr.headers.get("Location")], [303, `${PAGE}?ok=0`]);
+      if (kind === "ONECLICK") assert.equal(rr.status, 400);
     }
   }
-  const noSecret = unsub("");
-  await handleUnsubscribe(link(A, tA), noSecret.deps);
-  assert.deepEqual(noSecret.outs, [], "empty secret must never validate");
-  const undefinedSecret = unsub(null);
-  await handleUnsubscribe(link(A, tA), undefinedSecret.deps);
-  assert.deepEqual(undefinedSecret.outs, []);
+  for (const secret of ["", null]) {
+    for (const kind of ["GET", "PAGE", "ONECLICK"] as Kind[]) {
+      const s = unsub(secret);
+      await handleUnsubscribe(link(A, tA, kind), s.deps);
+      assert.deepEqual(s.outs, [], `no unsubscribe key (${JSON.stringify(secret)}) must never validate (${kind})`);
+    }
+  }
   const m = unsub();
   assert.equal((await handleUnsubscribe(link(A, tA, "PUT"), m.deps)).status, 405);
   assert.equal((await handleUnsubscribe(link(A, tA, "DELETE"), m.deps)).status, 405);
   assert.deepEqual(m.outs, []);
+});
+
+Deno.test("rotating the scheduler secret does not break the links already sent", async () => {
+  const tA = await unsubscribeToken(USECRET, A);
+  const s = unsub(USECRET, { SCHEDULER_SECRET: "a-brand-new-scheduler-secret" });
+  assert.equal((await handleUnsubscribe(link(A, tA, "ONECLICK"), s.deps)).status, 200);
+  assert.deepEqual(s.outs, [A]);
+});
+
+Deno.test("a failing update: the page gets ok=0 (303), the one-click 500, the GET still changes nothing", async () => {
+  const tA = await unsubscribeToken(USECRET, A);
+  const failing = (kind: Kind) => {
+    const d = unsub();
+    return handleUnsubscribe(link(A, tA, kind), { ...d.deps, optOut: () => Promise.reject(new Error("db")) });
+  };
+  const page = await failing("PAGE");
+  assert.deepEqual([page.status, page.headers.get("Location")], [303, `${PAGE}?ok=0`]);
+  assert.equal((await failing("ONECLICK")).status, 500);
+  assert.ok((await failing("GET")).headers.get("Location")!.startsWith(`${PAGE}#a=`));
 });
 
 Deno.test("the unsubscribe token is only an HMAC of the user id: it does not contain the secret and is not the secret's prefix", async () => {

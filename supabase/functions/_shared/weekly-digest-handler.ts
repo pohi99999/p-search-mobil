@@ -102,7 +102,9 @@ export async function handleWeeklyDigest(req: Request, deps: DigestDeps): Promis
 
   const apiKey = deps.env('RESEND_API_KEY');
   const supabaseUrl = deps.env('SUPABASE_URL');
-  if (!apiKey || !supabaseUrl) return json({ error: 'A levélküldés nincs konfigurálva.' }, 503);
+  // the unsubscribe links' own key (not the scheduler secret): no e-mail goes out without a working unsubscribe link
+  const unsubSecret = deps.env('DIGEST_UNSUBSCRIBE_SECRET');
+  if (!apiKey || !supabaseUrl || !unsubSecret) return json({ error: 'A levélküldés nincs konfigurálva.' }, 503);
 
   const allow = parseAllowlist(deps.env('DIGEST_ALLOWLIST'));
   const appUrl = deps.env('DIGEST_APP_URL') || DEFAULT_APP_URL;
@@ -134,7 +136,7 @@ export async function handleWeeklyDigest(req: Request, deps: DigestDeps): Promis
         log(`digest user=${r.id} reason=no_email`);
         continue;
       }
-      const unsub = unsubscribeUrl(supabaseUrl, r.id, await unsubscribeToken(expected, r.id));
+      const unsub = unsubscribeUrl(supabaseUrl, r.id, await unsubscribeToken(unsubSecret, r.id));
       const content = renderDigest({ companyName: company.name, items, appUrl, unsubscribeUrl: unsub });
       await deps.send({
         from: DIGEST_FROM,

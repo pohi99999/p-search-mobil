@@ -261,3 +261,22 @@ export function renderDigest(input: RenderInput): { subject: string; text: strin
 
   return { subject, text: textParts.join('\n'), html: `<!doctype html><html lang="hu"><body>${htmlParts.join('')}</body></html>` };
 }
+
+/**
+ * Every row of an ordered, paged read (Ellenőr 9371, tip 2: one unordered limit(500) left it undefined who gets the
+ * digest above 500 subscribers). `fetchPage(from, to)` is an inclusive range of an ORDERED query; reading stops at the
+ * first short page. Throws past `maxPages` rather than silently mailing a part.
+ */
+export async function collectPages<T>(
+  fetchPage: (from: number, to: number) => Promise<T[]>,
+  pageSize = 500,
+  maxPages = 200,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let page = 0; ; page++) {
+    if (page >= maxPages) throw new Error(`more than ${maxPages * pageSize} rows`);
+    const rows = await fetchPage(page * pageSize, page * pageSize + pageSize - 1);
+    all.push(...rows);
+    if (rows.length < pageSize) return all;
+  }
+}

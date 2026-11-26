@@ -7,7 +7,8 @@ import { handleUnsubscribe } from '../_shared/digest-unsubscribe-handler.ts';
  * List-Unsubscribe header point here; the token is an HMAC of the user id (../_shared/digest.ts). The logic and its
  * tests are in ../_shared/digest-unsubscribe-handler.ts.
  *
- * Env: SCHEDULER_SECRET (the HMAC key), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DIGEST_APP_URL (optional).
+ * Env: DIGEST_UNSUBSCRIBE_SECRET (the HMAC key; the same value as weekly-digest's), SUPABASE_URL,
+ * SUPABASE_SERVICE_ROLE_KEY, DIGEST_APP_URL (optional). A GET only redirects to the confirm page; the POST unsubscribes.
  * Deploy with verify_jwt = false: the link is opened without signing in.
  */
 

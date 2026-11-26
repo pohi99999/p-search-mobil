@@ -1,5 +1,5 @@
 // The weekly digest's pure core (round 6, item A).
-import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   DIGEST_MAX_ITEMS,
   isEmptyDigest,
@@ -15,6 +15,7 @@ import {
   verifyUnsubscribeToken,
   type DigestGrant,
   type DigestMatch,
+  collectPages,
 } from "./digest.ts";
 
 // --- the send slot: Monday 07:xx Budapest, whichever UTC run that is -------------------------------------------
@@ -159,4 +160,34 @@ Deno.test("the subject without new matches names the deadlines", () => {
   const out = renderDigest({ companyName: null, items: { newMatches: [], deadlines: [grant("f1", { deadline: day(2) })] }, appUrl: "a", unsubscribeUrl: "u" });
   assertEquals(out.subject, "P-Search: közelgő pályázati határidők");
   assert(out.text.startsWith("Kedves Felhasználó!"));
+});
+
+// --- collectPages: every opted-in user, ordered, page by page (Ellenőr 9371, tip 2) ---------------------------------
+
+function pagedSource(n: number) {
+  const rows = Array.from({ length: n }, (_, i) => i);
+  const calls: [number, number][] = [];
+  return { calls, fetch: (from: number, to: number) => (calls.push([from, to]), Promise.resolve(rows.slice(from, to + 1))) };
+}
+
+Deno.test("collectPages reads every row exactly once across pages, with inclusive ranges", async () => {
+  for (const n of [0, 1, 499, 500, 501, 1000, 1234]) {
+    const src = pagedSource(n);
+    const all = await collectPages(src.fetch, 500);
+    assertEquals(all, Array.from({ length: n }, (_, i) => i), `n=${n}`);
+    assertEquals(src.calls[0], [0, 499]);
+    if (n >= 500) assertEquals(src.calls[1], [500, 999]);
+    assertEquals(src.calls.length, Math.floor(n / 500) + 1, `n=${n}: stops at the first short page`);
+  }
+});
+
+Deno.test("collectPages refuses to return a part: past maxPages it throws", async () => {
+  const src = pagedSource(10_000);
+  await assertRejects(() => collectPages(src.fetch, 500, 3), Error, "more than 1500 rows");
+  assertEquals(src.calls.length, 3);
+});
+
+Deno.test("collectPages passes a page error up (no silent partial list)", async () => {
+  let n = 0;
+  await assertRejects(() => collectPages(() => (++n === 2 ? Promise.reject(new Error("db")) : Promise.resolve(Array(500).fill(0))), 500), Error, "db");
 });

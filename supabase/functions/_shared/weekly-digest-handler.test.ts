@@ -5,6 +5,7 @@ import { handleUnsubscribe } from "./digest-unsubscribe-handler.ts";
 import { unsubscribeToken, type DigestGrant, type DigestMatch } from "./digest.ts";
 
 const SECRET = "sched-secret";
+const USECRET = "unsub-secret";
 const SEND_SLOT = new Date("2026-11-30T06:00:00Z"); // Monday 07:00 Budapest
 const OFF_SLOT = new Date("2026-11-30T05:00:00Z"); // Monday 06:00 Budapest
 const U1 = "11111111-1111-4111-8111-111111111111";
@@ -29,7 +30,7 @@ function setup(w: World = {}) {
   const sent: OutgoingEmail[] = [];
   const marked: string[] = [];
   const env: Record<string, string | undefined> = {
-    SCHEDULER_SECRET: SECRET, DIGEST_ENABLED: "true", DIGEST_ALLOWLIST: U1, RESEND_API_KEY: "re_test", SUPABASE_URL: "https://x.supabase.co",
+    SCHEDULER_SECRET: SECRET, DIGEST_UNSUBSCRIBE_SECRET: USECRET, DIGEST_ENABLED: "true", DIGEST_ALLOWLIST: U1, RESEND_API_KEY: "re_test", SUPABASE_URL: "https://x.supabase.co",
     ...(w.env ?? {}),
   };
   const deps: DigestDeps = {
@@ -122,7 +123,7 @@ Deno.test("the scheduled send: from our sender, the one-click headers, a per-wee
   assertEquals(e.idempotencyKey, `digest:${U1}:2026-W49`);
   assertEquals(e.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
   const unsub = e.headers["List-Unsubscribe"].slice(1, -1);
-  assertEquals(new URL(unsub).searchParams.get("t"), await unsubscribeToken(SECRET, U1));
+  assertEquals(new URL(unsub).searchParams.get("t"), await unsubscribeToken(USECRET, U1));
   assert(e.text.includes(unsub));
   assertEquals(s.marked, [U1]);
 });
@@ -155,58 +156,81 @@ Deno.test("Resend key or project URL missing: 503 before anyone is touched", asy
   }
 });
 
-// --- unsubscribe -----------------------------------------------------------------------------------------------
+// --- unsubscribe ---------------------------------------------------------------------------------------------
+// A GET never changes anything (mail scanners open links): it redirects to the confirm page with the action in the
+// fragment. The page's POST (confirm=page) and the mail client's one-click POST opt out.
 
+const PAGE = "https://p-search-mobil.vercel.app/leiratkozas";
 function unsubDeps(env: Record<string, string | undefined> = {}) {
   const out: string[] = [];
   return {
     out,
     deps: {
-      env: (n: string) => ({ SCHEDULER_SECRET: SECRET, ...env } as Record<string, string | undefined>)[n],
+      env: (n: string) => ({ DIGEST_UNSUBSCRIBE_SECRET: USECRET, SUPABASE_URL: "https://x.supabase.co", ...env } as Record<string, string | undefined>)[n],
       optOut: (u: string) => (out.push(u), Promise.resolve()),
       log: () => {},
     },
   };
 }
-const unsubReq = (u: string, t: string, method = "GET") =>
-  new Request(`https://x/functions/v1/digest-unsubscribe?u=${encodeURIComponent(u)}&t=${encodeURIComponent(t)}`, { method });
+const unsubReq = (u: string, t: string, method = "GET", body?: string) =>
+  new Request(`https://x.supabase.co/functions/v1/digest-unsubscribe?u=${encodeURIComponent(u)}&t=${encodeURIComponent(t)}`, {
+    method,
+    ...(body === undefined ? {} : { body, headers: { "Content-Type": "application/x-www-form-urlencoded" } }),
+  });
 
-Deno.test("unsubscribe GET with a valid token: opts out and redirects to the page with ok=1", async () => {
+Deno.test("unsubscribe GET with a valid token: changes nothing, redirects to the confirm page with the action in the fragment", async () => {
   const d = unsubDeps();
-  const res = await handleUnsubscribe(unsubReq(U1, await unsubscribeToken(SECRET, U1)), d.deps);
+  const t = await unsubscribeToken(USECRET, U1);
+  const res = await handleUnsubscribe(unsubReq(U1, t), d.deps);
   assertEquals(res.status, 302);
-  assertEquals(res.headers.get("Location"), "https://p-search-mobil.vercel.app/leiratkozas?ok=1");
+  assertEquals(res.headers.get("Location"), `${PAGE}#a=${encodeURIComponent(`https://x.supabase.co/functions/v1/digest-unsubscribe?u=${U1}&t=${t}`)}`);
+  assertEquals(d.out, []);
+});
+
+Deno.test("unsubscribe from the confirm page (confirm=page): opts out, 303 to ok=1", async () => {
+  const d = unsubDeps();
+  const res = await handleUnsubscribe(unsubReq(U1, await unsubscribeToken(USECRET, U1), "POST", "confirm=page"), d.deps);
+  assertEquals([res.status, res.headers.get("Location")], [303, `${PAGE}?ok=1`]);
   assertEquals(d.out, [U1]);
 });
 
-Deno.test("unsubscribe one-click POST: opts out, 200", async () => {
+Deno.test("unsubscribe one-click POST (RFC 8058): opts out, 200", async () => {
   const d = unsubDeps();
-  const res = await handleUnsubscribe(unsubReq(U1, await unsubscribeToken(SECRET, U1), "POST"), d.deps);
+  const res = await handleUnsubscribe(unsubReq(U1, await unsubscribeToken(USECRET, U1), "POST", "List-Unsubscribe=One-Click"), d.deps);
   assertEquals(res.status, 200);
   assertEquals(d.out, [U1]);
 });
 
-Deno.test("unsubscribe with another user's token, a broken token, a non-uuid or no secret: nothing changes", async () => {
-  const tokenOfU2 = await unsubscribeToken(SECRET, U2);
+Deno.test("unsubscribe with another user's token, a broken token, a non-uuid, the scheduler secret's token or no key: nothing changes", async () => {
+  const tokenOfU2 = await unsubscribeToken(USECRET, U2);
   const cases: [string, string, Record<string, string | undefined>][] = [
     [U1, tokenOfU2, {}],
     [U1, "garbage", {}],
-    ["not-a-uuid", await unsubscribeToken(SECRET, "not-a-uuid"), {}],
-    [U1, await unsubscribeToken(SECRET, U1), { SCHEDULER_SECRET: undefined }],
+    ["not-a-uuid", await unsubscribeToken(USECRET, "not-a-uuid"), {}],
+    [U1, await unsubscribeToken(SECRET, U1), {}],
+    [U1, await unsubscribeToken(USECRET, U1), { DIGEST_UNSUBSCRIBE_SECRET: undefined }],
   ];
   for (const [u, t, env] of cases) {
     const d = unsubDeps(env);
-    const get = await handleUnsubscribe(unsubReq(u, t), d.deps);
-    assertEquals(get.headers.get("Location"), "https://p-search-mobil.vercel.app/leiratkozas?ok=0");
-    assertEquals((await handleUnsubscribe(unsubReq(u, t, "POST"), d.deps)).status, 400);
+    assertEquals((await handleUnsubscribe(unsubReq(u, t), d.deps)).headers.get("Location"), `${PAGE}?ok=0`);
+    const page = await handleUnsubscribe(unsubReq(u, t, "POST", "confirm=page"), d.deps);
+    assertEquals([page.status, page.headers.get("Location")], [303, `${PAGE}?ok=0`]);
+    assertEquals((await handleUnsubscribe(unsubReq(u, t, "POST", "List-Unsubscribe=One-Click"), d.deps)).status, 400);
     assertEquals(d.out, []);
   }
 });
 
-Deno.test("unsubscribe: a failing update says so (ok=0 / 500); other methods 405", async () => {
-  const failing = { env: (n: string) => (n === "SCHEDULER_SECRET" ? SECRET : undefined), optOut: () => Promise.reject(new Error("db")), log: () => {} };
-  const t = await unsubscribeToken(SECRET, U1);
-  assertEquals((await handleUnsubscribe(unsubReq(U1, t), failing)).headers.get("Location")?.endsWith("ok=0"), true);
+Deno.test("unsubscribe: a failing update says so (page ok=0 / one-click 500); other methods 405", async () => {
+  const d = unsubDeps();
+  const failing = { ...d.deps, optOut: () => Promise.reject(new Error("db")) };
+  const t = await unsubscribeToken(USECRET, U1);
+  assertEquals((await handleUnsubscribe(unsubReq(U1, t, "POST", "confirm=page"), failing)).headers.get("Location"), `${PAGE}?ok=0`);
   assertEquals((await handleUnsubscribe(unsubReq(U1, t, "POST"), failing)).status, 500);
   assertEquals((await handleUnsubscribe(unsubReq(U1, t, "DELETE"), unsubDeps().deps)).status, 405);
+});
+
+Deno.test("weekly-digest without DIGEST_UNSUBSCRIBE_SECRET: 503 and nothing read or sent", async () => {
+  const s = setup({ env: { DIGEST_UNSUBSCRIBE_SECRET: undefined } });
+  assertEquals((await handleWeeklyDigest(req(), s.deps)).status, 503);
+  assertEquals(s.sent.length, 0);
 });
