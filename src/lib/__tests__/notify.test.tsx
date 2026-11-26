@@ -5,7 +5,7 @@ import renderer, { act } from 'react-test-renderer';
 import { Alert, Platform } from 'react-native';
 import { Button, Modal, Provider as PaperProvider } from 'react-native-paper';
 import { notify, resetNoticesForTest, subscribeNotices } from '../notify';
-import { NOTICE_BACKDROP_LABEL, NOTICE_MESSAGE_ID, NOTICE_TITLE_ID, WebNotifier } from '../../components/WebNotifier';
+import { NOTICE_BACKDROP_LABEL, NOTICE_DIALOG_ID, NOTICE_MESSAGE_ID, NOTICE_TITLE_ID, WebNotifier, trapTab } from '../../components/WebNotifier';
 import { AuthScreen } from '../../screens/AuthScreen';
 
 jest.mock('../supabase', () => ({
@@ -166,6 +166,135 @@ describe('notify', () => {
     } finally {
       delete (global as any).document;
     }
+  });
+
+  // Round 6 follow-up (Ellenőr 9301): the focus enters the notice, Tab stays inside, the focus goes back on close.
+  it('trapTab: from outside to the first (Shift: the last), around at both ends, the browser moves it in between', () => {
+    const items = ['a', 'b', 'c'];
+    expect(trapTab(items, null, false)).toBe('a');
+    expect(trapTab(items, 'x', false)).toBe('a');
+    expect(trapTab(items, 'x', true)).toBe('c');
+    expect(trapTab(items, 'c', false)).toBe('a');
+    expect(trapTab(items, 'a', true)).toBe('c');
+    expect(trapTab(items, 'a', false)).toBeNull();
+    expect(trapTab(items, 'b', true)).toBeNull();
+    expect(trapTab([], 'a', false)).toBeNull();
+  });
+
+  it('web: the notice takes the focus, wraps Tab inside, and gives the focus back when it closes', () => {
+    Platform.OS = 'web';
+    const handlers: ((e: { key: string; shiftKey?: boolean; preventDefault: () => void }) => void)[] = [];
+    const page = { focus: jest.fn() };
+    const first = { focus: jest.fn() };
+    const last = { focus: jest.fn() };
+    const doc: any = {
+      activeElement: page,
+      contains: () => true,
+      getElementById: (id: string) => (id === NOTICE_DIALOG_ID ? { querySelectorAll: () => [first, last] } : null),
+      addEventListener: jest.fn((type: string, h: any) => { if (type === 'keydown') handlers.push(h); }),
+      removeEventListener: jest.fn(),
+    };
+    (global as any).document = doc;
+    try {
+      let c!: renderer.ReactTestRenderer;
+      act(() => {
+        c = renderer.create(
+          <PaperProvider>
+            <WebNotifier />
+          </PaperProvider>,
+        );
+      });
+      act(() => notify('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.'));
+      // opened: the focus goes to the first button
+      expect(first.focus).toHaveBeenCalledTimes(1);
+      // Tab on the last item wraps to the first; Shift+Tab on the first wraps to the last; in between the browser moves it
+      const tab = (active: unknown, shiftKey = false) => {
+        doc.activeElement = active;
+        const preventDefault = jest.fn();
+        act(() => handlers[handlers.length - 1]({ key: 'Tab', shiftKey, preventDefault }));
+        return preventDefault;
+      };
+      expect(tab(last)).toHaveBeenCalled();
+      expect(first.focus).toHaveBeenCalledTimes(2);
+      expect(tab(first, true)).toHaveBeenCalled();
+      expect(last.focus).toHaveBeenCalledTimes(1);
+      expect(tab(first)).not.toHaveBeenCalled();
+      // closed (Esc): the focus goes back to where it was before the notice
+      act(() => handlers[handlers.length - 1]({ key: 'Escape', preventDefault: jest.fn() }));
+      expect(shown(c).title).toBeNull();
+      expect(page.focus).toHaveBeenCalledTimes(1);
+      // the dialog element carries the id the focus handling looks for
+      act(() => notify('Újra', 'Még egyszer.'));
+      expect(c.root.findAll((n) => n.props.nativeID === NOTICE_DIALOG_ID && n.props.role === 'dialog').length).toBeGreaterThan(0);
+      act(() => c.unmount());
+    } finally {
+      delete (global as any).document;
+    }
+  });
+
+  it('web: when the focus had fallen to the body (a disabled button), it goes back to the last focused element', () => {
+    Platform.OS = 'web';
+    const keydown: any[] = [];
+    const focusin: any[] = [];
+    const body = { focus: jest.fn() };
+    const signIn = { focus: jest.fn() };
+    const button = { focus: jest.fn() };
+    const doc: any = {
+      body,
+      activeElement: body,
+      contains: () => true,
+      getElementById: (id: string) => (id === NOTICE_DIALOG_ID ? { querySelectorAll: () => [button], contains: (el: unknown) => el === button } : null),
+      addEventListener: jest.fn((type: string, h: any) => { if (type === 'keydown') keydown.push(h); if (type === 'focusin') focusin.push(h); }),
+      removeEventListener: jest.fn(),
+    };
+    (global as any).document = doc;
+    try {
+      let c!: renderer.ReactTestRenderer;
+      act(() => {
+        c = renderer.create(
+          <PaperProvider>
+            <WebNotifier />
+          </PaperProvider>,
+        );
+      });
+      // the user was on the sign-in button; it got disabled and the focus fell to the body
+      act(() => focusin[0]({ target: signIn }));
+      doc.activeElement = body;
+      act(() => notify('Hiba bejelentkezéskor', 'Érvénytelen e-mail cím vagy jelszó.'));
+      expect(button.focus).toHaveBeenCalledTimes(1);
+      // a focus inside the notice is not remembered as the place to go back to
+      act(() => focusin[0]({ target: button }));
+      act(() => keydown[keydown.length - 1]({ key: 'Escape', preventDefault: jest.fn() }));
+      expect(signIn.focus).toHaveBeenCalledTimes(1);
+      expect(body.focus).not.toHaveBeenCalled();
+      // a second notice, the focus again on the body: it goes back to the sign-in button, not to the first notice's button
+      doc.activeElement = body;
+      act(() => notify('Hiba bejelentkezéskor', 'Még egyszer.'));
+      act(() => keydown[keydown.length - 1]({ key: 'Escape', preventDefault: jest.fn() }));
+      expect(signIn.focus).toHaveBeenCalledTimes(2);
+      expect(button.focus).toHaveBeenCalledTimes(2); // once per opening, never as the place to go back to
+      act(() => c.unmount());
+    } finally {
+      delete (global as any).document;
+    }
+  });
+
+  it('web: the message is the dialog\'s description, not an alert of its own (no double announcement)', () => {
+    Platform.OS = 'web';
+    let c!: renderer.ReactTestRenderer;
+    act(() => {
+      c = renderer.create(
+        <PaperProvider>
+          <WebNotifier />
+        </PaperProvider>,
+      );
+    });
+    act(() => notify('Hiba', 'Valami.'));
+    const message = c.root.findAll((n) => n.props.testID === 'web-notice-message')[0];
+    expect(message.props.role).toBeUndefined();
+    expect(message.props.accessibilityLiveRegion).toBeUndefined();
+    expect(message.props.nativeID).toBe(NOTICE_MESSAGE_ID);
+    act(() => c.unmount());
   });
 
   it('web: a notice with a title only is a dialog without a description', () => {
