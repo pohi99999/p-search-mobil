@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { logger } from '../../utils/logger';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types/navigation';
+import { formatScheduleTime } from '../../lib/scheduleLabel';
 
 jest.mock('../../lib/supabase', () => ({
   supabase: {
@@ -125,7 +126,25 @@ describe('SettingsScreen', () => {
     const component = await renderSettingsScreen();
     const text = JSON.stringify(component.toJSON());
     expect(text).toContain('Hamarosan, a következő órán belül');
-    expect(text).not.toContain(new Date(past).toLocaleString('hu-HU'));
+    expect(text).not.toContain(formatScheduleTime(past));
+  });
+
+  // Round 6 (Lumen P2-3): the last scan is shown to the minute, and Mentés sits right under the radios it saves.
+  it('the last scan has no seconds, and Mentés is above the read-only status block', async () => {
+    const last = new Date(2026, 10, 25, 11, 24, 30).toISOString();
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { search_frequency: 'weekly', last_scan_at: last, next_scan_at: null }, error: null }),
+    });
+    const component = await renderSettingsScreen();
+    const text = JSON.stringify(component.toJSON());
+    expect(text).toContain('2026. 11. 25. 11:24');
+    expect(text).not.toMatch(/11:24:\d\d/);
+    const at = (s: string) => text.indexOf(s);
+    expect(at('Keresési beállítások mentése')).toBeGreaterThan(at('Automatikus AI keresés gyakorisága'));
+    expect(at('Keresési beállítások mentése')).toBeLessThan(at('Keresési állapot'));
+    act(() => component.unmount());
   });
 
   // Card fa68ea84: the profile could be filled once and never corrected; this row opens the form in edit mode.
