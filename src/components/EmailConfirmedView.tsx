@@ -1,5 +1,5 @@
-import React from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { logger } from '../utils/logger';
@@ -30,12 +30,30 @@ export const CONFIRMED_COPY = {
  */
 export const PLAY_LISTING_URL = 'https://play.google.com/store/apps/details?id=com.pohankaestarsa.psearch';
 
+/**
+ * The browser tab's title while this view is shown (Kenshin 9267: it read only "P-Search", every other screen reads
+ * "Cím | P-Search"). The view is not a navigator screen, so it sets the tab itself, and gives the old title back when
+ * it goes. Web only: native has no tab. No en or em dash: "|" separates, as in SCREEN_TITLES.
+ */
+export const CONFIRMED_TAB_TITLE = 'E-mail megerősítve | P-Search';
+
 interface Props {
   onSignIn: () => void;
   showPlayButton: boolean;
 }
 
 export function EmailConfirmedView({ onSignIn, showPlayButton }: Props) {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
+    const doc = document;
+    const before = doc.title;
+    doc.title = CONFIRMED_TAB_TITLE;
+    return () => {
+      // only if nothing else has renamed the tab meanwhile (the navigator names it for the next screen)
+      if (doc.title === CONFIRMED_TAB_TITLE) doc.title = before;
+    };
+  }, []);
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} testID="email-confirmed-scroll">
       <Surface style={styles.surface} elevation={4} testID="email-confirmed">

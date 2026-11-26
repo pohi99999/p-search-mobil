@@ -2,8 +2,8 @@
 // sign-in, and shows the Google Play button only behind its switch. No promise of a time in its copy.
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Linking, StyleSheet } from 'react-native';
-import { CONFIRMED_COPY, EmailConfirmedView, PLAY_LISTING_URL } from '../EmailConfirmedView';
+import { Linking, Platform, StyleSheet } from 'react-native';
+import { CONFIRMED_COPY, CONFIRMED_TAB_TITLE, EmailConfirmedView, PLAY_LISTING_URL } from '../EmailConfirmedView';
 
 jest.mock('../../utils/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn() } }));
 
@@ -56,10 +56,53 @@ describe('EmailConfirmedView', () => {
   it('the Play button opens the listing of the app package', () => {
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true as never);
     const { tree, byId } = mount({ showPlayButton: true });
-    act(() => byId('email-confirmed-play').props.onPress());
+    // braces: onPress returns the openURL promise, and an un-awaited async act stops later effects from running
+    act(() => {
+      byId('email-confirmed-play').props.onPress();
+    });
     expect(open).toHaveBeenCalledWith(PLAY_LISTING_URL);
     expect(PLAY_LISTING_URL).toContain('id=com.pohankaestarsa.psearch');
     act(() => tree.unmount());
+  });
+
+  // Round 6 follow-up (Kenshin 9267): the browser tab read only "P-Search" on this view.
+  describe('the browser tab title (web)', () => {
+    const originalOS = Platform.OS;
+    afterEach(() => {
+      Platform.OS = originalOS;
+      delete (global as any).document;
+    });
+
+    it('names the tab while shown, and gives the old title back when it goes', () => {
+      Platform.OS = 'web';
+      (global as any).document = { title: 'P-Search' };
+      const { tree } = mount();
+      expect((global as any).document.title).toBe(CONFIRMED_TAB_TITLE);
+      act(() => tree.unmount());
+      expect((global as any).document.title).toBe('P-Search');
+    });
+
+    it('leaves a title alone that the navigator set meanwhile', () => {
+      Platform.OS = 'web';
+      (global as any).document = { title: 'P-Search' };
+      const { tree } = mount();
+      (global as any).document.title = 'Cégprofil | P-Search';
+      act(() => tree.unmount());
+      expect((global as any).document.title).toBe('Cégprofil | P-Search');
+    });
+
+    it('the title has the screens\' shape and no dash', () => {
+      expect(CONFIRMED_TAB_TITLE).toMatch(/^[^|]+ \| P-Search$/);
+      expect(CONFIRMED_TAB_TITLE).not.toMatch(/[\u2013\u2014]/);
+    });
+
+    it('native: nothing is touched', () => {
+      Platform.OS = 'android';
+      (global as any).document = { title: 'P-Search' };
+      const { tree } = mount();
+      expect((global as any).document.title).toBe('P-Search');
+      act(() => tree.unmount());
+    });
   });
 
   it('the copy promises no time and has no dash', () => {
