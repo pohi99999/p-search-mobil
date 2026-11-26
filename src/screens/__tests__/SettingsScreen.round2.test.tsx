@@ -22,7 +22,7 @@ jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', native
 const mockBilling: { isPro: boolean; isLoading: boolean } = { isPro: true, isLoading: false };
 jest.mock('../../context/BillingContext', () => ({ useBilling: () => mockBilling }));
 
-jest.mock('../../utils/logger', () => ({ logger: { error: jest.fn() } }));
+jest.mock('../../utils/logger', () => ({ logger: { error: jest.fn(), warn: jest.fn() } }));
 
 const mockClearChat = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../hooks/useCopilotChat', () => ({ clearStoredChatHistory: () => mockClearChat() }));
