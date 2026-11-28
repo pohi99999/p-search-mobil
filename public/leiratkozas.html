@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>P-Search: leiratkozás a heti összefoglalóról</title>
+<!-- Round 6, item A: the digest-unsubscribe Edge Function redirects here (?ok=1 / ?ok=0), so the function never has to
+     serve HTML. Static, no script dependency beyond reading ?ok; the wording is a draft for Péter's approval. -->
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; margin: 0; padding: 24px; color: #212121; }
+  .card { max-width: 420px; margin: 40px auto; background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  h1 { font-size: 1.25rem; color: #1A237E; margin: 0 0 8px; }
+  p { line-height: 1.45; }
+  a { color: #1565C0; }
+  [hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <section id="ok">
+    <h1>Leiratkoztál a heti összefoglalóról</h1>
+    <p>Mostantól nem küldünk heti e-mailt a cégedhez illő pályázatokról. A P-Searchben a találataidat továbbra is látod.</p>
+    <p>Ha meggondolod magad, a P-Search Beállításaiban visszakapcsolhatod.</p>
+  </section>
+  <section id="bad" hidden>
+    <h1>A leiratkozó link nem használható</h1>
+    <p>A link hibás vagy nem teljes. A heti összefoglalót a P-Search Beállításaiban is kikapcsolhatod.</p>
+  </section>
+  <p><a href="/">Megnyitom a P-Searchet</a></p>
+</div>
+<script>
+  (function () {
+    var ok = new URLSearchParams(location.search).get('ok') === '1';
+    document.getElementById('ok').hidden = !ok;
+    document.getElementById('bad').hidden = ok;
+  })();
+</script>
+</body>
+</html>

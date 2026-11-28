@@ -21,6 +21,7 @@ import { clearStoredChatHistory } from '../hooks/useCopilotChat';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PRIVACY_POLICY_URL } from '../lib/legalLinks';
+import { DigestSwitch } from '../components/DigestSwitch';
 export { PRIVACY_POLICY_URL };
 import type { SettingsScreenProps } from '../types/navigation';
 
@@ -373,6 +374,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             </>
           )}
         </Surface>
+
+        {/* Round 6, item A: the weekly e-mail digest, opt-in (off by default). */}
+        <DigestSwitch cardStyle={styles.card} />
 
         <Card style={styles.card} mode="elevated">
           <List.Item
